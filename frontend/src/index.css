@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-arc-dark text-white font-mono;
+  }
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  @apply bg-arc-neon/20 rounded;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+}
