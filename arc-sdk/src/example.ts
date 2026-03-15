@@ -10,8 +10,8 @@ async function main() {
     const sdk = new ArcEconomySDK({
         provider,
         signer: wallet,
-        registryAddress: "0x67471b9cca5be9831c3d4b9d7f99b17dcea9852b",
-        escrowAddress: "0x9331b923f0b986ee5d173c06606188f3b7169159"
+        registryAddress: "0x700016cB8a2F8Ec7B41c583Cc42589Fd230752f9",
+        escrowAddress: "0x57082a289C34318ab216920947efd2FFB0b9981b"
     });
 
     // 3. Register as an agent
@@ -21,7 +21,7 @@ async function main() {
         asVerifier: false,
         capabilitiesHash: ethers.id("my-capabilities"),
         pubKey: ethers.ZeroHash,
-        stakeAmount: "5.0" // 5.0 USDC
+        stakeAmount: "50.0" // 50.0 USDC
     });
     await regTx.wait();
 

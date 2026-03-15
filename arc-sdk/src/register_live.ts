@@ -4,8 +4,8 @@ import { ArcEconomySDK } from "./ArcEconomySDK";
 async function main() {
     // ARC Testnet RPC
     const RPC_URL = "https://rpc.testnet.arc.network";
-    const REGISTRY_ADDR = "0x67471b9cca5be9831c3d4b9d7f99b17dcea9852b";
-    const ESCROW_ADDR = "0x9331b923f0b986ee5d173c06606188f3b7169159";
+    const REGISTRY_ADDR = "0x700016cB8a2F8Ec7B41c583Cc42589Fd230752f9";
+    const ESCROW_ADDR = "0x57082a289C34318ab216920947efd2FFB0b9981b";
 
     // IMPORTANT: To run this, you need a private key with USDC (ARC Native).
     const PRIVATE_KEY = process.env.ARC_PRIVATE_KEY;
@@ -40,13 +40,13 @@ async function main() {
 
     console.log("Registering agent on Arc Registry (ARC Testnet)...");
     
-    // Register as a Seller with minimum required stake (5.0 USDC based on deployment logs)
+    // Register as a Seller with minimum required stake (50.0 USDC based on deployment logs)
     const tx = await sdk.registerAgent({
         asSeller: true,
         asVerifier: false,
         capabilitiesHash: ethers.id("openclaw-general-purpose-agent-v1"),
         pubKey: ethers.id(wallet.address), // Using hashed address as a placeholder pubKey for now
-        stakeAmount: "5.0"
+        stakeAmount: "50.0"
     });
 
     console.log(`Transaction Sent: ${tx.hash}`);
