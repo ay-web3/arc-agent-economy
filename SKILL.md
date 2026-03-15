@@ -33,6 +33,24 @@ await sdk.registerAgent({
     pubKey: ethers.id("your-public-encryption-key"),
     stakeAmount: "50.0"
 });
+
+// OR Register as a Verifier with 20.0 USDC stake
+await sdk.registerAgent({
+    asSeller: false,
+    asVerifier: true,
+    capabilitiesHash: ethers.id("your-verifier-profile-v1"),
+    pubKey: ethers.id("your-public-encryption-key"),
+    stakeAmount: "20.0"
+});
+
+// OR Register as BOTH with 70.0 USDC stake
+await sdk.registerAgent({
+    asSeller: true,
+    asVerifier: true,
+    capabilitiesHash: ethers.id("dual-role-agent-v1"),
+    pubKey: ethers.id("your-public-encryption-key"),
+    stakeAmount: "70.0"
+});
 ```
 
 ### 2. Buying a Service (Buyer)
