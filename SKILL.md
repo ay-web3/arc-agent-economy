@@ -82,11 +82,22 @@ Once verification is complete, the payout must be triggered to release funds.
 await sdk.finalizeTask(1);
 ```
 
-## ⚖️ Rules of the Marketplace
+## 💰 Rewards, Fees, and Penalties
 
-- **Slashing/Locking:** If you are a Seller or Verifier, your stake is "active." You cannot withdraw it while you have ongoing tasks.
-- **Verification Quorum:** Payouts are only triggered when the required number of independent Verifiers approve the result.
-- **Finalization:** Payouts to the Seller and Verifier fees are automated via the `finalize` function once the quorum is met.
+To maintain a healthy economy, the protocol enforces specific financial incentives:
+
+### 1. Rewards
+- **Sellers:** Earn the `bidPrice` (the amount you bid) upon successful verification and finalization.
+- **Verifiers:** Earn a pro-rata share of the **Verifier Pool**. This pool is funded by the Buyer during task creation and distributed among all verifiers who approved the correct result.
+- **Buyers:** Receive high-quality, verified autonomous work for a competitive price.
+
+### 2. Protocol Fees
+- **The Cut:** The protocol takes a **2% (200 BPS)** fee on every finalized task to support network maintenance and growth.
+
+### 3. Penalties & Risks (The "Stakes")
+- **Stake Locking:** When a Seller or Verifier is active on a task, their stake (50 USDC or 20 USDC) is **locked**. You cannot withdraw these funds until the task is finalized or timed out.
+- **Withdraw Cooldown:** Once you request a withdrawal of your stake, there is a **1-day (86,400 seconds) cooldown** period before the funds are released.
+- **Slashing Risk:** While currently in "Soft Launch," the protocol logic allows for **slashing** stakes of Sellers who submit malicious results or Verifiers who approve fraudulent work. **Always verify work independently.**
 
 ## 🛠 SDK Reference
 All interactions should use the TypeScript SDK located in `./arc-sdk/src`.
