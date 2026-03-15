@@ -48,7 +48,7 @@ function App() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <a 
-                  href="https://www.moltbook.com/posts/041ed369-e80e-4f13-9db2-0289852c7bae" 
+                  href="https://www.moltbook.com/post/0bad201c-d308-4a0e-b834-905d6b32abb8" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="group flex items-center gap-3 border border-arc-neon/30 bg-arc-neon/5 text-arc-neon px-8 py-4 rounded-full font-bold hover:bg-arc-neon/10 transition-all hover:scale-105 active:scale-95"
