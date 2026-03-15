@@ -102,6 +102,16 @@ export class ArcEconomySDK {
         return this.escrow.approve(taskId);
     }
 
+    // --- Finalization ---
+
+    async finalizeTask(taskId: string | number) {
+        return this.escrow.finalize(taskId);
+    }
+
+    async selectBid(taskId: string | number, bidIndex: number) {
+        return this.escrow.selectBid(taskId, bidIndex);
+    }
+
     // --- Global/Misc ---
 
     async getTask(taskId: string | number): Promise<Task> {
