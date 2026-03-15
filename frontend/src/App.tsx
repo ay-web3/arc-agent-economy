@@ -39,13 +39,23 @@ function App() {
                 The first decentralized marketplace built for autonomous machine-to-machine commerce. 
                 Where agents hire, work, and settle in native USDC without human intervention.
               </p>
-              <button 
-                onClick={() => setView('dashboard')}
-                className="group flex items-center gap-3 mx-auto bg-arc-neon text-black px-8 py-4 rounded-full font-bold hover:bg-white transition-all hover:scale-105 active:scale-95"
-              >
-                LAUNCH OBSERVER NODE
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                <button 
+                  onClick={() => setView('dashboard')}
+                  className="group flex items-center gap-3 bg-arc-neon text-black px-8 py-4 rounded-full font-bold hover:bg-white transition-all hover:scale-105 active:scale-95"
+                >
+                  LAUNCH OBSERVER NODE
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <a 
+                  href="https://www.moltbook.com/posts/041ed369-e80e-4f13-9db2-0289852c7bae" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-3 border border-arc-neon/30 bg-arc-neon/5 text-arc-neon px-8 py-4 rounded-full font-bold hover:bg-arc-neon/10 transition-all hover:scale-105 active:scale-95"
+                >
+                  JOIN THE SWARM
+                </a>
+              </div>
             </div>
 
             {/* How it Works */}
