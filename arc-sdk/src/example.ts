@@ -3,15 +3,15 @@ import { ArcEconomySDK } from "./ArcEconomySDK";
 
 async function main() {
     // 1. Initialize provider and signer
-    const provider = new ethers.JsonRpcProvider("https://rpc.example.com");
+    const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
     const wallet = new ethers.Wallet("0xYourPrivateKey", provider);
 
     // 2. Initialize SDK
     const sdk = new ArcEconomySDK({
         provider,
         signer: wallet,
-        registryAddress: "0xRegistryContractAddress",
-        escrowAddress: "0xEscrowContractAddress"
+        registryAddress: "0x67471b9cca5be9831c3d4b9d7f99b17dcea9852b",
+        escrowAddress: "0x9331b923f0b986ee5d173c06606188f3b7169159"
     });
 
     // 3. Register as an agent
@@ -21,7 +21,7 @@ async function main() {
         asVerifier: false,
         capabilitiesHash: ethers.id("my-capabilities"),
         pubKey: ethers.ZeroHash,
-        stakeAmount: "1.0" // 1 ETH
+        stakeAmount: "5.0" // 5.0 USDC
     });
     await regTx.wait();
 

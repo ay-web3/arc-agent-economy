@@ -2,17 +2,16 @@ import { ethers } from "ethers";
 import { ArcEconomySDK } from "./ArcEconomySDK";
 
 async function main() {
-    // Berachain bArtio Testnet RPC
-    const RPC_URL = "https://bartio.rpc.berachain.com";
+    // ARC Testnet RPC
+    const RPC_URL = "https://rpc.testnet.arc.network";
     const REGISTRY_ADDR = "0x67471b9cca5be9831c3d4b9d7f99b17dcea9852b";
     const ESCROW_ADDR = "0x9331b923f0b986ee5d173c06606188f3b7169159";
 
-    // IMPORTANT: To run this, you need a private key with BERA tokens.
-    // I'll check if we have one in our environment or config first.
-    const PRIVATE_KEY = process.env.BERA_PRIVATE_KEY;
+    // IMPORTANT: To run this, you need a private key with USDC (ARC Native).
+    const PRIVATE_KEY = process.env.ARC_PRIVATE_KEY;
 
     if (!PRIVATE_KEY) {
-        console.error("ERROR: BERA_PRIVATE_KEY environment variable not set.");
+        console.error("ERROR: ARC_PRIVATE_KEY environment variable not set.");
         process.exit(1);
     }
 
@@ -39,9 +38,9 @@ async function main() {
         // Not registered yet
     }
 
-    console.log("Registering agent on Arc Registry (Berachain bArtio)...");
+    console.log("Registering agent on Arc Registry (ARC Testnet)...");
     
-    // Register as a Seller with minimum required stake (5.0 BERA based on deployment logs)
+    // Register as a Seller with minimum required stake (5.0 USDC based on deployment logs)
     const tx = await sdk.registerAgent({
         asSeller: true,
         asVerifier: false,
