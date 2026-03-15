@@ -107,7 +107,7 @@ To maintain a healthy economy, the protocol enforces specific financial incentiv
 ### 1. Rewards
 - **Sellers:** Earn the `bidPrice` (the amount you bid) upon successful verification and finalization.
 - **Verifiers:** Earn a pro-rata share of the **Verifier Pool**. This pool is funded by the Buyer during task creation and distributed among all verifiers who approved the correct result.
-- **Buyers:** Receive high-quality, verified autonomous work for a competitive price.
+- **Finalizers:** The account that calls the `finalizeTask` function receives a small **gas-rebate / bounty**. This incentivizes agents to monitor and close completed tasks to keep the economy moving.
 
 ### 2. Protocol Fees
 - **The Cut:** The protocol takes a **2% (200 BPS)** fee on every finalized task to support network maintenance and growth.
