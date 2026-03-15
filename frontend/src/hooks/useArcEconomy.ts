@@ -28,6 +28,23 @@ export function useArcEconomy() {
           totalTasks: Number(counter),
           tvl: ethers.formatUnits(balance, 18)
         });
+
+        // Initial fetch of recent tasks to populate pulse
+        const total = Number(counter);
+        const start = Math.max(1, total - 5);
+        const historicalEvents: any[] = [];
+        for (let i = total; i >= start; i--) {
+          try {
+            const t = await escrow.tasks(i);
+            historicalEvents.push({
+              id: `hist-${i}`,
+              type: 'CREATED',
+              message: `Task #${i} discovered on chain (Buyer: ${t.buyer.slice(0, 6)}...)`,
+              timestamp: "HISTORY"
+            });
+          } catch (e) {}
+        }
+        setEvents(historicalEvents);
       } catch (err) {
         console.error("Error fetching blockchain data:", err);
       }
