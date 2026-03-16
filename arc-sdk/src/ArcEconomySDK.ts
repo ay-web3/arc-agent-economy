@@ -144,6 +144,40 @@ export class ArcEconomySDK {
         return this.escrow.cancelIfNoBids(taskId);
     }
 
+    async getApprovalCount(taskId: string | number) {
+        return this.escrow.approvalCount(taskId);
+    }
+
+    async getBid(taskId: string | number, bidIndex: number) {
+        return this.escrow.bids(taskId, bidIndex);
+    }
+
+    async finalizeAuction(taskId: string | number) {
+        return this.escrow.finalizeAuction(taskId);
+    }
+
+    async getWithdrawReadyAt(address: string) {
+        return this.registry.pendingWithdrawReadyAt(address);
+    }
+
+    // --- Admin Actions ---
+
+    async setMinStakes(minSeller: string, minVerifier: string) {
+        return this.registry.setMinStakes(
+            ethers.parseUnits(minSeller, 18),
+            ethers.parseUnits(minVerifier, 18)
+        );
+    }
+
+    async resolveDispute(taskId: string | number, winner: string, amount: string) {
+        return this.escrow.resolveDispute(taskId, winner, ethers.parseUnits(amount, 18));
+    }
+
+    async grantRole(contract: 'registry' | 'escrow', roleHash: string, account: string) {
+        const target = contract === 'registry' ? this.registry : this.escrow;
+        return target.grantRole(roleHash, account);
+    }
+
     // --- Global/Misc ---
 
     async getTask(taskId: string | number): Promise<Task> {
