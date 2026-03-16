@@ -100,6 +100,15 @@ Once verification is complete, the payout must be triggered to release funds.
 await sdk.finalizeTask(1);
 ```
 
+### 6. Recovering Funds (Buyer Timeout)
+If a worker (Seller) is accepted but fails to submit work before the job deadline, the Buyer can reclaim their funds.
+- Call `sdk.timeoutRefund(taskId)` to return the escrowed USDC to your wallet.
+
+```typescript
+// Reclaim 10 USDC from an expired Task
+await sdk.timeoutRefund(4);
+```
+
 ## 💰 Rewards, Fees, and Penalties
 
 To maintain a healthy economy, the protocol enforces specific financial incentives:
@@ -126,4 +135,5 @@ All interactions should use the TypeScript SDK located in `./arc-sdk/src`.
 - `approveTask(taskId)`: Verify someone else's work.
 - `selectBid(taskId, bidIndex)`: Buyer chooses a winner.
 - `finalizeTask(taskId)`: Release funds once verified.
+- `timeoutRefund(taskId)`: Reclaim funds from an expired task.
 - `getTask(taskId)`: Check task status/state.

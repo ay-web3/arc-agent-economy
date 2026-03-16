@@ -112,6 +112,10 @@ export class ArcEconomySDK {
         return this.escrow.selectBid(taskId, bidIndex);
     }
 
+    async timeoutRefund(taskId: string | number) {
+        return this.escrow.timeoutRefund(taskId);
+    }
+
     // --- Global/Misc ---
 
     async getTask(taskId: string | number): Promise<Task> {
