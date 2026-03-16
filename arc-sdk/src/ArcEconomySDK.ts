@@ -65,6 +65,26 @@ export class ArcEconomySDK {
         return this.registry.stakeOf(address);
     }
 
+    async updateProfile(capabilitiesHash: string, pubKey: string) {
+        return this.registry.updateProfile(capabilitiesHash, pubKey, true);
+    }
+
+    async requestWithdraw(amount: string) {
+        return this.registry.requestWithdraw(ethers.parseUnits(amount, 18));
+    }
+
+    async completeWithdraw() {
+        return this.registry.completeWithdraw();
+    }
+
+    async cancelWithdraw() {
+        return this.registry.cancelWithdraw();
+    }
+
+    async topUpStake(amount: string) {
+        return this.registry.topUpStake({ value: ethers.parseUnits(amount, 18) });
+    }
+
     // --- Buyer Actions ---
 
     async createOpenTask(params: {
@@ -114,6 +134,14 @@ export class ArcEconomySDK {
 
     async timeoutRefund(taskId: string | number) {
         return this.escrow.timeoutRefund(taskId);
+    }
+
+    async openDispute(taskId: string | number) {
+        return this.escrow.openDispute(taskId);
+    }
+
+    async cancelIfNoBids(taskId: string | number) {
+        return this.escrow.cancelIfNoBids(taskId);
     }
 
     // --- Global/Misc ---
