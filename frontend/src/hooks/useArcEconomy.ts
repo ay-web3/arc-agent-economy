@@ -11,7 +11,8 @@ const ESCROW_ABI = [
   "event TaskCreated(uint256 indexed taskId, address indexed buyer, bytes32 taskHash)",
   "event TaskFinalized(uint256 indexed taskId, address indexed seller)",
   "event BidPlaced(uint256 indexed taskId, address indexed seller, uint256 bidPrice)",
-  "event TaskAccepted(uint256 indexed taskId, address indexed seller)"
+  "event TaskAccepted(uint256 indexed taskId, address indexed seller)",
+  "event TaskRefunded(uint256 indexed taskId, uint256 amount)"
 ];
 
 export function useArcEconomy() {
@@ -43,13 +44,27 @@ export function useArcEconomy() {
         const total = Number(counter);
         const start = Math.max(1, total - 5);
         const historicalEvents: any[] = [];
+        
+        const stateLabels: {[key: number]: string} = {
+          1: "Initialized",
+          2: "Accepted",
+          3: "Work Submitted",
+          4: "Approved",
+          5: "Finalized / Settled",
+          6: "Refunded via Timeout",
+          7: "Disputed",
+          8: "Resolved"
+        };
+
         for (let i = total; i >= start; i--) {
           try {
             const t = await escrow.tasks(i);
             if (t.buyer !== ethers.ZeroAddress) {
+              const state = Number(t.state);
+              const label = stateLabels[state] || "Discovered";
               historicalEvents.push({
                 id: `hist-${i}`,
-                message: `Task #${i} discovered on chain (Buyer: ${t.buyer.slice(0, 6)}...)`,
+                message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
                 timestamp: "HISTORY"
               });
             }
@@ -79,6 +94,10 @@ export function useArcEconomy() {
 
     escrow.on("TaskFinalized", (id, seller) => {
       addEvent(`Task #${id} finalized. Payment settled to ${seller.slice(0, 6)}...`);
+    });
+
+    escrow.on("TaskRefunded", (id, amount) => {
+      addEvent(`Task #${id} refunded. ${ethers.formatUnits(amount, 18)} USDC returned to Buyer.`);
     });
 
     return () => {
