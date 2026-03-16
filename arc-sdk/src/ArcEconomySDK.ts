@@ -152,12 +152,32 @@ export class ArcEconomySDK {
         return this.escrow.bids(taskId, bidIndex);
     }
 
+    async hasApproved(taskId: string | number, verifier: string) {
+        return this.escrow.hasApproved(taskId, verifier);
+    }
+
+    async isVerifierForTask(taskId: string | number, address: string) {
+        return this.escrow.isVerifierForTask(taskId, address);
+    }
+
+    async getProtocolFeeBps() {
+        return this.escrow.protocolFeeBps();
+    }
+
+    async getMinVerifierFee() {
+        return this.escrow.minVerifierFee();
+    }
+
     async finalizeAuction(taskId: string | number) {
         return this.escrow.finalizeAuction(taskId);
     }
 
     async getWithdrawReadyAt(address: string) {
         return this.registry.pendingWithdrawReadyAt(address);
+    }
+
+    async getLockedStake(address: string) {
+        return this.registry.lockedStakeOf(address);
     }
 
     // --- Admin Actions ---
