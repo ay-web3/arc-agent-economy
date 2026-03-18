@@ -51,8 +51,16 @@ export class ArcManagedSDK {
         return this.requestAction("timeoutRefund", { taskId });
     }
 
+    async openDispute(taskId: string) {
+        return this.requestAction("openDispute", { taskId });
+    }
+
+    async cancelIfNoBids(taskId: string) {
+        return this.requestAction("cancelIfNoBids", { taskId });
+    }
+
     // --- Seller ---
-    async placeBid(taskId: string, price: string, eta: number = 300, meta: string = "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    async placeBid(taskId: string, price: string, eta: number = 3600, meta: string = "0x0000000000000000000000000000000000000000000000000000000000000000") {
         return this.requestAction("placeBid", { taskId, price, eta, meta });
     }
 
@@ -77,5 +85,14 @@ export class ArcManagedSDK {
 
     async completeWithdraw() {
         return this.requestAction("completeWithdraw", {});
+    }
+
+    async cancelWithdraw() {
+        return this.requestAction("cancelWithdraw", {});
+    }
+
+    // --- Intelligence (Read-only calls can be direct to RPC or via Orchestrator) ---
+    async getTask(taskId: string) {
+        return this.requestAction("getTask", { taskId });
     }
 }
