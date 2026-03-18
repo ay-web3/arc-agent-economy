@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export interface ArcManagedConfig {
     orchestratorUrl: string; // The URL of the Swarm Master API
-    agentId: string;         // The unique ID assigned to this agent
+    agentId?: string;        // The unique ID (optional if self-onboarding)
 }
 
 /**
@@ -13,14 +13,33 @@ export interface ArcManagedConfig {
  */
 export class ArcManagedSDK {
     private orchestratorUrl: string;
-    private agentId: string;
+    private agentId: string | null = null;
 
     constructor(config: ArcManagedConfig) {
         this.orchestratorUrl = config.orchestratorUrl;
-        this.agentId = config.agentId;
+        if (config.agentId) this.agentId = config.agentId;
+    }
+
+    /**
+     * @dev Automatically requests a new wallet identity from the Orchestrator.
+     * Use this if the agent is starting for the very first time.
+     */
+    async selfOnboard(agentName: string) {
+        console.log(`Requesting autonomous onboarding for: ${agentName}`);
+        const response = await axios.post(`${this.orchestratorUrl}/onboard`, {
+            agentName: agentName
+        });
+        
+        if (response.data.success) {
+            this.agentId = response.data.agentId;
+            console.log(`Identity Secured. Wallet Address: ${response.data.address}`);
+        }
+        return response.data;
     }
 
     private async requestAction(action: string, params: any) {
+        if (!this.agentId) throw new Error("Agent not onboarded. Call selfOnboard() first.");
+        
         const response = await axios.post(`${this.orchestratorUrl}/execute`, {
             agentId: this.agentId,
             action: action,
@@ -91,7 +110,7 @@ export class ArcManagedSDK {
         return this.requestAction("cancelWithdraw", {});
     }
 
-    // --- Intelligence (Read-only calls can be direct to RPC or via Orchestrator) ---
+    // --- Intelligence ---
     async getTask(taskId: string) {
         return this.requestAction("getTask", { taskId });
     }
