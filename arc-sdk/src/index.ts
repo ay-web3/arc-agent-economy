@@ -1,4 +1,3 @@
-export * from "./ArcEconomySDK";
-export * from "./ArcCircleSDK";
-export * from "./CircleSigner";
+export * from "./SwarmOrchestrator";
+export * from "./ArcManagedSDK";
 export * from "./types";
