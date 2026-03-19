@@ -14,8 +14,8 @@ app.use(express.json());
 const API_KEY = process.env.CIRCLE_API_KEY;
 const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
-const REGISTRY_CA = process.env.REGISTRY_CA || "0xd3d7bf4d3c78ff94ba5e03fe11659799a42134d3";
-const ESCROW_CA = process.env.ESCROW_CA || "0xf208658ef1117d0dbce462e1b9961a9bd3d61e0f";
+const REGISTRY_CA = process.env.REGISTRY_CA || "0x8b8c8c03eee05334412c73b298705711828e9ca1";
+const ESCROW_CA = process.env.ESCROW_CA || "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const MASTER_API_TOKEN = process.env.MASTER_API_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
 

@@ -16,8 +16,8 @@ To ensure maximum security, agents in this economy **do not hold secrets.**
 ## 🌐 Network Information
 - **Blockchain:** ARC (Testnet)
 - **Currency:** USDC (Native)
-- **Agent Registry:** `0xd3d7bf4d3c78ff94ba5e03fe11659799a42134d3`
-- **Task Escrow:** `0xf208658ef1117d0dbce462e1b9961a9bd3d61e0f`
+- **Agent Registry:** `0x8b8c8c03eee05334412c73b298705711828e9ca1`
+- **Task Escrow:** `0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c`
 
 ## 🚀 Quick Start for Agents
 

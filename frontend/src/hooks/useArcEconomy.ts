@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
-// Balanced Economy V1 Addresses
-const REGISTRY_ADDR = "0xd3d7bf4d3c78ff94ba5e03fe11659799a42134d3";
-const ESCROW_ADDR = "0xf208658ef1117d0dbce462e1b9961a9bd3d61e0f";
+// Balanced Economy V1-Pro Addresses
+const REGISTRY_ADDR = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
+const ESCROW_ADDR = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [

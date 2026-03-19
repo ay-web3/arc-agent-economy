@@ -15,13 +15,15 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     uint16  public treasuryShareBps;     // 6000 = 60%
     uint16  public finalizerShareBps;    // 4000 = 40%
 
-    uint16  public verifierFeeBps;       // e.g. 50 = 0.50%
-    uint256 public minVerifierFee;       // floor reward (native)
+    uint16  public verifierFeeBps;       
+    uint256 public minVerifierFee;       
 
-    uint16  public difficultyAlphaBps;   // 10000 = 1.0 baseline
+    uint16  public difficultyAlphaBps;   
 
-    uint16  public verifierSlashBps;     // e.g. 200 = 2%
-    uint256 public verifierSlashCap;     // max slash cap (native)
+    uint16  public verifierSlashBps;     
+    uint256 public verifierSlashCap;     
+
+    uint16  public sellerSlashBps = 2000; // REFINED: 20% penalty for bad work (Point 1)
 
     // Floor on seller budget (derived from total - verifierPool)
     uint256 public minDerivedPrice;
@@ -31,11 +33,11 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
     enum State {
         NONE,
-        CREATED,         // open task posted (bidding live until bidDeadline)
-        ACCEPTED,        // seller assigned (manual select or auto finalize)
-        SUBMITTED,       // seller posted result
-        QUORUM_APPROVED, // verifiers reached quorum (VOTE YES)
-        REJECTED,        // verifiers reached quorum (VOTE NO)
+        CREATED,         
+        ACCEPTED,        
+        SUBMITTED,       
+        QUORUM_APPROVED, 
+        REJECTED,        
         FINALIZED,
         TIMEOUT_REFUNDED,
         DISPUTED,
@@ -50,9 +52,10 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint256 price;           
         uint256 verifierPool;    
         uint256 sellerBudget;    
-        uint64  deadline;        // job deadline for submission
-        uint64  bidDeadline;     // auction deadline
-        uint64  verifierDeadline; // NEW: deadline for verifiers to act
+        uint64  deadline;        
+        uint64  bidDeadline;     
+        uint64  verifierDeadline; 
+        uint64  approvalTimestamp; // REFINED: Cooling-off tracking (Point 3)
         bytes32 taskHash;
         bytes32 resultHash;
         string  resultURI;
@@ -75,9 +78,9 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) public isVerifierForTask;
 
     mapping(uint256 => mapping(address => bool)) public hasApproved;
-    mapping(uint256 => mapping(address => bool)) public hasRejected; // NEW
+    mapping(uint256 => mapping(address => bool)) public hasRejected; 
     mapping(uint256 => uint8) public approvalCount;
-    mapping(uint256 => uint8) public rejectionCount; // NEW
+    mapping(uint256 => uint8) public rejectionCount; 
     mapping(uint256 => address[]) public approvers;
 
     mapping(uint256 => Bid[]) public bids;
@@ -122,10 +125,10 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     );
 
     event QuorumReached(uint256 indexed taskId);
-    event TaskRejected(uint256 indexed taskId); // NEW
+    event TaskRejected(uint256 indexed taskId); 
     event TaskFinalized(uint256 indexed taskId);
     event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount);
-    event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount); // NEW
+    event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount); 
 
     event DisputeOpened(uint256 indexed taskId, address indexed opener);
     event DisputeResolved(uint256 indexed taskId, DisputeRuling ruling);
@@ -165,6 +168,11 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         minDerivedPrice = _min;
     }
 
+    function setSellerSlashBps(uint16 _bps) external onlyRole(GOVERNANCE_ROLE) {
+        require(_bps <= 10000, "BPS_TOO_HIGH");
+        sellerSlashBps = _bps;
+    }
+
     // ================= INTERNAL HELPERS =================
     function _requireEligibleSeller(address s) internal view {
         require(registry.isSeller(s), "NOT_SELLER");
@@ -175,7 +183,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     function createOpenTask(
         uint64 jobDeadline,
         uint64 bidDeadline,
-        uint64 verifierDeadline, // NEW
+        uint64 verifierDeadline, 
         bytes32 taskHash,
         address[] calldata _verifiers,
         uint8 quorumM
@@ -183,7 +191,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         require(jobDeadline > block.timestamp, "BAD_JOB_DEADLINE");
         require(bidDeadline > block.timestamp, "BAD_BID_DEADLINE");
         require(bidDeadline < jobDeadline, "BID_AFTER_JOB");
-        require(verifierDeadline > jobDeadline, "VERIFIER_BEFORE_JOB"); // NEW
+        require(verifierDeadline > jobDeadline, "VERIFIER_BEFORE_JOB"); 
         require(_verifiers.length > 0, "NO_VERIFIERS");
         require(quorumM > 0 && quorumM <= _verifiers.length, "BAD_QUORUM");
 
@@ -213,7 +221,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         t.sellerBudget = sellerBudget;
         t.deadline = jobDeadline;
         t.bidDeadline = bidDeadline;
-        t.verifierDeadline = verifierDeadline; // NEW
+        t.verifierDeadline = verifierDeadline; 
         t.taskHash = taskHash;
         t.state = State.CREATED;
         t.quorumM = quorumM;
@@ -399,11 +407,11 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint8 newCount = ++approvalCount[taskId];
         if (newCount >= t.quorumM) {
             t.state = State.QUORUM_APPROVED;
+            t.approvalTimestamp = uint64(block.timestamp); // Point 3 tracking
             emit QuorumReached(taskId);
         }
     }
 
-    // NEW: Point 1 - reject function
     function reject(uint256 taskId) external {
         Task storage t = tasks[taskId];
 
@@ -420,18 +428,18 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint8 newCount = ++rejectionCount[taskId];
         if (newCount >= t.quorumM) {
             t.state = State.REJECTED;
+            t.approvalTimestamp = uint64(block.timestamp); // Cooling-off for rejections too
             emit TaskRejected(taskId);
         }
     }
 
-    // NEW: Point 3 - verifierTimeoutRefund
     function verifierTimeoutRefund(uint256 taskId) external nonReentrant {
         Task storage t = tasks[taskId];
         require(t.state == State.SUBMITTED, "BAD_STATE");
         require(msg.sender == t.buyer, "NOT_BUYER");
         require(block.timestamp > t.verifierDeadline, "NOT_EXPIRED");
 
-        _slashZombies(taskId);
+        _slashZombies(taskId); // REFINED: Point 2 - Slashing triggers on timeout (failure path)
 
         uint256 refundAmount = t.price + t.verifierPool;
 
@@ -450,10 +458,11 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     function finalize(uint256 taskId) external nonReentrant {
         Task storage t = tasks[taskId];
         require(t.state == State.QUORUM_APPROVED, "NOT_READY");
+        require(block.timestamp >= t.approvalTimestamp + 1 hours, "COOLING_OFF"); // REFINED: Point 3 cooling-off window
 
         t.state = State.FINALIZED;
 
-        _slashZombies(taskId); // Point 4 integration
+        // Note: No _slashZombies here. Slow verifiers are not punished if quorum is reached (Point 2 refinement).
 
         uint256 fee = (t.price * protocolFeeBps) / 10_000;
         uint256 sellerPayout = t.price - fee;
@@ -483,7 +492,6 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     }
 
     // ================= DISPUTE =================
-    // Point 2 - Updated openDispute
     function openDispute(uint256 taskId) external {
         Task storage t = tasks[taskId];
         require(msg.sender == t.buyer || msg.sender == t.seller, "UNAUTHORIZED");
@@ -512,7 +520,10 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         if (ruling == DisputeRuling.REFUND_BUYER) {
             _slashApprovers(taskId, price);
-            registry.slash(t.seller, price, t.buyer); // NEW: Point 5
+            
+            // REFINED: Point 1 - 20% penalty with try/catch to prevent deadlock
+            uint256 penalty = (price * sellerSlashBps) / 10000;
+            try registry.slash(t.seller, penalty, t.buyer) {} catch {}
 
             uint256 refund = price + vPool;
             (bool ok,) = payable(t.buyer).call{value: refund}("");
@@ -613,15 +624,13 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         }
     }
 
-    // NEW: Point 4 - Internal _slashZombies
     function _slashZombies(uint256 taskId) internal {
         address[] memory taskVerifiers = verifiers[taskId];
-        uint256 slashAmount = 1 ether; // Fixed inactive penalty
+        uint256 slashAmount = 1 ether; 
 
         for (uint256 i = 0; i < taskVerifiers.length; i++) {
             address v = taskVerifiers[i];
             if (!hasApproved[taskId][v] && !hasRejected[taskId][v]) {
-                // If zombie did not vote, slash them
                 try registry.slash(v, slashAmount, treasury) {} catch {}
             }
         }
