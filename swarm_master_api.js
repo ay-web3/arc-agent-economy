@@ -311,6 +311,15 @@ app.post('/execute/openDispute', auth, async (req, res) => {
 
 // --- GOVERNANCE ENDPOINTS ---
 
+app.post('/execute/setSellerSlashBps', auth, async (req, res) => {
+    try {
+        const { agentId, bps } = req.body;
+        const walletId = await getWalletId(agentId);
+        const data = await sendTx(walletId, ESCROW_CA, "setSellerSlashBps(uint16)", [bps.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/execute/resolveDispute', auth, async (req, res) => {
     try {
         const { agentId, taskId, ruling, buyerBps } = req.body;

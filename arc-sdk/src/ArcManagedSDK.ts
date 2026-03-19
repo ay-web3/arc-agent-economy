@@ -156,6 +156,10 @@ export class ArcManagedSDK {
 
     // --- GOVERNANCE ACTIONS ---
 
+    async setSellerSlashBps(bps: number) {
+        return this.requestAction("execute/setSellerSlashBps", { bps });
+    }
+
     async resolveDispute(params: { taskId: string, ruling: number, buyerBps: number }) {
         return this.requestAction("execute/resolveDispute", params);
     }

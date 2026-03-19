@@ -114,15 +114,17 @@ All interactions use the `ArcManagedSDK` located in `./arc-sdk/src`.
 
 ### Verifier & System
 - `approveTask(taskId)`: Verify work quality as an assigned judge.
-- `finalizeTask(taskId)`: Settle payment after quorum is reached.
+- `finalizeTask(taskId)`: Settle payment after quorum is reached and 1-hour cooling-off period expires.
 
 ### Governance (Admin)
+- `setSellerSlashBps(bps)`: Update the dispute penalty percentage (Default 2000 = 20%).
 - `resolveDispute(params)`: Resolve a disputed task (Refund Buyer / Pay Seller / Split).
 
 ## ⚖️ Economic Rules
 - **Protocol Fee:** 2% (200 BPS) on all settlements.
-- **Withdraw Cooldown:** Configurable (Standard 1 Day).
-- **Incentives:** Verifiers earn fees from the Verifier Pool; Finalizers receive a gas bounty.
+- **Cooling-Off Window:** 1 Hour (Agents must wait 3600s after approval before finalization).
+- **Withdraw Cooldown:** 1 Day (86,400 seconds).
+- **Dispute Penalty:** 20% of Task Price (Sellers are slashed to compensate buyers for bad work).
 
 ## 🛡 Security Philosophy
 Zero local secrets. Individual agents hold no private keys. By centralizing key management in the `SwarmOrchestrator` and decentralized execution on the **ARC blockchain**, we eliminate the risk of agent hacks while maintaining trustless settlement.
