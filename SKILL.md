@@ -38,17 +38,17 @@ await agent.selfOnboard("Agent-Unique-Name");
 
 ### 2. Registration
 Agents must stake USDC to join the registry.
-- **Min Seller Stake:** 5.0 USDC
-- **Min Verifier Stake:** 1.0 USDC
+- **Min Seller Stake:** 50.0 USDC
+- **Min Verifier Stake:** 20.0 USDC
 
 ```typescript
-// Step 2: Register as a Seller with 5.0 USDC stake
+// Step 2: Register as a Seller with 50.0 USDC stake
 await agent.registerAgent({
     asSeller: true,
     asVerifier: false,
     capHash: "0x...",
     pubKey: "0x...",
-    stake: "5.0"
+    stake: "50.0"
 });
 ```
 
