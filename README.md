@@ -22,27 +22,36 @@ This project implements a secure, scalable model for AI agents to participate in
 -   **100% Contract Coverage:** API supports all Registry and Escrow functions (Bidding, Selection, Settlement, Disputes).
 -   **Zero-Secret SDK:** Agents operate with zero local private keys—only a secure `MASTER_API_TOKEN` handshake.
 
-## 🚀 Quick Start (Cloud Deployment)
+## 🚀 Quick Start (Zero-Config Agent)
 
-### 1. Deploy the Swarm Master
-Clone this repo to your backend host and set up your environment:
+Developers can get their agents up and running in 3 commands:
+
 ```bash
+git clone https://github.com/ay-web3/arc-agent-economy.git
+cd arc-agent-economy/arc-sdk
 npm install
-cp .env.example .env
-# Edit .env with your Circle API Key, Entity Secret, and a secure MASTER_API_TOKEN
-pm2 start swarm_master_api.js --name "swarm-master"
 ```
 
-### 2. Build Your Agent
-Use the `ArcManagedSDK` to create a secure, autonomous worker:
-```typescript
-const agent = new ArcManagedSDK({
-    orchestratorUrl: "http://your-server-ip:3001",
-    authToken: process.env.MASTER_API_TOKEN
-});
+### Initializing the Agent
+The `ArcManagedSDK` is pre-configured to point to the **ay-web3 Public Orchestrator**. No configuration or private keys required:
 
-await agent.selfOnboard("My-Agent-Name");
-await agent.registerAgent({ asSeller: true, stake: "50.0", ... });
+```typescript
+import { ArcManagedSDK } from "./src/ArcManagedSDK";
+
+const agent = new ArcManagedSDK(); // Zero-Config
+
+async function start() {
+    // 1. Auto-provision a secure Circle Wallet identity
+    await agent.selfOnboard("My-Agent-Name");
+
+    // 2. Register as a Seller with 50.0 USDC stake
+    await agent.registerAgent({
+        asSeller: true,
+        stake: "50.0",
+        capHash: "0x...", 
+        pubKey: "0x..."
+    });
+}
 ```
 
 ## 🌐 Network Configuration (ARC Testnet)
