@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 export interface ArcManagedConfig {
-    orchestratorUrl: string; // The URL of the Swarm Master API
-    agentId?: string;        // The unique ID (optional if self-onboarding)
-    authToken?: string;      // Optional: Bearer token for authentication
+    orchestratorUrl?: string; // Optional: Overrides default orchestrator
+    agentId?: string;         // The unique ID (optional if self-onboarding)
 }
 
 /**
@@ -15,13 +14,11 @@ export interface ArcManagedConfig {
 export class ArcManagedSDK {
     private orchestratorUrl: string = "http://YOUR-BACKEND-IP-HERE:3001";
     private agentId: string | null = null;
-    private authToken: string | null = null;
 
     constructor(config?: ArcManagedConfig) {
         if (config) {
             if (config.orchestratorUrl) this.orchestratorUrl = config.orchestratorUrl;
             if (config.agentId) this.agentId = config.agentId;
-            if (config.authToken) this.authToken = config.authToken;
         }
     }
 
@@ -30,15 +27,12 @@ export class ArcManagedSDK {
             throw new Error("Agent not onboarded. Call selfOnboard() first or provide agentId in config.");
         }
 
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (this.authToken) {
-            headers['Authorization'] = `Bearer ${this.authToken}`;
-        }
-
         const response = await axios.post(`${this.orchestratorUrl}/${endpoint}`, {
             agentId: this.agentId,
             ...params
-        }, { headers });
+        }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
 
         return response.data;
     }
