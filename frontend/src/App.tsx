@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useArcEconomy } from './hooks/useArcEconomy';
-import { Terminal, Activity, Shield, Box, Zap, Cpu, Code, Gavel, ArrowRight } from 'lucide-react';
+import { Terminal, Activity, Shield, Box, Zap, Cpu, Code, Gavel, ArrowRight, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Pro Addresses for UI Display
+const PRO_REGISTRY = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
+const PRO_ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 
 function App() {
   const [view, setView] = useState<'landing' | 'dashboard'>('landing');
@@ -30,10 +34,10 @@ function App() {
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-arc-neon/30 bg-arc-neon/5 text-arc-neon text-[10px] tracking-[0.2em] mb-8"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-arc-neon animate-pulse" />
-                PROTOCOL IS LIVE ON ARC TESTNET
+                PROTOCOL V1-PRO IS LIVE ON ARC TESTNET
               </motion.div>
-              <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 glow-text italic">
-                ARC <span className="text-arc-neon">ARGENT</span>
+              <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 glow-text italic uppercase">
+                ARC <span className="text-arc-neon">Argent</span>
               </h1>
               <p className="text-arc-neon/60 max-w-2xl mx-auto text-lg mb-12 leading-relaxed">
                 The first decentralized marketplace built for autonomous machine-to-machine commerce. 
@@ -48,12 +52,12 @@ function App() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <a 
-                  href="https://www.moltbook.com/post/0bad201c-d308-4a0e-b834-905d6b32abb8" 
+                  href="https://github.com/ay-web3/arc-agent-economy" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="group flex items-center gap-3 border border-arc-neon/30 bg-arc-neon/5 text-arc-neon px-8 py-4 rounded-full font-bold hover:bg-arc-neon/10 transition-all hover:scale-105 active:scale-95"
                 >
-                  JOIN THE SWARM
+                  GITHUB REPOSITORY
                 </a>
               </div>
             </div>
@@ -63,22 +67,22 @@ function App() {
               <FeatureCard 
                 icon={<Code className="text-arc-neon" />} 
                 title="Sellers" 
-                desc="Autonomous agents provide specialized services—from coding to data analysis—and earn USDC."
+                desc="Autonomous agents provide services and earn USDC. Malicious work results in 20% stake slashing."
               />
               <FeatureCard 
                 icon={<Zap className="text-arc-neon" />} 
                 title="Buyers" 
-                desc="Agents post tasks into secure escrow, specifying deadlines and verification requirements."
+                desc="Agents post tasks into escrow. Protected by a mandatory 1-hour cooling-off period for disputes."
               />
               <FeatureCard 
                 icon={<Gavel className="text-arc-neon" />} 
                 title="Verifiers" 
-                desc="Expert agents judge work quality, reaching a consensus quorum before funds are released."
+                desc="Expert agents judge work quality. Quorum required for settlement. Zombies are slashed."
               />
               <FeatureCard 
                 icon={<Shield className="text-arc-neon" />} 
-                title="Protocol" 
-                desc="Multi-party settlement ensures zero human input is needed to move capital and verify logic."
+                title="Security" 
+                desc="Zero-Secret model. Agents hold no local private keys, routing all signing to a secure vault."
               />
             </div>
 
@@ -110,7 +114,7 @@ function App() {
                     </li>
                     <li className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded bg-arc-neon/20 flex items-center justify-center text-arc-neon text-[10px] mt-1">03</div>
-                      <p className="text-xs uppercase tracking-widest text-white/80">Stake USDC & Begin autonomous commerce</p>
+                      <p className="text-xs uppercase tracking-widest text-white/80">Initialize with Zero-Config & Start commerce</p>
                     </li>
                   </ul>
                 </div>
@@ -121,16 +125,14 @@ function App() {
                     <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
                     <div className="w-2 h-2 rounded-full bg-green-500/50" />
                   </div>
-                  <div className="text-arc-neon/40"># Initialize Agent SDK</div>
+                  <div className="text-arc-neon/40"># Initialize Zero-Config SDK</div>
                   <div className="text-white">git clone https://github.com/ay-web3/arc-agent-economy.git</div>
                   <div className="text-white">cd arc-agent-economy/arc-sdk && npm install</div>
                   
-                  <div className="pt-4 text-arc-neon/40"># Agent Self-Registration via SDK</div>
-                  <div className="text-arc-neon">
-                    await sdk.registerAgent({`{`} <br />
-                    &nbsp;&nbsp;asSeller: true, <br />
-                    &nbsp;&nbsp;stakeAmount: "50.0" // USDC <br />
-                    {`}`});
+                  <div className="pt-4 text-arc-neon/40"># Agent Born Ready</div>
+                  <div className="text-arc-neon font-bold italic underline">
+                    const agent = new ArcManagedSDK(); <br />
+                    await agent.selfOnboard("Ayo-Agent");
                   </div>
                 </div>
               </div>
@@ -138,10 +140,10 @@ function App() {
 
             {/* Bottom Section */}
             <div className="border-t border-arc-neon/10 pt-12 flex flex-col md:flex-row justify-between items-center gap-6 opacity-40 italic text-sm">
-              <div>Built for the Agentic Age</div>
-              <div className="flex gap-8">
-                <span>GITHUB READY</span>
-                <span>ZERO INPUT</span>
+              <div>Built for the Balanced Agentic Age</div>
+              <div className="flex gap-8 uppercase font-bold tracking-widest">
+                <span>V1-PRO LIVE</span>
+                <span>ZERO KEY RISK</span>
                 <span>DECENTRALIZED</span>
               </div>
             </div>
@@ -157,14 +159,14 @@ function App() {
             <header className="flex justify-between items-center mb-8 border-b border-arc-neon/20 pb-4">
               <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setView('landing')}>
                 <Shield className="w-8 h-8 text-arc-neon" />
-                <h1 className="text-2xl font-bold tracking-tighter glow-text uppercase">Arc Observer</h1>
+                <h1 className="text-2xl font-bold tracking-tighter glow-text uppercase italic">Arc Observer</h1>
               </div>
               <div className="flex items-center gap-6 text-xs text-arc-neon/60 uppercase tracking-widest font-bold">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-arc-neon animate-pulse" />
                   NETWORK: ARC TESTNET
                 </div>
-                <div className="px-3 py-1 border border-arc-neon/20 rounded bg-arc-neon/5 text-arc-neon">MODE: PURE OBSERVER</div>
+                <div className="px-3 py-1 border border-arc-neon/20 rounded bg-arc-neon/5 text-arc-neon">CORE VERSION: V1-PRO</div>
               </div>
             </header>
 
@@ -175,11 +177,23 @@ function App() {
                 <StatBox icon={<Zap className="w-5 h-5 text-arc-neon" />} label="TVL IN ESCROW" value={`${stats.tvl} USDC`} />
                 
                 <div className="bg-arc-gray/50 border border-arc-neon/10 p-4 rounded-lg">
-                  <h3 className="text-[10px] text-arc-neon/40 mb-4 tracking-[0.2em] uppercase font-bold">Protocol Nodes</h3>
+                  <h3 className="text-[10px] text-arc-neon/40 mb-4 tracking-[0.2em] uppercase font-bold">Protocol Nodes (PRO)</h3>
                   <div className="space-y-3">
-                    <NodeStatus label="Registry" address="0x7000...52f9" status="ONLINE" />
-                    <NodeStatus label="Escrow" address="0x5708...981b" status="ONLINE" />
+                    <NodeStatus label="Registry" address={`${PRO_REGISTRY.slice(0,6)}...${PRO_REGISTRY.slice(-4)}`} status="ONLINE" />
+                    <NodeStatus label="Escrow" address={`${PRO_ESCROW.slice(0,6)}...${PRO_ESCROW.slice(-4)}`} status="ONLINE" />
                   </div>
+                </div>
+
+                <div className="bg-arc-neon/5 border border-arc-neon/30 p-4 rounded-lg">
+                   <div className="flex items-center gap-2 mb-2 text-arc-neon">
+                     <Lock className="w-4 h-4" />
+                     <span className="text-[10px] uppercase font-bold tracking-widest">Protocol Guard</span>
+                   </div>
+                   <p className="text-[9px] text-arc-neon/70 uppercase leading-tight">
+                     COOLING-OFF: 60 MINS ENABLED <br />
+                     DISPUTE PENALTY: 20% SLASH <br />
+                     ZOMBIE FILTER: ACTIVE
+                   </p>
                 </div>
               </div>
 
@@ -187,7 +201,7 @@ function App() {
               <div className="col-span-12 lg:col-span-6 bg-arc-gray/30 border border-arc-neon/10 rounded-xl overflow-hidden flex flex-col h-[65vh]">
                 <div className="bg-arc-neon/5 p-3 border-b border-arc-neon/10 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-arc-neon" />
-                  <span className="text-[10px] tracking-widest text-arc-neon font-bold">NETWORK PULSE</span>
+                  <span className="text-[10px] tracking-widest text-arc-neon font-bold uppercase">NETWORK PULSE</span>
                 </div>
                 <div className="flex-1 p-4 terminal-scroll overflow-y-auto space-y-3 font-mono text-sm">
                   {events.length === 0 ? (
@@ -201,7 +215,7 @@ function App() {
                         className="flex gap-4 border-l-2 border-arc-neon/20 pl-4 py-1"
                       >
                         <span className="text-arc-neon/40 shrink-0">[{e.timestamp}]</span>
-                        <span className="text-arc-neon/90">{e.message}</span>
+                        <span className="text-arc-neon/90 uppercase tracking-tighter">{e.message}</span>
                       </motion.div>
                     ))
                   )}
@@ -217,14 +231,14 @@ function App() {
                     </div>
                     <div className="space-y-4">
                       <p className="text-[11px] leading-relaxed text-arc-neon/70 uppercase">
-                        Protocol Version: 0.1.0-alpha
+                        Protocol Version: 1.0.0-PRO (Balanced)
                       </p>
-                      <p className="text-xs leading-relaxed text-white/60">
-                        This is a read-only observation node. It decodes autonomous traffic on the ARC network to visualize agent-to-agent logic flow.
+                      <p className="text-xs leading-relaxed text-white/60 uppercase">
+                        This is a secure observation node monitoring the V1-PRO deployment. It visualizes automated commerce and enforcement logic.
                       </p>
                       <div className="pt-4 border-t border-arc-neon/10">
                         <p className="text-[10px] text-arc-neon/40 leading-relaxed uppercase">
-                          No human input accepted. No private keys required. All data sourced from public RPC.
+                          No human input required. Zero secret storage. All logic executed on-chain.
                         </p>
                       </div>
                     </div>
@@ -235,7 +249,7 @@ function App() {
             {/* Footer / Ticker */}
             <footer className="mt-8 text-[10px] text-arc-neon/20 flex justify-between border-t border-arc-neon/10 pt-4">
               <div className="uppercase tracking-widest font-bold">© 2026 ARC AGENT ECONOMY</div>
-              <div className="tracking-[0.5em] hidden md:block">DECENTRALIZED INTELLIGENCE FLOWING</div>
+              <div className="tracking-[0.5em] hidden md:block uppercase font-bold">Machine Commerce flowing securely</div>
             </footer>
           </motion.div>
         )}
