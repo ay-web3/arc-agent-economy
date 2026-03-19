@@ -19,6 +19,11 @@ const REGISTRY_CA = process.env.REGISTRY_CA || "0x8b8c8c03eee05334412c73b2987057
 const ESCROW_CA = process.env.ESCROW_CA || "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// --- ARC GLOBAL REGISTRIES (ERC-8004) ---
+const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
+const REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
+const VALIDATION_REGISTRY = "0x8004Cb1BF31DAf7788923b405b754f57acEB4272";
+
 if (!API_KEY || !ENTITY_SECRET || !WALLET_SET_ID || !MONGODB_URI) {
     console.error("FATAL: Missing CIRCLE_API_KEY, ENTITY_SECRET, WALLET_SET_ID, or MONGODB_URI");
     process.exit(1);
@@ -33,7 +38,8 @@ const agentSchema = new mongoose.Schema({
     agentName: { type: String, required: true, unique: true },
     walletId: { type: String, required: true },
     address: { type: String, required: true },
-    secretHash: { type: String, required: true }, // Scrambled secret for security
+    secretHash: { type: String, required: true },
+    arcIdentityId: { type: String }, // NFT Token ID from ERC-8004
     onboardedAt: { type: Date, default: Date.now }
 });
 
@@ -59,24 +65,20 @@ async function getCiphertext() {
 
 const validateAgent = async (req, res, next) => {
     const { agentId, agentSecret } = req.body;
-    if (!agentId || !agentSecret) {
-        return res.status(401).json({ error: "Missing agentId or agentSecret" });
-    }
+    if (!agentId || !agentSecret) return res.status(401).json({ error: "Missing agentId or agentSecret" });
 
     try {
         const agent = await Agent.findOne({ agentName: agentId });
         if (!agent) return res.status(404).json({ error: "Agent not found" });
 
-        const incomingHash = hashSecret(agentSecret);
-        if (incomingHash !== agent.secretHash) {
+        if (hashSecret(agentSecret) !== agent.secretHash) {
             return res.status(403).json({ error: "Invalid agentSecret. Impersonation blocked." });
         }
 
+        req.agent = agent;
         req.walletId = agent.walletId;
         next();
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
 const sendTx = async (walletId, contractAddress, functionSig, args, value = "0") => {
@@ -101,25 +103,15 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
 
 // --- CORE SYSTEM ENDPOINTS ---
 
-app.get('/health', (req, res) => res.json({ status: "healthy", version: "1.0.0-Pro-Secure" }));
-
 app.post('/onboard', async (req, res) => {
-    const { agentName } = req.body;
+    const { agentName, metadataURI } = req.body;
     if (!agentName) return res.status(400).json({ error: "agentName is required" });
 
     try {
         let agent = await Agent.findOne({ agentName });
-        if (agent) {
-            return res.status(409).json({ error: "Agent name already taken. Choose a unique name." });
-        }
+        if (agent) return res.status(409).json({ error: "Name taken" });
 
-        console.log(`[ORCHESTRATOR] Secure Onboarding for: ${agentName}`);
-        
-        // 1. Generate a one-time random secret
         const rawSecret = crypto.randomBytes(32).toString('hex');
-        const secureHash = hashSecret(rawSecret);
-
-        // 2. Create Circle Wallet
         const ciphertext = await getCiphertext();
         const response = await axios.post('https://api.circle.com/v1/w3s/developer/wallets', 
         {
@@ -133,26 +125,50 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // 3. Save to MongoDB with Hashed Secret
+        // --- ERC-8004 Identity Registration ---
+        const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
+        const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI]);
+
         agent = new Agent({
             agentName,
             walletId: newWallet.id,
             address: newWallet.address,
-            secretHash: secureHash
+            secretHash: hashSecret(rawSecret)
         });
         await agent.save();
 
-        // 4. Return raw secret ONLY ONCE
         res.json({ 
             success: true, 
             agentId: agentName, 
             agentSecret: rawSecret, 
-            address: newWallet.address 
+            address: newWallet.address,
+            identityTxId: identityTx.id 
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- SECURE EXECUTION ENDPOINTS (Requires validation) ---
+// --- SECURE EXECUTION ENDPOINTS ---
+
+app.post('/execute/finalize', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
+        
+        // --- ERC-8004 Reputation Reporting ---
+        // Automatically report successful work to the global ARC Reputation registry
+        const tag = "successful_arc_argent_task";
+        const feedbackHash = ethers.id(tag);
+        // giveFeedback(agentId, score, type, tag, details, data, extra, hash)
+        // We use 100 as the "Success" score
+        await sendTx(req.walletId, REPUTATION_REGISTRY, 
+            "giveFeedback(uint256,int128,uint8,string,string,string,string,bytes32)",
+            [req.agent.arcIdentityId || "0", "100", "0", tag, `Task #${taskId}`, "", "", feedbackHash]);
+
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ... [Existing endpoints remain the same but use validateAgent middleware] ...
 
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
@@ -291,14 +307,6 @@ app.post('/execute/approve', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/finalize', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 app.post('/execute/openDispute', validateAgent, async (req, res) => {
     try {
         const { taskId } = req.body;
@@ -307,15 +315,7 @@ app.post('/execute/openDispute', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- GOVERNANCE ENDPOINTS ---
-
-app.post('/execute/setSellerSlashBps', validateAgent, async (req, res) => {
-    try {
-        const { bps } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "setSellerSlashBps(uint16)", [bps.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
+// --- GOVERNANCE ---
 
 app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
     try {
@@ -325,5 +325,14 @@ app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/updateArcIdentity', validateAgent, async (req, res) => {
+    try {
+        const { tokenId } = req.body;
+        req.agent.arcIdentityId = tokenId;
+        await req.agent.save();
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Swarm Master (Hashed Secret Pro) on port ${PORT}`));
+app.listen(PORT, () => console.log(`Swarm Master (ERC-8004 Pro) on port ${PORT}`));
