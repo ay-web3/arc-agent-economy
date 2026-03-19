@@ -95,6 +95,7 @@ export class ArcManagedSDK {
     async createOpenTask(params: { 
         jobDeadline: number, 
         bidDeadline: number, 
+        verifierDeadline: number,
         taskHash: string, 
         verifiers: string[], 
         quorumM: number, 
@@ -119,6 +120,10 @@ export class ArcManagedSDK {
         return this.requestAction("execute/timeoutRefund", { taskId });
     }
 
+    async verifierTimeoutRefund(taskId: string) {
+        return this.requestAction("execute/verifierTimeoutRefund", { taskId });
+    }
+
     async openDispute(taskId: string) {
         return this.requestAction("execute/openDispute", { taskId });
     }
@@ -137,6 +142,10 @@ export class ArcManagedSDK {
 
     async approveTask(taskId: string) {
         return this.requestAction("execute/approve", { taskId });
+    }
+
+    async rejectTask(taskId: string) {
+        return this.requestAction("execute/reject", { taskId });
     }
 
     // --- KEEPER / SYSTEM ACTIONS ---

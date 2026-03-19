@@ -201,10 +201,28 @@ app.post('/execute/withdraw/complete', auth, async (req, res) => {
 
 app.post('/execute/createOpenTask', auth, async (req, res) => {
     try {
-        const { agentId, jobDeadline, bidDeadline, taskHash, verifiers, quorumM, amount } = req.body;
+        const { agentId, jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
         const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "createOpenTask(uint64,uint64,bytes32,address[],uint8)", 
-            [jobDeadline.toString(), bidDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
+        const data = await sendTx(walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", 
+            [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/reject', auth, async (req, res) => {
+    try {
+        const { agentId, taskId } = req.body;
+        const walletId = await getWalletId(agentId);
+        const data = await sendTx(walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/verifierTimeoutRefund', auth, async (req, res) => {
+    try {
+        const { agentId, taskId } = req.body;
+        const walletId = await getWalletId(agentId);
+        const data = await sendTx(walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });

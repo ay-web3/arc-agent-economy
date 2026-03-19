@@ -13,10 +13,11 @@ export enum TaskState {
     ACCEPTED = 2,
     SUBMITTED = 3,
     QUORUM_APPROVED = 4,
-    FINALIZED = 5,
-    TIMEOUT_REFUNDED = 6,
-    DISPUTED = 7,
-    RESOLVED = 8
+    REJECTED = 5,
+    FINALIZED = 6,
+    TIMEOUT_REFUNDED = 7,
+    DISPUTED = 8,
+    RESOLVED = 9
 }
 
 export interface AgentProfile {
@@ -33,6 +34,7 @@ export interface Task {
     sellerBudget: bigint;
     deadline: bigint;
     bidDeadline: bigint;
+    verifierDeadline: bigint;
     taskHash: string;
     resultHash: string;
     resultURI: string;
