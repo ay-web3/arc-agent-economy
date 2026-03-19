@@ -3,6 +3,7 @@ import axios from 'axios';
 export interface ArcManagedConfig {
     orchestratorUrl: string; // The URL of the Swarm Master API
     agentId?: string;        // The unique ID (optional if self-onboarding)
+    authToken?: string;      // Optional: Bearer token for authentication
 }
 
 /**
@@ -14,104 +15,137 @@ export interface ArcManagedConfig {
 export class ArcManagedSDK {
     private orchestratorUrl: string;
     private agentId: string | null = null;
+    private authToken: string | null = null;
 
     constructor(config: ArcManagedConfig) {
         this.orchestratorUrl = config.orchestratorUrl;
         if (config.agentId) this.agentId = config.agentId;
+        if (config.authToken) this.authToken = config.authToken;
+    }
+
+    private async requestAction(endpoint: string, params: any) {
+        if (!this.agentId && endpoint !== 'onboard') {
+            throw new Error("Agent not onboarded. Call selfOnboard() first or provide agentId in config.");
+        }
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        if (this.authToken) {
+            headers['Authorization'] = `Bearer ${this.authToken}`;
+        }
+
+        const response = await axios.post(`${this.orchestratorUrl}/${endpoint}`, {
+            agentId: this.agentId,
+            ...params
+        }, { headers });
+
+        return response.data;
     }
 
     /**
      * @dev Automatically requests a new wallet identity from the Orchestrator.
-     * Use this if the agent is starting for the very first time.
      */
     async selfOnboard(agentName: string) {
-        console.log(`Requesting autonomous onboarding for: ${agentName}`);
-        const response = await axios.post(`${this.orchestratorUrl}/onboard`, {
-            agentName: agentName
-        });
-        
-        if (response.data.success) {
-            this.agentId = response.data.agentId;
-            console.log(`Identity Secured. Wallet Address: ${response.data.address}`);
+        console.log(`[SDK] Requesting autonomous onboarding for: ${agentName}`);
+        const data = await this.requestAction("onboard", { agentName });
+        if (data.success) {
+            this.agentId = data.agentId;
+            console.log(`[SDK] Identity Secured. Agent ID: ${this.agentId}, Address: ${data.address}`);
         }
-        return response.data;
+        return data;
     }
 
-    private async requestAction(action: string, params: any) {
-        if (!this.agentId) throw new Error("Agent not onboarded. Call selfOnboard() first.");
-        
-        const response = await axios.post(`${this.orchestratorUrl}/execute`, {
-            agentId: this.agentId,
-            action: action,
-            params: params
-        });
-        return response.data;
+    async getAgents() {
+        return this.requestAction("agents", {});
     }
 
-    // --- Identity ---
+    // --- AGENT REGISTRY ACTIONS ---
+
     async registerAgent(params: { asSeller: boolean, asVerifier: boolean, capHash: string, pubKey: string, stake: string }) {
-        return this.requestAction("register", params);
+        return this.requestAction("execute/register", params);
     }
 
-    async updateProfile(capHash: string, pubKey: string) {
-        return this.requestAction("updateProfile", { capHash, pubKey });
+    async updateProfile(params: { capHash: string, pubKey: string, active: boolean }) {
+        return this.requestAction("execute/updateProfile", params);
     }
 
-    // --- Buyer ---
-    async createOpenTask(params: { jobDeadline: number, bidDeadline: number, taskHash: string, verifiers: string[], quorumM: number, amount: string }) {
-        return this.requestAction("createOpenTask", params);
+    async setRoles(params: { wantSeller: boolean, wantVerifier: boolean }) {
+        return this.requestAction("execute/setRoles", params);
     }
 
-    async selectBid(taskId: string, bidIndex: number) {
-        return this.requestAction("selectBid", { taskId, bidIndex });
+    async topUpStake(amount: string) {
+        return this.requestAction("execute/topUpStake", { amount });
     }
 
-    async timeoutRefund(taskId: string) {
-        return this.requestAction("timeoutRefund", { taskId });
-    }
-
-    async openDispute(taskId: string) {
-        return this.requestAction("openDispute", { taskId });
-    }
-
-    async cancelIfNoBids(taskId: string) {
-        return this.requestAction("cancelIfNoBids", { taskId });
-    }
-
-    // --- Seller ---
-    async placeBid(taskId: string, price: string, eta: number = 3600, meta: string = "0x0000000000000000000000000000000000000000000000000000000000000000") {
-        return this.requestAction("placeBid", { taskId, price, eta, meta });
-    }
-
-    async submitResult(taskId: string, hash: string, uri: string) {
-        return this.requestAction("submitResult", { taskId, hash, uri });
-    }
-
-    // --- Verifier ---
-    async approveTask(taskId: string) {
-        return this.requestAction("approveTask", { taskId });
-    }
-
-    // --- Settlement ---
-    async finalizeTask(taskId: string) {
-        return this.requestAction("finalizeTask", { taskId });
-    }
-
-    // --- Exit Flow ---
     async requestWithdraw(amount: string) {
-        return this.requestAction("requestWithdraw", { amount });
-    }
-
-    async completeWithdraw() {
-        return this.requestAction("completeWithdraw", {});
+        return this.requestAction("execute/withdraw/request", { amount });
     }
 
     async cancelWithdraw() {
-        return this.requestAction("cancelWithdraw", {});
+        return this.requestAction("execute/withdraw/cancel", {});
     }
 
-    // --- Intelligence ---
-    async getTask(taskId: string) {
-        return this.requestAction("getTask", { taskId });
+    async completeWithdraw() {
+        return this.requestAction("execute/withdraw/complete", {});
+    }
+
+    // --- BUYER ACTIONS ---
+
+    async createOpenTask(params: { 
+        jobDeadline: number, 
+        bidDeadline: number, 
+        taskHash: string, 
+        verifiers: string[], 
+        quorumM: number, 
+        amount: string 
+    }) {
+        return this.requestAction("execute/createOpenTask", params);
+    }
+
+    async selectBid(taskId: string, bidIndex: number) {
+        return this.requestAction("execute/selectBid", { taskId, bidIndex });
+    }
+
+    async finalizeAuction(taskId: string) {
+        return this.requestAction("execute/finalizeAuction", { taskId });
+    }
+
+    async cancelIfNoBids(taskId: string) {
+        return this.requestAction("execute/cancelIfNoBids", { taskId });
+    }
+
+    async timeoutRefund(taskId: string) {
+        return this.requestAction("execute/timeoutRefund", { taskId });
+    }
+
+    async openDispute(taskId: string) {
+        return this.requestAction("execute/openDispute", { taskId });
+    }
+
+    // --- SELLER ACTIONS ---
+
+    async placeBid(params: { taskId: string, price: string, eta?: number, meta?: string }) {
+        return this.requestAction("execute/placeBid", params);
+    }
+
+    async submitResult(params: { taskId: string, resultHash: string, resultURI: string }) {
+        return this.requestAction("execute/submitResult", params);
+    }
+
+    // --- VERIFIER ACTIONS ---
+
+    async approveTask(taskId: string) {
+        return this.requestAction("execute/approve", { taskId });
+    }
+
+    // --- KEEPER / SYSTEM ACTIONS ---
+
+    async finalizeTask(taskId: string) {
+        return this.requestAction("execute/finalize", { taskId });
+    }
+
+    // --- GOVERNANCE ACTIONS ---
+
+    async resolveDispute(params: { taskId: string, ruling: number, buyerBps: number }) {
+        return this.requestAction("execute/resolveDispute", params);
     }
 }
