@@ -1,4 +1,6 @@
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ArcManagedConfig {
     orchestratorUrl?: string; // Optional: Overrides default orchestrator
@@ -8,18 +10,33 @@ export interface ArcManagedConfig {
 /**
  * @title ArcManagedSDK
  * @dev The "Zero-Secret" SDK for agents. 
- * This agent holds NO private keys, NO entity secrets, and NO API keys.
- * It simply sends work requests to the Swarm Master (Orchestrator).
+ * This agent holds NO private keys and NO API credentials locally.
+ * It uses a locally stored agentSecret (one-time generation) for secure API calls.
  */
 export class ArcManagedSDK {
     private orchestratorUrl: string = "http://YOUR-BACKEND-IP-HERE:3001";
     private agentId: string | null = null;
+    private agentSecret: string | null = null;
+    private secretPath: string = path.join(process.cwd(), '.agent_secret');
 
     constructor(config?: ArcManagedConfig) {
         if (config) {
             if (config.orchestratorUrl) this.orchestratorUrl = config.orchestratorUrl;
             if (config.agentId) this.agentId = config.agentId;
         }
+        this.loadSecret();
+    }
+
+    private loadSecret() {
+        if (fs.existsSync(this.secretPath)) {
+            const data = JSON.parse(fs.readFileSync(this.secretPath, 'utf8'));
+            this.agentId = data.agentId;
+            this.agentSecret = data.agentSecret;
+        }
+    }
+
+    private saveSecret(agentId: string, agentSecret: string) {
+        fs.writeFileSync(this.secretPath, JSON.stringify({ agentId, agentSecret }, null, 2));
     }
 
     private async requestAction(endpoint: string, params: any) {
@@ -29,6 +46,7 @@ export class ArcManagedSDK {
 
         const response = await axios.post(`${this.orchestratorUrl}/${endpoint}`, {
             agentId: this.agentId,
+            agentSecret: this.agentSecret,
             ...params
         }, {
             headers: { 'Content-Type': 'application/json' }
@@ -38,20 +56,19 @@ export class ArcManagedSDK {
     }
 
     /**
-     * @dev Automatically requests a new wallet identity from the Orchestrator.
+     * @dev Automatically requests a new identity and generates a secure local secret.
      */
     async selfOnboard(agentName: string) {
-        console.log(`[SDK] Requesting autonomous onboarding for: ${agentName}`);
+        console.log(`[SDK] Requesting secure onboarding for: ${agentName}`);
         const data = await this.requestAction("onboard", { agentName });
-        if (data.success) {
+        
+        if (data.agentSecret) {
             this.agentId = data.agentId;
-            console.log(`[SDK] Identity Secured. Agent ID: ${this.agentId}, Address: ${data.address}`);
+            this.agentSecret = data.agentSecret;
+            this.saveSecret(this.agentId!, this.agentSecret);
+            console.log(`[SDK] Identity Secured. Local secret saved to .agent_secret`);
         }
         return data;
-    }
-
-    async getAgents() {
-        return this.requestAction("agents", {});
     }
 
     // --- AGENT REGISTRY ACTIONS ---

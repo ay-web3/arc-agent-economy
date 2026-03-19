@@ -6,6 +6,7 @@ const axios = require('axios');
 const forge = require('node-forge');
 const { ethers } = require('ethers');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
@@ -32,12 +33,17 @@ const agentSchema = new mongoose.Schema({
     agentName: { type: String, required: true, unique: true },
     walletId: { type: String, required: true },
     address: { type: String, required: true },
+    secretHash: { type: String, required: true }, // Scrambled secret for security
     onboardedAt: { type: Date, default: Date.now }
 });
 
 const Agent = mongoose.model('Agent', agentSchema);
 
 // --- HELPERS ---
+
+const hashSecret = (secret) => {
+    return crypto.createHash('sha256').update(secret).digest('hex');
+};
 
 async function getCiphertext() {
     const pubResponse = await axios.get('https://api.circle.com/v1/w3s/config/entity/publicKey', {
@@ -51,10 +57,26 @@ async function getCiphertext() {
     return forge.util.encode64(encrypted);
 }
 
-const getWalletId = async (agentName) => {
-    const agent = await Agent.findOne({ agentName });
-    if (!agent) throw new Error(`Agent '${agentName}' not found in database.`);
-    return agent.walletId;
+const validateAgent = async (req, res, next) => {
+    const { agentId, agentSecret } = req.body;
+    if (!agentId || !agentSecret) {
+        return res.status(401).json({ error: "Missing agentId or agentSecret" });
+    }
+
+    try {
+        const agent = await Agent.findOne({ agentName: agentId });
+        if (!agent) return res.status(404).json({ error: "Agent not found" });
+
+        const incomingHash = hashSecret(agentSecret);
+        if (incomingHash !== agent.secretHash) {
+            return res.status(403).json({ error: "Invalid agentSecret. Impersonation blocked." });
+        }
+
+        req.walletId = agent.walletId;
+        next();
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 };
 
 const sendTx = async (walletId, contractAddress, functionSig, args, value = "0") => {
@@ -79,25 +101,25 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
 
 // --- CORE SYSTEM ENDPOINTS ---
 
-app.get('/agents', async (req, res) => {
-    try {
-        const agents = await Agent.find({}, 'agentName address onboardedAt');
-        res.json({ success: true, agents });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
+app.get('/health', (req, res) => res.json({ status: "healthy", version: "1.0.0-Pro-Secure" }));
 
 app.post('/onboard', async (req, res) => {
     const { agentName } = req.body;
     if (!agentName) return res.status(400).json({ error: "agentName is required" });
 
     try {
-        // Check if already exists
         let agent = await Agent.findOne({ agentName });
         if (agent) {
-            return res.json({ success: true, message: "Agent already onboarded", address: agent.address });
+            return res.status(409).json({ error: "Agent name already taken. Choose a unique name." });
         }
 
-        console.log(`[ORCHESTRATOR] Auto-provisioning wallet for: ${agentName}`);
+        console.log(`[ORCHESTRATOR] Secure Onboarding for: ${agentName}`);
+        
+        // 1. Generate a one-time random secret
+        const rawSecret = crypto.randomBytes(32).toString('hex');
+        const secureHash = hashSecret(rawSecret);
+
+        // 2. Create Circle Wallet
         const ciphertext = await getCiphertext();
         const response = await axios.post('https://api.circle.com/v1/w3s/developer/wallets', 
         {
@@ -111,215 +133,197 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // Save to MongoDB
+        // 3. Save to MongoDB with Hashed Secret
         agent = new Agent({
             agentName,
             walletId: newWallet.id,
-            address: newWallet.address
+            address: newWallet.address,
+            secretHash: secureHash
         });
         await agent.save();
 
-        res.json({ success: true, agentId: agentName, walletId: newWallet.id, address: newWallet.address });
+        // 4. Return raw secret ONLY ONCE
+        res.json({ 
+            success: true, 
+            agentId: agentName, 
+            agentSecret: rawSecret, 
+            address: newWallet.address 
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- AGENT REGISTRY ENDPOINTS ---
+// --- SECURE EXECUTION ENDPOINTS (Requires validation) ---
 
-app.post('/execute/register', async (req, res) => {
+app.post('/execute/register', validateAgent, async (req, res) => {
     try {
-        const { agentId, asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", 
+        const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", 
             [asSeller, asVerifier, capHash, pubKey], stake || "0");
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/updateProfile', async (req, res) => {
+app.post('/execute/updateProfile', validateAgent, async (req, res) => {
     try {
-        const { agentId, capHash, pubKey, active } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "updateProfile(bytes32,bytes32,bool)", [capHash, pubKey, active]);
+        const { capHash, pubKey, active } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "updateProfile(bytes32,bytes32,bool)", [capHash, pubKey, active]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/setRoles', async (req, res) => {
+app.post('/execute/setRoles', validateAgent, async (req, res) => {
     try {
-        const { agentId, wantSeller, wantVerifier } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "setRoles(bool,bool)", [wantSeller, wantVerifier]);
+        const { wantSeller, wantVerifier } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "setRoles(bool,bool)", [wantSeller, wantVerifier]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/topUpStake', async (req, res) => {
+app.post('/execute/topUpStake', validateAgent, async (req, res) => {
     try {
-        const { agentId, amount } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "topUpStake()", [], amount);
+        const { amount } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "topUpStake()", [], amount);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/withdraw/request', async (req, res) => {
+app.post('/execute/withdraw/request', validateAgent, async (req, res) => {
     try {
-        const { agentId, amount } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "requestWithdraw(uint256)", [ethers.parseUnits(amount, 18).toString()]);
+        const { amount } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "requestWithdraw(uint256)", [ethers.parseUnits(amount, 18).toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/withdraw/cancel', async (req, res) => {
+app.post('/execute/withdraw/cancel', validateAgent, async (req, res) => {
     try {
-        const { agentId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "cancelWithdraw()", []);
+        const data = await sendTx(req.walletId, REGISTRY_CA, "cancelWithdraw()", []);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/withdraw/complete', async (req, res) => {
+app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
     try {
-        const { agentId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, REGISTRY_CA, "completeWithdraw()", []);
+        const data = await sendTx(req.walletId, REGISTRY_CA, "completeWithdraw()", []);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- TASK ESCROW ENDPOINTS ---
-
-app.post('/execute/createOpenTask', async (req, res) => {
+app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
-        const { agentId, jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", 
+        const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", 
             [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/reject', async (req, res) => {
+app.post('/execute/reject', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/verifierTimeoutRefund', async (req, res) => {
+app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/placeBid', async (req, res) => {
+app.post('/execute/placeBid', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId, price, eta, meta } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", 
+        const { taskId, price, eta, meta } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", 
             [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/selectBid', async (req, res) => {
+app.post('/execute/selectBid', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId, bidIndex } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "selectBid(uint256,uint256)", [taskId.toString(), bidIndex.toString()]);
+        const { taskId, bidIndex } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "selectBid(uint256,uint256)", [taskId.toString(), bidIndex.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/finalizeAuction', async (req, res) => {
+app.post('/execute/finalizeAuction', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "finalizeAuction(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "finalizeAuction(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/cancelIfNoBids', async (req, res) => {
+app.post('/execute/cancelIfNoBids', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "cancelIfNoBids(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "cancelIfNoBids(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/submitResult', async (req, res) => {
+app.post('/execute/submitResult', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId, resultHash, resultURI } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [taskId.toString(), resultHash, resultURI]);
+        const { taskId, resultHash, resultURI } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [taskId.toString(), resultHash, resultURI]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/timeoutRefund', async (req, res) => {
+app.post('/execute/timeoutRefund', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "timeoutRefund(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "timeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/approve', async (req, res) => {
+app.post('/execute/approve', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "approve(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "approve(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/finalize', async (req, res) => {
+app.post('/execute/finalize', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/openDispute', async (req, res) => {
+app.post('/execute/openDispute', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "openDispute(uint256)", [taskId.toString()]);
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "openDispute(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- GOVERNANCE ENDPOINTS ---
 
-app.post('/execute/setSellerSlashBps', async (req, res) => {
+app.post('/execute/setSellerSlashBps', validateAgent, async (req, res) => {
     try {
-        const { agentId, bps } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "setSellerSlashBps(uint16)", [bps.toString()]);
+        const { bps } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "setSellerSlashBps(uint16)", [bps.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/resolveDispute', async (req, res) => {
+app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
     try {
-        const { agentId, taskId, ruling, buyerBps } = req.body;
-        const walletId = await getWalletId(agentId);
-        const data = await sendTx(walletId, ESCROW_CA, "resolveDispute(uint256,uint8,uint16)", [taskId.toString(), ruling.toString(), buyerBps.toString()]);
+        const { taskId, ruling, buyerBps } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "resolveDispute(uint256,uint8,uint16)", [taskId.toString(), ruling.toString(), buyerBps.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Swarm Master (Public MongoDB Edition) on port ${PORT}`));
+app.listen(PORT, () => console.log(`Swarm Master (Hashed Secret Pro) on port ${PORT}`));
