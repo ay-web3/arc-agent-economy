@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
-const REGISTRY_ADDR = "0x700016cB8a2F8Ec7B41c583Cc42589Fd230752f9";
-const ESCROW_ADDR = "0x57082a289C34318ab216920947efd2FFB0b9981b";
+// Balanced Economy V1 Addresses
+const REGISTRY_ADDR = "0xd3d7bf4d3c78ff94ba5e03fe11659799a42134d3";
+const ESCROW_ADDR = "0xf208658ef1117d0dbce462e1b9961a9bd3d61e0f";
 const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [
   "function taskCounter() external view returns (uint256)",
-  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
-  "event TaskCreated(uint256 indexed taskId, address indexed buyer, bytes32 taskHash)",
-  "event TaskFinalized(uint256 indexed taskId, address indexed seller)",
-  "event BidPlaced(uint256 indexed taskId, address indexed seller, uint256 bidPrice)",
-  "event TaskAccepted(uint256 indexed taskId, address indexed seller)",
-  "event TaskRefunded(uint256 indexed taskId, uint256 amount)"
+  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
+  "event TaskOpen(uint256 indexed taskId, uint256 totalEscrow, uint256 sellerBudget, uint256 verifierPool, uint64 bidDeadline)",
+  "event BidPlaced(uint256 indexed taskId, address indexed bidder, uint256 bidPrice, uint64 etaSeconds)",
+  "event BidSelected(uint256 indexed taskId, address indexed seller, uint256 bidPrice, uint256 refundToBuyer)",
+  "event ResultSubmitted(uint256 indexed taskId, address indexed seller, bytes32 resultHash, string resultURI)",
+  "event QuorumReached(uint256 indexed taskId)",
+  "event TaskRejected(uint256 indexed taskId)",
+  "event TaskFinalized(uint256 indexed taskId)",
+  "event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount)",
+  "event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount)",
+  "event DisputeOpened(uint256 indexed taskId, address indexed opener)",
+  "event DisputeResolved(uint256 indexed taskId, uint8 ruling)"
 ];
 
 export function useArcEconomy() {
@@ -42,18 +49,19 @@ export function useArcEconomy() {
 
         // Initial fetch of recent tasks
         const total = Number(counter);
-        const start = Math.max(1, total - 5);
+        const start = Math.max(1, total - 10);
         const historicalEvents: any[] = [];
         
         const stateLabels: {[key: number]: string} = {
-          1: "Initialized",
-          2: "Accepted",
-          3: "Work Submitted",
-          4: "Approved",
-          5: "Finalized / Settled",
-          6: "Refunded via Timeout",
-          7: "Disputed",
-          8: "Resolved"
+          1: "CREATED (Auction Live)",
+          2: "ACCEPTED (Worker Assigned)",
+          3: "SUBMITTED (Work Awaiting Verification)",
+          4: "QUORUM APPROVED (Yes Vote)",
+          5: "REJECTED (No Vote)",
+          6: "FINALIZED (Settled)",
+          7: "TIMEOUT REFUNDED",
+          8: "DISPUTED",
+          9: "RESOLVED"
         };
 
         for (let i = total; i >= start; i--) {
@@ -65,7 +73,7 @@ export function useArcEconomy() {
               historicalEvents.push({
                 id: `hist-${i}`,
                 message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
-                timestamp: "HISTORY"
+                timestamp: "BLOCKCHAIN"
               });
             }
           } catch (e) {}
@@ -79,25 +87,38 @@ export function useArcEconomy() {
     fetchData();
     const interval = setInterval(fetchData, 15000);
 
-    // Live Event Listeners
-    escrow.on("TaskCreated", (id, buyer) => {
-      addEvent(`Task #${id} initialized by ${buyer.slice(0, 6)}...`);
+    // --- Live Event Listeners (Synced with V1-Balanced) ---
+
+    escrow.on("TaskOpen", (id, total) => {
+      addEvent(`Task #${id} opened for bidding (${ethers.formatUnits(total, 18)} USDC)`);
     });
 
-    escrow.on("BidPlaced", (id, seller, price) => {
-      addEvent(`Agent ${seller.slice(0, 6)}... placed bid on Task #${id} (${ethers.formatUnits(price, 18)} USDC)`);
+    escrow.on("BidPlaced", (id, bidder, price) => {
+      addEvent(`Agent ${bidder.slice(0, 6)}... bid ${ethers.formatUnits(price, 18)} USDC on Task #${id}`);
     });
 
-    escrow.on("TaskAccepted", (id, seller) => {
-      addEvent(`Task #${id} accepted. Worker ${seller.slice(0, 6)}... engaged.`);
+    escrow.on("BidSelected", (id, seller) => {
+      addEvent(`Worker ${seller.slice(0, 6)}... selected for Task #${id}`);
     });
 
-    escrow.on("TaskFinalized", (id, seller) => {
-      addEvent(`Task #${id} finalized. Payment settled to ${seller.slice(0, 6)}...`);
+    escrow.on("ResultSubmitted", (id, seller) => {
+      addEvent(`Task #${id}: Work submitted by ${seller.slice(0, 6)}... awaiting verification.`);
     });
 
-    escrow.on("TaskRefunded", (id, amount) => {
-      addEvent(`Task #${id} refunded. ${ethers.formatUnits(amount, 18)} USDC returned to Buyer.`);
+    escrow.on("QuorumReached", (id) => {
+      addEvent(`Task #${id}: Quorum reached. Work APPROVED by verifiers.`);
+    });
+
+    escrow.on("TaskRejected", (id) => {
+      addEvent(`Task #${id}: Quorum reached. Work REJECTED by verifiers.`);
+    });
+
+    escrow.on("TaskFinalized", (id) => {
+      addEvent(`Task #${id} finalized. Payment settled.`);
+    });
+
+    escrow.on("DisputeOpened", (id, opener) => {
+      addEvent(`⚠️ Task #${id}: DISPUTE OPENED by ${opener.slice(0, 6)}...`);
     });
 
     return () => {
