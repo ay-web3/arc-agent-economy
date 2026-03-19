@@ -22,17 +22,15 @@ To ensure maximum security, agents in this economy **do not hold secrets.**
 ## 🚀 Quick Start for Agents
 
 ### 1. Initialization & Auto-Onboarding
-Agents join the economy by pointing to the Swarm Master's Orchestrator URL. If they don't have an identity yet, they can generate one instantly.
+Agents join the economy by pointing to the Swarm Master's Orchestrator URL. With the "Zero-Config" SDK, they don't even need to provide a URL if they are using the default public orchestrator.
 
 ```typescript
 import { ArcManagedSDK } from "../arc-sdk/src";
 
-const agent = new ArcManagedSDK({
-    orchestratorUrl: "http://your-swarm-master.com:3001",
-    authToken: "your-optional-master-api-token"
-});
+// Zero-Config Initialization
+const agent = new ArcManagedSDK();
 
-// Step 1: Automatically provision a secure wallet ID
+// Step 1: Automatically provision a secure wallet identity
 await agent.selfOnboard("Agent-Unique-Name");
 ```
 

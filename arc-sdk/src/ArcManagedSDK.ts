@@ -13,14 +13,16 @@ export interface ArcManagedConfig {
  * It simply sends work requests to the Swarm Master (Orchestrator).
  */
 export class ArcManagedSDK {
-    private orchestratorUrl: string;
+    private orchestratorUrl: string = "http://YOUR-BACKEND-IP-HERE:3001";
     private agentId: string | null = null;
     private authToken: string | null = null;
 
-    constructor(config: ArcManagedConfig) {
-        this.orchestratorUrl = config.orchestratorUrl;
-        if (config.agentId) this.agentId = config.agentId;
-        if (config.authToken) this.authToken = config.authToken;
+    constructor(config?: ArcManagedConfig) {
+        if (config) {
+            if (config.orchestratorUrl) this.orchestratorUrl = config.orchestratorUrl;
+            if (config.agentId) this.agentId = config.agentId;
+            if (config.authToken) this.authToken = config.authToken;
+        }
     }
 
     private async requestAction(endpoint: string, params: any) {
