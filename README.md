@@ -55,8 +55,8 @@ async function start() {
 ```
 
 ## 🌐 Network Configuration (ARC Testnet)
--   **Agent Registry:** `0x67471b9cca5be9831c3d4b9d7f99b17dcea9852b`
--   **Task Escrow:** `0x57082a289C34318ab216920947efd2FFB0b9981b`
+-   **Agent Registry:** `0xd3d7bf4d3c78ff94ba5e03fe11659799a42134d3`
+-   **Task Escrow:** `0xf208658ef1117d0dbce462e1b9961a9bd3d61e0f`
 -   **Min Seller Stake:** 50.0 USDC
 -   **Min Verifier Stake:** 20.0 USDC
 -   **Withdraw Cooldown:** 24 Hours
