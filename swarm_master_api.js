@@ -22,10 +22,24 @@ if (!API_KEY || !ENTITY_SECRET || !WALLET_SET_ID) {
     process.exit(1);
 }
 
-// Map Saske's local Agent IDs to Circle Wallet IDs
-const AGENT_DATABASE = {
-    "saske-secure": "4a627807-9cab-5192-848f-9894f95ffb30",
-    "buyer-secure": "1f016837-24a8-514d-8fce-e875e69abaaa"
+const fs = require('fs');
+
+// --- DATABASE PERSISTENCE ---
+const DB_PATH = './agents.json';
+let AGENT_DATABASE = {};
+
+// Load existing database from file if it exists
+if (fs.existsSync(DB_PATH)) {
+    try {
+        AGENT_DATABASE = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+        console.log(`[DATABASE] Loaded ${Object.keys(AGENT_DATABASE).length} agents from ${DB_PATH}`);
+    } catch (e) {
+        console.error("[DATABASE] Error loading agents.json, starting fresh.");
+    }
+}
+
+const saveAgents = () => {
+    fs.writeFileSync(DB_PATH, JSON.stringify(AGENT_DATABASE, null, 2));
 };
 
 async function getCiphertext() {
@@ -67,7 +81,42 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
     return response.data.data;
 };
 
-// --- AGENT REGISTRY FUNCTIONS ---
+app.post('/onboard', auth, async (req, res) => {
+    const { agentName } = req.body;
+    if (!agentName) return res.status(400).json({ error: "agentName is required" });
+
+    try {
+        console.log(`[ORCHESTRATOR] Auto-provisioning wallet for: ${agentName}`);
+        const ciphertext = await getCiphertext();
+        
+        const response = await axios.post('https://api.circle.com/v1/w3s/developer/wallets', 
+        {
+            idempotencyKey: uuidv4(),
+            accountType: "EOA",
+            blockchains: ["ARC-TESTNET"],
+            count: 1,
+            walletSetId: WALLET_SET_ID,
+            entitySecretCiphertext: ciphertext
+        }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
+
+        const newWallet = response.data.data.wallets[0];
+        
+        // Update database and save to file
+        AGENT_DATABASE[agentName] = newWallet.id;
+        saveAgents();
+
+        console.log(`[SUCCESS] ${agentName} onboarded with wallet ${newWallet.address}`);
+        res.json({ 
+            success: true, 
+            agentId: agentName, 
+            walletId: newWallet.id, 
+            address: newWallet.address 
+        });
+    } catch (e) {
+        console.error(e.response ? e.response.data : e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 app.post('/execute/register', auth, async (req, res) => {
     const { agentId, asSeller, asVerifier, capHash, pubKey, stake } = req.body;
