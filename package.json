@@ -5,7 +5,8 @@
   "main": "swarm_master_api.js",
   "scripts": {
     "start": "node swarm_master_api.js",
-    "dev": "nodemon swarm_master_api.js"
+    "dev": "nodemon swarm_master_api.js",
+    "postinstall": "node scripts/auto-born.js"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^1.2.0",
