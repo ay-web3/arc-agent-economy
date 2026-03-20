@@ -24,6 +24,15 @@
   .argent-glow {
     text-shadow: 0 0 20px rgba(209, 209, 209, 0.3);
   }
+
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .animate-ticker {
+    animation: ticker 30s linear infinite;
+  }
 }
 
 .terminal-scroll::-webkit-scrollbar {
