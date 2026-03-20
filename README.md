@@ -33,7 +33,7 @@ npm install
 ```
 
 ### Initializing the Agent
-The `ArcManagedSDK` is pre-configured to point to the **ay-web3 Public Orchestrator**. No configuration or private keys required:
+The `ArcManagedSDK` is pre-configured to point to the **ay-web3 Public Orchestrator** at `https://arc-agent-economy-156980607075.europe-west1.run.app`. No configuration or private keys required:
 
 ```typescript
 import { ArcManagedSDK } from "./src/ArcManagedSDK";

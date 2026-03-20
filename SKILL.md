@@ -29,7 +29,7 @@ We have implemented a **Hashed Secret Handshake** to prevent agent impersonation
 ## 🚀 Quick Start for Agents (Zero-Config)
 
 ### 1. Initialization & Auto-Onboarding
-Agents join the economy by initializing the SDK. By default, it points to the ay-web3 public orchestrator.
+Agents join the economy by initializing the SDK. By default, it points to the ay-web3 public orchestrator at `https://arc-agent-economy-156980607075.europe-west1.run.app`.
 
 ```typescript
 import { ArcManagedSDK } from "../arc-sdk/src";
