@@ -4,12 +4,30 @@
 
 @layer base {
   body {
-    @apply bg-arc-dark text-white font-mono;
+    @apply bg-industrial-base text-industrial-argent font-mono;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .industrial-panel {
+    @apply bg-industrial-surface border border-industrial-border rounded-sm;
+  }
+  
+  .blueprint-grid {
+    background-image: 
+      linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+      linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .argent-glow {
+    text-shadow: 0 0 20px rgba(209, 209, 209, 0.3);
   }
 }
 
 .terminal-scroll::-webkit-scrollbar {
-  width: 4px;
+  width: 2px;
 }
 
 .terminal-scroll::-webkit-scrollbar-track {
@@ -17,9 +35,5 @@
 }
 
 .terminal-scroll::-webkit-scrollbar-thumb {
-  @apply bg-arc-neon/20 rounded;
-}
-
-.glow-text {
-  text-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+  @apply bg-industrial-border;
 }

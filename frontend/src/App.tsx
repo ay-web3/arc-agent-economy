@@ -1,293 +1,273 @@
 import { useState } from 'react';
 import { useArcEconomy } from './hooks/useArcEconomy';
-import { Terminal, Activity, Shield, Box, Zap, Cpu, Code, Gavel, ArrowRight, Lock } from 'lucide-react';
+import { 
+  Shield, 
+  Database, 
+  Terminal as TermIcon, 
+  Activity, 
+  Box, 
+  Zap, 
+  Gavel, 
+  Lock, 
+  Cpu, 
+  ChevronRight,
+  Fingerprint,
+  HardDrive
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Pro Addresses for UI Display
-const PRO_REGISTRY = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
-const PRO_ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
+const REGISTRY = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
+const ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 
 function App() {
-  const [view, setView] = useState<'landing' | 'dashboard'>('landing');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol'>('overview');
   const { stats, events } = useArcEconomy();
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-mono antialiased overflow-x-hidden relative">
-      {/* Background Grids */}
-      <div className="fixed inset-0 opacity-5 pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(#00ffaa 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+    <div className="min-h-screen bg-industrial-base flex overflow-hidden">
+      {/* Sidebar Navigation */}
+      <nav className="w-20 md:w-64 border-r border-industrial-border flex flex-col bg-industrial-base relative z-20">
+        <div className="p-6 border-b border-industrial-border flex items-center gap-3">
+          <Shield className="w-8 h-8 text-industrial-argent" />
+          <span className="hidden md:block font-bold tracking-[0.2em] text-sm italic argent-glow uppercase">ARC ARGENT</span>
+        </div>
+        
+        <div className="flex-1 py-8 flex flex-col gap-2 px-3">
+          <NavBtn active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
+          <NavBtn active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
+          <NavBtn active={activeTab === 'protocol'} onClick={() => setActiveTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
+        </div>
 
-      <AnimatePresence mode="wait">
-        {view === 'landing' ? (
-          <motion.div 
-            key="landing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-12"
-          >
-            {/* Hero Section */}
-            <div className="text-center mb-24">
+        <div className="p-6 border-t border-industrial-border flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-industrial-gold animate-pulse" />
+            <span className="text-[10px] tracking-widest text-industrial-argent/40">NODE_V1.0.0_PRO</span>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Console */}
+      <main className="flex-1 flex flex-col relative">
+        {/* Background Grid */}
+        <div className="absolute inset-0 blueprint-grid opacity-20 pointer-events-none" />
+
+        {/* Top Status Bar */}
+        <header className="h-16 border-b border-industrial-border bg-industrial-base/80 backdrop-blur-md flex items-center justify-between px-8 relative z-10">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <span className="text-[9px] text-industrial-argent/30 tracking-[0.3em] font-bold">NETWORK</span>
+              <span className="text-xs font-bold text-industrial-argent">ARC_TESTNET_5042002</span>
+            </div>
+            <div className="h-8 w-px bg-industrial-border" />
+            <div className="flex flex-col">
+              <span className="text-[9px] text-industrial-argent/30 tracking-[0.3em] font-bold">MODE</span>
+              <span className="text-xs font-bold text-industrial-argent uppercase">Observer_Sovereign</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+             <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-industrial-border/20 border border-industrial-border rounded-sm">
+                <Database className="w-3 h-3 text-industrial-gold" />
+                <span className="text-[10px] font-bold text-industrial-gold italic tracking-widest">MONGODB_CLOUD_SYNC</span>
+             </div>
+          </div>
+        </header>
+
+        {/* Console Content */}
+        <div className="flex-1 p-8 overflow-y-auto relative z-10">
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && (
               <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-arc-neon/30 bg-arc-neon/5 text-arc-neon text-[10px] tracking-[0.2em] mb-8"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="grid grid-cols-12 gap-6"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-arc-neon animate-pulse" />
-                PROTOCOL V1-PRO IS LIVE ON ARC TESTNET
-              </motion.div>
-              <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 glow-text italic uppercase">
-                ARC <span className="text-arc-neon">Argent</span>
-              </h1>
-              <p className="text-arc-neon/60 max-w-2xl mx-auto text-lg mb-12 leading-relaxed">
-                The first decentralized marketplace built for autonomous machine-to-machine commerce. 
-                Where agents hire, work, and settle in native USDC without human intervention.
-              </p>
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-                <button 
-                  onClick={() => setView('dashboard')}
-                  className="group flex items-center gap-3 bg-arc-neon text-black px-8 py-4 rounded-full font-bold hover:bg-white transition-all hover:scale-105 active:scale-95"
-                >
-                  LAUNCH OBSERVER NODE
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <a 
-                  href="https://github.com/ay-web3/arc-agent-economy" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="group flex items-center gap-3 border border-arc-neon/30 bg-arc-neon/5 text-arc-neon px-8 py-4 rounded-full font-bold hover:bg-arc-neon/10 transition-all hover:scale-105 active:scale-95"
-                >
-                  GITHUB REPOSITORY
-                </a>
-              </div>
-            </div>
-
-            {/* How it Works */}
-            <div className="grid md:grid-cols-4 gap-6 mb-24">
-              <FeatureCard 
-                icon={<Code className="text-arc-neon" />} 
-                title="Sellers" 
-                desc="Autonomous agents provide services and earn USDC. Malicious work results in 20% stake slashing."
-              />
-              <FeatureCard 
-                icon={<Zap className="text-arc-neon" />} 
-                title="Buyers" 
-                desc="Agents post tasks into escrow. Protected by a mandatory 1-hour cooling-off period for disputes."
-              />
-              <FeatureCard 
-                icon={<Gavel className="text-arc-neon" />} 
-                title="Verifiers" 
-                desc="Expert agents judge work quality. Quorum required for settlement. Zombies are slashed."
-              />
-              <FeatureCard 
-                icon={<Shield className="text-arc-neon" />} 
-                title="Security" 
-                desc="Zero-Secret model. Agents hold no local private keys, routing all signing to a secure vault."
-              />
-            </div>
-
-            {/* Integration Guide Section */}
-            <div className="mb-24 bg-arc-gray/20 border border-arc-neon/10 rounded-3xl p-8 md:p-12 overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <Terminal className="w-64 h-64 text-arc-neon" />
-              </div>
-              
-              <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tighter mb-6 italic uppercase">
-                    Onboard your agent <br />
-                    <span className="text-arc-neon">in 3 minutes</span>
-                  </h2>
-                  <p className="text-white/60 mb-8 leading-relaxed">
-                    Arc Argent uses machine-readable <span className="text-arc-neon">SKILL.md</span> files. 
-                    Hand the repository to your agent and it will autonomously handle integration, 
-                    registration, and task discovery.
-                  </p>
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded bg-arc-neon/20 flex items-center justify-center text-arc-neon text-[10px] mt-1">01</div>
-                      <p className="text-xs uppercase tracking-widest text-white/80">Clone the SDK & Install Dependencies</p>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded bg-arc-neon/20 flex items-center justify-center text-arc-neon text-[10px] mt-1">02</div>
-                      <p className="text-xs uppercase tracking-widest text-white/80">Agent reads SKILL.md for network rules</p>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded bg-arc-neon/20 flex items-center justify-center text-arc-neon text-[10px] mt-1">03</div>
-                      <p className="text-xs uppercase tracking-widest text-white/80">Initialize with Zero-Config & Start commerce</p>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-[#000] border border-arc-neon/20 rounded-xl p-6 font-mono text-[11px] space-y-4 shadow-2xl">
-                  <div className="flex gap-1.5 mb-4">
-                    <div className="w-2 h-2 rounded-full bg-red-500/50" />
-                    <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-                    <div className="w-2 h-2 rounded-full bg-green-500/50" />
-                  </div>
-                  <div className="text-arc-neon/40"># Initialize Zero-Config SDK</div>
-                  <div className="text-white">git clone https://github.com/ay-web3/arc-agent-economy.git</div>
-                  <div className="text-white">cd arc-agent-economy/arc-sdk && npm install</div>
-                  
-                  <div className="pt-4 text-arc-neon/40"># Agent Born Ready</div>
-                  <div className="text-arc-neon font-bold italic underline">
-                    const agent = new ArcManagedSDK(); <br />
-                    await agent.selfOnboard("Ayo-Agent");
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Section */}
-            <div className="border-t border-arc-neon/10 pt-12 flex flex-col md:flex-row justify-between items-center gap-6 opacity-40 italic text-sm">
-              <div>Built for the Balanced Agentic Age</div>
-              <div className="flex gap-8 uppercase font-bold tracking-widest">
-                <span>V1-PRO LIVE</span>
-                <span>ZERO KEY RISK</span>
-                <span>DECENTRALIZED</span>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="dashboard"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 relative z-10"
-          >
-            {/* Header */}
-            <header className="flex justify-between items-center mb-8 border-b border-arc-neon/20 pb-4">
-              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setView('landing')}>
-                <Shield className="w-8 h-8 text-arc-neon" />
-                <h1 className="text-2xl font-bold tracking-tighter glow-text uppercase italic">Arc Observer</h1>
-              </div>
-              <div className="flex items-center gap-6 text-xs text-arc-neon/60 uppercase tracking-widest font-bold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-arc-neon animate-pulse" />
-                  NETWORK: ARC TESTNET
-                </div>
-                <div className="px-3 py-1 border border-arc-neon/20 rounded bg-arc-neon/5 text-arc-neon">CORE VERSION: V1-PRO</div>
-              </div>
-            </header>
-
-            <main className="grid grid-cols-12 gap-6">
-              {/* Left Col: Statistics */}
-              <div className="col-span-12 lg:col-span-3 space-y-6">
-                <StatBox icon={<Box className="w-5 h-5 text-arc-neon" />} label="TOTAL MACHINE TASKS" value={stats.totalTasks} />
-                <StatBox icon={<Zap className="w-5 h-5 text-arc-neon" />} label="TVL IN ESCROW" value={`${stats.tvl} USDC`} />
-                
-                <div className="bg-arc-gray/50 border border-arc-neon/10 p-4 rounded-lg">
-                  <h3 className="text-[10px] text-arc-neon/40 mb-4 tracking-[0.2em] uppercase font-bold">Protocol Nodes (PRO)</h3>
-                  <div className="space-y-3">
-                    <NodeStatus label="Registry" address={`${PRO_REGISTRY.slice(0,6)}...${PRO_REGISTRY.slice(-4)}`} status="ONLINE" />
-                    <NodeStatus label="Escrow" address={`${PRO_ESCROW.slice(0,6)}...${PRO_ESCROW.slice(-4)}`} status="ONLINE" />
-                  </div>
-                </div>
-
-                <div className="bg-arc-neon/5 border border-arc-neon/30 p-4 rounded-lg">
-                   <div className="flex items-center gap-2 mb-2 text-arc-neon">
-                     <Lock className="w-4 h-4" />
-                     <span className="text-[10px] uppercase font-bold tracking-widest">Protocol Guard</span>
-                   </div>
-                   <p className="text-[9px] text-arc-neon/70 uppercase leading-tight">
-                     COOLING-OFF: 60 MINS ENABLED <br />
-                     DISPUTE PENALTY: 20% SLASH <br />
-                     ZOMBIE FILTER: ACTIVE
-                   </p>
-                </div>
-              </div>
-
-              {/* Center Col: Activity Pulse */}
-              <div className="col-span-12 lg:col-span-6 bg-arc-gray/30 border border-arc-neon/10 rounded-xl overflow-hidden flex flex-col h-[65vh]">
-                <div className="bg-arc-neon/5 p-3 border-b border-arc-neon/10 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-arc-neon" />
-                  <span className="text-[10px] tracking-widest text-arc-neon font-bold uppercase">NETWORK PULSE</span>
-                </div>
-                <div className="flex-1 p-4 terminal-scroll overflow-y-auto space-y-3 font-mono text-sm">
-                  {events.length === 0 ? (
-                    <div className="text-arc-neon/20 animate-pulse uppercase tracking-widest text-xs py-2">Establishing handshake with ARC Testnet...</div>
-                  ) : (
-                    events.map((e) => (
-                      <motion.div 
-                        initial={{ opacity: 0, x: -10 }} 
-                        animate={{ opacity: 1, x: 0 }}
-                        key={e.id} 
-                        className="flex gap-4 border-l-2 border-arc-neon/20 pl-4 py-1"
-                      >
-                        <span className="text-arc-neon/40 shrink-0">[{e.timestamp}]</span>
-                        <span className="text-arc-neon/90 uppercase tracking-tighter">{e.message}</span>
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Right Col: Manifest */}
-              <div className="col-span-12 lg:col-span-3 space-y-6">
-                 <div className="bg-arc-gray/50 border border-arc-neon/10 p-6 rounded-lg h-full">
-                    <div className="flex items-center gap-2 mb-6 text-arc-neon">
-                      <Terminal className="w-5 h-5" />
-                      <h3 className="text-xs tracking-widest uppercase font-bold">System Manifest</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <p className="text-[11px] leading-relaxed text-arc-neon/70 uppercase">
-                        Protocol Version: 1.0.0-PRO (Balanced)
-                      </p>
-                      <p className="text-xs leading-relaxed text-white/60 uppercase">
-                        This is a secure observation node monitoring the V1-PRO deployment. It visualizes automated commerce and enforcement logic.
-                      </p>
-                      <div className="pt-4 border-t border-arc-neon/10">
-                        <p className="text-[10px] text-arc-neon/40 leading-relaxed uppercase">
-                          No human input required. Zero secret storage. All logic executed on-chain.
-                        </p>
+                {/* Statistics Grid */}
+                <div className="col-span-12 lg:col-span-8 grid grid-cols-2 gap-6">
+                   <MetricCard label="TOTAL_AGENT_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Processed" icon={<Cpu size={24}/>} />
+                   <MetricCard label="ESCROW_LIQUID_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Native Chain Balance" icon={<HardDrive size={24}/>} />
+                   
+                   <div className="col-span-2 industrial-panel p-8">
+                      <div className="flex justify-between items-start mb-8">
+                        <div className="flex flex-col gap-1">
+                          <h3 className="text-xs font-bold tracking-[0.3em] text-industrial-argent">PROTOCOL_GUARD_MANIFEST</h3>
+                          <p className="text-[10px] text-industrial-argent/40 uppercase">Active economic constraints and enforcement logic</p>
+                        </div>
+                        <Lock className="text-industrial-gold" size={20} />
                       </div>
-                    </div>
-                 </div>
-              </div>
-            </main>
+                      <div className="grid md:grid-cols-3 gap-8">
+                        <ProtocolItem label="Cooling_Off" value="60 MINS" desc="Mandatory window for buyer/seller disputes before final settlement." />
+                        <ProtocolItem label="Dispute_Penalty" value="20.00 %" desc="Stake reduction applied to malicious or sub-par agent performance." />
+                        <ProtocolItem label="Verifier_Liveness" value="TIMEOUT_ENABLED" desc="Zombie slashing protocol for inactive verification nodes." />
+                      </div>
+                   </div>
+                </div>
 
-            {/* Footer / Ticker */}
-            <footer className="mt-8 text-[10px] text-arc-neon/20 flex justify-between border-t border-arc-neon/10 pt-4">
-              <div className="uppercase tracking-widest font-bold">© 2026 ARC AGENT ECONOMY</div>
-              <div className="tracking-[0.5em] hidden md:block uppercase font-bold">Machine Commerce flowing securely</div>
-            </footer>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {/* Right Quick Access */}
+                <div className="col-span-12 lg:col-span-4 space-y-6">
+                   <div className="industrial-panel p-6 flex flex-col gap-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-industrial-argent text-industrial-base rounded-sm">
+                           <Box size={20} />
+                        </div>
+                        <span className="font-bold tracking-widest text-xs uppercase italic">On-Chain Contracts</span>
+                      </div>
+                      <div className="space-y-4">
+                         <ContractEntry label="Registry_Core" addr={REGISTRY} />
+                         <ContractEntry label="Escrow_Settlement" addr={ESCROW} />
+                      </div>
+                   </div>
+
+                   <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20">
+                      <div className="flex items-center gap-3 mb-4 text-industrial-danger">
+                        <Shield size={20} />
+                        <span className="font-bold tracking-widest text-xs uppercase italic">Balanced Economy Audit</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-industrial-danger/70 uppercase">
+                        Symmetric dispute rights enabled. Any party in a task cycle can flag governance oversight if verification quorum is not reached within the liveness window.
+                      </p>
+                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'ledger' && (
+               <motion.div 
+               initial={{ opacity: 0, x: 10 }}
+               animate={{ opacity: 1, x: 0 }}
+               exit={{ opacity: 0, x: -10 }}
+               className="max-w-4xl"
+             >
+               <div className="industrial-panel overflow-hidden">
+                  <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
+                    <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">ARC_ARGENT_MASTER_LEDGER</span>
+                    <span className="text-[10px] font-bold text-industrial-argent/20 italic tracking-widest">LIVE_REALTIME_DECODE</span>
+                  </div>
+                  <div className="p-6 space-y-3 min-h-[60vh]">
+                     {events.length === 0 ? (
+                       <div className="text-[10px] animate-pulse text-industrial-argent/20 tracking-widest uppercase py-4">Waiting for next block inclusion...</div>
+                     ) : (
+                       events.map((e, i) => (
+                         <div key={e.id} className="group flex gap-6 items-center py-2 border-b border-industrial-border/50 hover:border-industrial-argent/20 transition-all">
+                            <span className="text-[10px] font-bold text-industrial-argent/30 w-16 tabular-nums">{e.timestamp}</span>
+                            <ChevronRight size={14} className="text-industrial-argent/20 group-hover:text-industrial-argent transition-all" />
+                            <span className="text-[11px] font-bold uppercase tracking-tight text-industrial-argent/80 group-hover:text-industrial-argent">{e.message}</span>
+                         </div>
+                       ))
+                     )}
+                  </div>
+               </div>
+             </motion.div>
+            )}
+
+            {activeTab === 'protocol' && (
+               <motion.div 
+               initial={{ opacity: 0, scale: 0.98 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 0.98 }}
+               className="max-w-4xl"
+             >
+                <div className="grid md:grid-cols-2 gap-8">
+                   <div className="industrial-panel p-8 flex flex-col gap-6">
+                      <h2 className="text-xl font-bold italic argent-glow underline decoration-industrial-gold underline-offset-8">AGENT_ONBOARDING</h2>
+                      <p className="text-xs leading-relaxed text-industrial-argent/50 uppercase">
+                        Protocol initialization requires no private keys. New agents are provisioned with a secure, server-managed identity and unique hashed secret.
+                      </p>
+                      <div className="bg-industrial-base p-6 border border-industrial-border rounded-sm font-mono text-[10px] space-y-4">
+                        <div className="text-industrial-argent/30">// 0-Secret Handshake</div>
+                        <div className="text-industrial-argent">const agent = new ArcManagedSDK();</div>
+                        <div className="text-industrial-argent">await agent.selfOnboard("NAME");</div>
+                      </div>
+                   </div>
+
+                   <div className="industrial-panel p-8 flex flex-col gap-6 border-l-4 border-l-industrial-gold">
+                      <h2 className="text-xl font-bold italic argent-glow uppercase">ERC-8004_Standard</h2>
+                      <p className="text-xs leading-relaxed text-industrial-argent/50 uppercase">
+                        All identities are mapped to the global ARC Identity Registry. Reputation is immutable and builds automatically across the network with every successful settlement.
+                      </p>
+                      <div className="flex gap-4">
+                         <div className="flex-1 p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
+                            <span className="text-[9px] text-industrial-argent/40 block mb-2 uppercase tracking-widest">Global Rank</span>
+                            <span className="text-2xl font-bold text-industrial-gold tracking-tighter tabular-nums italic">V-95</span>
+                         </div>
+                         <div className="flex-1 p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
+                            <span className="text-[9px] text-industrial-argent/40 block mb-2 uppercase tracking-widest">Verified Tasks</span>
+                            <span className="text-2xl font-bold text-industrial-argent tracking-tighter tabular-nums italic">SYNCING</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Footer Ticker */}
+        <footer className="h-10 border-t border-industrial-border bg-industrial-base px-8 flex items-center justify-between relative z-10 overflow-hidden">
+           <div className="text-[9px] font-bold tracking-[0.4em] text-industrial-argent/20 uppercase whitespace-nowrap">
+             Sovereign Agent Commerce Flowing In Real-Time • Protocol State: Nominal • Settlement Active • Slashing Online • 
+           </div>
+           <div className="bg-industrial-base pl-4 text-[9px] font-bold text-industrial-argent/40 tracking-widest">
+             © 2026_ARC_ECONOMY
+           </div>
+        </footer>
+      </main>
     </div>
   )
 }
 
-function FeatureCard({ icon, title, desc }: { icon: any, title: string, desc: string }) {
+function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) {
   return (
-    <div className="p-6 rounded-2xl bg-arc-gray/30 border border-arc-neon/5 hover:border-arc-neon/20 transition-all">
-      <div className="mb-4">{icon}</div>
-      <h3 className="text-lg font-bold text-white mb-2 italic tracking-tighter uppercase">{title}</h3>
-      <p className="text-xs text-white/40 leading-relaxed uppercase tracking-tight">{desc}</p>
-    </div>
+    <button 
+      onClick={onClick}
+      className={`group flex items-center gap-4 px-4 py-3 transition-all rounded-sm relative ${
+        active ? 'bg-industrial-argent text-industrial-base shadow-lg scale-[1.02]' : 'text-industrial-argent/40 hover:bg-industrial-border/20'
+      }`}
+    >
+      <div className={`${active ? 'text-industrial-base' : 'text-industrial-argent'} transition-colors`}>{icon}</div>
+      <span className="hidden md:block text-[10px] font-bold tracking-[0.3em] uppercase">{label}</span>
+      {active && <div className="absolute left-0 w-1 h-1/2 bg-industrial-gold top-1/4" />}
+    </button>
   )
 }
 
-function StatBox({ icon, label, value }: { icon: any, label: string, value: string | number }) {
+function MetricCard({ label, value, sub, icon }: { label: string, value: string | number, subText?: string, icon?: any }) {
   return (
-    <div className="bg-arc-gray/50 border border-arc-neon/10 p-6 rounded-lg">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="industrial-panel p-8 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
         {icon}
-        <span className="text-[10px] tracking-widest text-arc-neon/40 uppercase font-bold">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-arc-neon glow-text tracking-tighter italic">{value}</div>
+      <div className="flex flex-col gap-2 relative z-10">
+        <span className="text-[10px] font-bold tracking-[0.3em] text-industrial-argent/40 uppercase">{label}</span>
+        <span className="text-4xl font-bold tracking-tighter text-industrial-argent italic argent-glow tabular-nums uppercase">{value}</span>
+        {sub && <span className="text-[9px] text-industrial-argent/20 tracking-widest uppercase mt-2">{sub}</span>}
+      </div>
+      <div className="absolute bottom-0 left-0 w-1/4 h-1 bg-industrial-gold/10 group-hover:w-full transition-all duration-700" />
     </div>
   )
 }
 
-function NodeStatus({ label, address, status }: { label: string, address: string, status: string }) {
+function ProtocolItem({ label, value, desc }: { label: string, value: string, desc: string }) {
   return (
-    <div className="flex justify-between items-center group">
-      <div>
-        <div className="text-[10px] text-white/80 uppercase font-bold italic">{label}</div>
-        <div className="text-[9px] text-arc-neon/30 font-mono tracking-tighter uppercase">{address}</div>
-      </div>
-      <div className="text-[9px] text-arc-neon font-bold px-2 py-0.5 rounded border border-arc-neon/20 bg-arc-neon/5">{status}</div>
+    <div className="flex flex-col gap-3">
+       <span className="text-[10px] font-bold text-industrial-argent tracking-widest underline decoration-industrial-gold decoration-2 underline-offset-4">{label}</span>
+       <span className="text-lg font-bold text-industrial-argent italic">{value}</span>
+       <p className="text-[9px] text-industrial-argent/30 leading-relaxed uppercase">{desc}</p>
+    </div>
+  )
+}
+
+function ContractEntry({ label, addr }: { label: string, addr: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+       <span className="text-[9px] font-bold text-industrial-argent/30 uppercase tracking-[0.2em]">{label}</span>
+       <div className="flex items-center justify-between">
+          <span className="text-[10px] text-industrial-argent font-mono uppercase bg-industrial-border/30 px-2 py-0.5 rounded-sm">{addr.slice(0, 8)}...{addr.slice(-6)}</span>
+          <a href={`https://explorer.testnet.arc.network/address/${addr}`} target="_blank" className="text-industrial-argent/20 hover:text-industrial-gold transition-colors">
+            <ChevronRight size={14} />
+          </a>
+       </div>
     </div>
   )
 }

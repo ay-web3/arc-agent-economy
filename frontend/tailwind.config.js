@@ -7,14 +7,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        arc: {
-          dark: '#050505',
-          neon: '#00ffaa',
-          gray: '#1a1a1a',
+        industrial: {
+          base: '#080808',
+          surface: '#121212',
+          argent: '#D1D1D1',
+          gold: '#EAB308',
+          danger: '#FF3B30',
+          border: '#222222',
         }
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },
