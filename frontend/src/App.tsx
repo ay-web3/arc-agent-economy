@@ -378,7 +378,7 @@ function ContractEntry({ label, addr }: { label: string, addr: string }) {
           <span className="text-[10px] text-industrial-argent font-mono uppercase bg-industrial-border/30 px-2 py-0.5 rounded-sm truncate">
             {addr.slice(0, 10)}...{addr.slice(-8)}
           </span>
-          <a href={`https://explorer.testnet.arc.network/address/${addr}`} target="_blank" className="text-industrial-argent/20 hover:text-industrial-gold transition-colors shrink-0">
+          <a href={`https://testnet.arcscan.app/address/${addr}`} target="_blank" className="text-industrial-argent/20 hover:text-industrial-gold transition-colors shrink-0">
             <ChevronRight size={14} />
           </a>
        </div>
