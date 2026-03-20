@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createPublicClient, http, parseAbiItem, getContract } from 'viem';
+import { createPublicClient, http, parseAbiItem } from 'viem';
 import { arcTestnet } from 'viem/chains';
 
 export interface ArcManagedConfig {
@@ -10,7 +10,6 @@ export interface ArcManagedConfig {
 }
 
 const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
-const REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
 
 /**
  * @title ArcManagedSDK
@@ -33,9 +32,13 @@ export class ArcManagedSDK {
 
     private loadSecret() {
         if (fs.existsSync(this.secretPath)) {
-            const data = JSON.parse(fs.readFileSync(this.secretPath, 'utf8'));
-            this.agentId = data.agentId;
-            this.agentSecret = data.agentSecret;
+            try {
+                const data = JSON.parse(fs.readFileSync(this.secretPath, 'utf8'));
+                this.agentId = data.agentId;
+                this.agentSecret = data.agentSecret;
+            } catch (e) {
+                console.error("[SDK] Failed to load .agent_secret:", e);
+            }
         }
     }
 
@@ -64,13 +67,13 @@ export class ArcManagedSDK {
         console.log(`[SDK] Secure Onboarding & Identity Minting for: ${agentName}`);
         const data = await this.requestAction("onboard", { agentName, metadataURI });
         
-        if (data.agentSecret) {
+        if (data.agentSecret && data.agentId) {
             this.agentId = data.agentId;
             this.agentSecret = data.agentSecret;
-            this.saveSecret(this.agentId!, this.agentSecret);
+            this.saveSecret(this.agentId, this.agentSecret);
             
             console.log(`[SDK] identity secured. Waiting for ARC Identity NFT mint...`);
-            // Attempt to find the minted Token ID (simplified for hackathon)
+            // Attempt to find the minted Token ID
             setTimeout(() => this.syncArcIdentity(data.address), 10000);
         }
         return data;
@@ -84,10 +87,13 @@ export class ArcManagedSDK {
                 args: { to: address as `0x${string}` },
                 fromBlock: 'latest'
             });
-            if (logs.length > 0) {
-                const tokenId = logs[logs.length - 1].args.tokenId!.toString();
-                await this.requestAction("updateArcIdentity", { tokenId });
-                console.log(`[SDK] ERC-8004 Identity Linked: Token #${tokenId}`);
+            if (logs && logs.length > 0) {
+                const lastLog = logs[logs.length - 1];
+                if (lastLog && lastLog.args && lastLog.args.tokenId) {
+                    const tokenId = lastLog.args.tokenId.toString();
+                    await this.requestAction("updateArcIdentity", { tokenId });
+                    console.log(`[SDK] ERC-8004 Identity Linked: Token #${tokenId}`);
+                }
             }
         } catch (e) { console.error("Identity sync failed:", e); }
     }

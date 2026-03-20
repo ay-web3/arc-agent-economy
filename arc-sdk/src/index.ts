@@ -1,3 +1,3 @@
-export * from "./SwarmOrchestrator";
-export * from "./ArcManagedSDK";
-export * from "./types";
+export * from './SwarmOrchestrator.js';
+export * from './ArcManagedSDK.js';
+export * from './types.js';

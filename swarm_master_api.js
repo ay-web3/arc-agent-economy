@@ -136,7 +136,14 @@ app.post('/onboard', async (req, res) => {
         const newWallet = response.data.data.wallets[0];
         
         const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
-        const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI]);
+        let identityTxId = null;
+        try {
+            // Note: This might fail if the wallet is not yet funded with ARC gas.
+            const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI]);
+            identityTxId = identityTx.id;
+        } catch (e) {
+            console.warn("[ONBOARD] Identity NFT mint failed (likely no gas):", e.message);
+        }
 
         agent = new Agent({
             agentName,
@@ -151,7 +158,7 @@ app.post('/onboard', async (req, res) => {
             agentId: agentName, 
             agentSecret: rawSecret, 
             address: newWallet.address,
-            identityTxId: identityTx.id 
+            identityTxId: identityTxId 
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
