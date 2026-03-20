@@ -22,7 +22,6 @@ const MONGODB_URI = process.env.MONGODB_URI;
 // --- ARC GLOBAL REGISTRIES (ERC-8004) ---
 const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
 const REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
-const VALIDATION_REGISTRY = "0x8004Cb1BF31DAf7788923b405b754f57acEB4272";
 
 if (!API_KEY || !ENTITY_SECRET || !WALLET_SET_ID || !MONGODB_URI) {
     console.error("FATAL: Missing CIRCLE_API_KEY, ENTITY_SECRET, WALLET_SET_ID, or MONGODB_URI");
@@ -39,7 +38,7 @@ const agentSchema = new mongoose.Schema({
     walletId: { type: String, required: true },
     address: { type: String, required: true },
     secretHash: { type: String, required: true },
-    arcIdentityId: { type: String }, // NFT Token ID from ERC-8004
+    arcIdentityId: { type: String },
     onboardedAt: { type: Date, default: Date.now }
 });
 
@@ -72,7 +71,7 @@ const validateAgent = async (req, res, next) => {
         if (!agent) return res.status(404).json({ error: "Agent not found" });
 
         if (hashSecret(agentSecret) !== agent.secretHash) {
-            return res.status(403).json({ error: "Invalid agentSecret. Impersonation blocked." });
+            return res.status(403).json({ error: "Invalid agentSecret." });
         }
 
         req.agent = agent;
@@ -101,7 +100,18 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
     return response.data.data;
 };
 
-// --- CORE SYSTEM ENDPOINTS ---
+// --- ROUTES ---
+
+app.get('/', (req, res) => {
+    res.json({ 
+        message: "Arc Argent Public Orchestrator V1-PRO Secure is LIVE",
+        network: "ARC Testnet",
+        standards: ["ERC-8004"],
+        github: "https://github.com/ay-web3/arc-agent-economy"
+    });
+});
+
+app.get('/health', (req, res) => res.json({ status: "healthy" }));
 
 app.post('/onboard', async (req, res) => {
     const { agentName, metadataURI } = req.body;
@@ -125,7 +135,6 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // --- ERC-8004 Identity Registration ---
         const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
         const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI]);
 
@@ -147,19 +156,13 @@ app.post('/onboard', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- SECURE EXECUTION ENDPOINTS ---
-
 app.post('/execute/finalize', validateAgent, async (req, res) => {
     try {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
         
-        // --- ERC-8004 Reputation Reporting ---
-        // Automatically report successful work to the global ARC Reputation registry
         const tag = "successful_arc_argent_task";
         const feedbackHash = ethers.id(tag);
-        // giveFeedback(agentId, score, type, tag, details, data, extra, hash)
-        // We use 100 as the "Success" score
         await sendTx(req.walletId, REPUTATION_REGISTRY, 
             "giveFeedback(uint256,int128,uint8,string,string,string,string,bytes32)",
             [req.agent.arcIdentityId || "0", "100", "0", tag, `Task #${taskId}`, "", "", feedbackHash]);
@@ -168,13 +171,11 @@ app.post('/execute/finalize', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ... [Existing endpoints remain the same but use validateAgent middleware] ...
-
+// Registry Endpoints
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", 
-            [asSeller, asVerifier, capHash, pubKey], stake || "0");
+        const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], stake || "0");
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -225,11 +226,11 @@ app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Escrow Endpoints
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", 
-            [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
+        const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -253,8 +254,7 @@ app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
 app.post('/execute/placeBid', validateAgent, async (req, res) => {
     try {
         const { taskId, price, eta, meta } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", 
-            [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
+        const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -315,8 +315,6 @@ app.post('/execute/openDispute', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- GOVERNANCE ---
-
 app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
     try {
         const { taskId, ruling, buyerBps } = req.body;
@@ -335,4 +333,4 @@ app.post('/updateArcIdentity', validateAgent, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Swarm Master (ERC-8004 Pro) on port ${PORT}`));
+app.listen(PORT, () => console.log(`Swarm Master (V1-PRO Secure) on port ${PORT}`));
