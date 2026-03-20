@@ -74,21 +74,23 @@ function App() {
         </header>
 
         {/* Console Content */}
-        <div className="flex-1 p-8 overflow-y-auto relative z-10">
+        <div className="flex-1 p-8 overflow-hidden relative z-10 flex flex-col">
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-12 gap-6"
+                className="grid grid-cols-12 gap-6 h-full"
               >
                 {/* Statistics Grid */}
-                <div className="col-span-12 lg:col-span-8 grid grid-cols-2 gap-6">
-                   <MetricCard label="TOTAL_AGENT_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Processed" icon={<Cpu size={24}/>} />
-                   <MetricCard label="ESCROW_LIQUID_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Native Chain Balance" icon={<HardDrive size={24}/>} />
+                <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
+                   <div className="grid grid-cols-2 gap-6 shrink-0">
+                      <MetricCard label="TOTAL_AGENT_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Processed" icon={<Cpu size={24}/>} />
+                      <MetricCard label="ESCROW_LIQUID_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Chain Balance" icon={<HardDrive size={24}/>} />
+                   </div>
                    
-                   <div className="col-span-2 industrial-panel p-8">
+                   <div className="industrial-panel p-8 flex-1 overflow-y-auto">
                       <div className="flex justify-between items-start mb-8">
                         <div className="flex flex-col gap-1">
                           <h3 className="text-xs font-bold tracking-[0.3em] text-industrial-argent">PROTOCOL_GUARD_MANIFEST</h3>
@@ -105,8 +107,8 @@ function App() {
                 </div>
 
                 {/* Right Quick Access */}
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                   <div className="industrial-panel p-6 flex flex-col gap-6">
+                <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-hidden">
+                   <div className="industrial-panel p-6 flex flex-col gap-6 shrink-0">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-industrial-argent text-industrial-base rounded-sm">
                            <Box size={20} />
@@ -119,7 +121,7 @@ function App() {
                       </div>
                    </div>
 
-                   <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20">
+                   <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20 flex-1 overflow-y-auto">
                       <div className="flex items-center gap-3 mb-4 text-industrial-danger">
                         <Shield size={20} />
                         <span className="font-bold tracking-widest text-xs uppercase italic">Balanced Economy Audit</span>
@@ -137,14 +139,14 @@ function App() {
                initial={{ opacity: 0, x: 10 }}
                animate={{ opacity: 1, x: 0 }}
                exit={{ opacity: 0, x: -10 }}
-               className="max-w-4xl"
+               className="max-w-4xl h-full flex flex-col"
              >
-               <div className="industrial-panel overflow-hidden">
-                  <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
+               <div className="industrial-panel overflow-hidden flex flex-col h-full">
+                  <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center shrink-0">
                     <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">ARC_ARGENT_MASTER_LEDGER</span>
                     <span className="text-[10px] font-bold text-industrial-argent/20 italic tracking-widest">LIVE_REALTIME_DECODE</span>
                   </div>
-                  <div className="p-6 space-y-3 min-h-[60vh]">
+                  <div className="p-6 space-y-3 overflow-y-auto flex-1">
                      {events.length === 0 ? (
                        <div className="text-[10px] animate-pulse text-industrial-argent/20 tracking-widest uppercase py-4">Waiting for next block inclusion...</div>
                      ) : (
