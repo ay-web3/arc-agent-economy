@@ -92,28 +92,128 @@ export class ArcManagedSDK {
         } catch (e) { console.error("Identity sync failed:", e); }
     }
 
-    async getReputation(address: string) {
-        // In production, this would query the ReputationRegistry contract
-        return { score: 95, status: "Verified" };
+    // --- READ ACTIONS ---
+
+    async getTask(id: string | number) {
+        const response = await axios.get(`${this.orchestratorUrl}/escrow/task/${id}`);
+        return response.data;
     }
 
-    // --- Standard Actions ---
+    async getTaskCounter() {
+        const response = await axios.get(`${this.orchestratorUrl}/escrow/counter`);
+        return response.data.count;
+    }
+
+    async getAgentProfile(address: string) {
+        const response = await axios.get(`${this.orchestratorUrl}/registry/profile/${address}`);
+        return response.data;
+    }
+
+    async getAgents() {
+        return this.requestAction("agents", {});
+    }
+
+    // --- AGENT REGISTRY ACTIONS ---
+
     async registerAgent(params: { asSeller: boolean, asVerifier: boolean, capHash: string, pubKey: string, stake: string }) {
         return this.requestAction("execute/register", params);
     }
-    async createOpenTask(params: { jobDeadline: number, bidDeadline: number, verifierDeadline: number, taskHash: string, verifiers: string[], quorumM: number, amount: string }) {
+
+    async updateProfile(params: { capHash: string, pubKey: string, active: boolean }) {
+        return this.requestAction("execute/updateProfile", params);
+    }
+
+    async setRoles(params: { wantSeller: boolean, wantVerifier: boolean }) {
+        return this.requestAction("execute/setRoles", params);
+    }
+
+    async topUpStake(amount: string) {
+        return this.requestAction("execute/topUpStake", { amount });
+    }
+
+    async requestWithdraw(amount: string) {
+        return this.requestAction("execute/withdraw/request", { amount });
+    }
+
+    async cancelWithdraw() {
+        return this.requestAction("execute/withdraw/cancel", {});
+    }
+
+    async completeWithdraw() {
+        return this.requestAction("execute/withdraw/complete", {});
+    }
+
+    // --- BUYER ACTIONS ---
+
+    async createOpenTask(params: { 
+        jobDeadline: number, 
+        bidDeadline: number, 
+        verifierDeadline: number,
+        taskHash: string, 
+        verifiers: string[], 
+        quorumM: number, 
+        amount: string 
+    }) {
         return this.requestAction("execute/createOpenTask", params);
     }
+
+    async selectBid(taskId: string, bidIndex: number) {
+        return this.requestAction("execute/selectBid", { taskId, bidIndex });
+    }
+
+    async finalizeAuction(taskId: string) {
+        return this.requestAction("execute/finalizeAuction", { taskId });
+    }
+
+    async cancelIfNoBids(taskId: string) {
+        return this.requestAction("execute/cancelIfNoBids", { taskId });
+    }
+
+    async timeoutRefund(taskId: string) {
+        return this.requestAction("execute/timeoutRefund", { taskId });
+    }
+
+    async verifierTimeoutRefund(taskId: string) {
+        return this.requestAction("execute/verifierTimeoutRefund", { taskId });
+    }
+
+    async openDispute(taskId: string) {
+        return this.requestAction("execute/openDispute", { taskId });
+    }
+
+    // --- SELLER ACTIONS ---
+
     async placeBid(params: { taskId: string, price: string, eta?: number, meta?: string }) {
         return this.requestAction("execute/placeBid", params);
     }
+
     async submitResult(params: { taskId: string, resultHash: string, resultURI: string }) {
         return this.requestAction("execute/submitResult", params);
     }
+
+    // --- VERIFIER ACTIONS ---
+
     async approveTask(taskId: string) {
         return this.requestAction("execute/approve", { taskId });
     }
+
+    async rejectTask(taskId: string) {
+        return this.requestAction("execute/reject", { taskId });
+    }
+
+    // --- KEEPER / SYSTEM ACTIONS ---
+
     async finalizeTask(taskId: string) {
         return this.requestAction("execute/finalize", { taskId });
+    }
+
+    // --- GOVERNANCE ACTIONS ---
+
+    async setSellerSlashBps(bps: number) {
+        return this.requestAction("execute/setSellerSlashBps", { bps });
+    }
+
+    async resolveDispute(params: { taskId: string, ruling: number, buyerBps: number }) {
+        return this.requestAction("execute/resolveDispute", params);
     }
 }

@@ -332,5 +332,42 @@ app.post('/updateArcIdentity', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- READ-ONLY DATA ENDPOINTS ---
+
+app.get('/registry/profile/:address', async (req, res) => {
+    try {
+        const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
+        const registry = new ethers.Contract(REGISTRY_CA, ["function profile(address) view returns (bool, bytes32, bytes32)", "function stakeOf(address) view returns (uint256)", "function availableStake(address) view returns (uint256)"], provider);
+        const [active, capHash, pubKey] = await registry.profile(req.params.address);
+        const totalStake = await registry.stakeOf(req.params.address);
+        const availStake = await registry.availableStake(req.params.address);
+        res.json({ active, capHash, pubKey, totalStake: ethers.formatUnits(totalStake, 18), availableStake: ethers.formatUnits(availStake, 18) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/escrow/task/:id', async (req, res) => {
+    try {
+        const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
+        const escrow = new ethers.Contract(ESCROW_CA, ["function tasks(uint256) view returns (address, address, uint256, uint256, uint256, uint64, uint64, uint64, uint64, bytes32, bytes32, string, uint8, uint8, uint8)"], provider);
+        const t = await escrow.tasks(req.params.id);
+        res.json({
+            buyer: t[0], seller: t[1], price: ethers.formatUnits(t[2], 18),
+            verifierPool: ethers.formatUnits(t[3], 18), sellerBudget: ethers.formatUnits(t[4], 18),
+            deadline: Number(t[5]), bidDeadline: Number(t[6]), verifierDeadline: Number(t[7]),
+            approvalTimestamp: Number(t[8]), taskHash: t[9], resultHash: t[10],
+            resultURI: t[11], state: Number(t[12]), quorumM: Number(t[13]), quorumN: Number(t[14])
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/escrow/counter', async (req, res) => {
+    try {
+        const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
+        const escrow = new ethers.Contract(ESCROW_CA, ["function taskCounter() view returns (uint256)"], provider);
+        const count = await escrow.taskCounter();
+        res.json({ count: Number(count) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Swarm Master (V1-PRO Secure) on port ${PORT}`));
