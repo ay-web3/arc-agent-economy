@@ -26,13 +26,13 @@ function App() {
   return (
     <div className="min-h-screen bg-industrial-base flex overflow-hidden">
       {/* Sidebar Navigation */}
-      <nav className="w-20 md:w-64 border-r border-industrial-border flex flex-col bg-industrial-base relative z-20">
-        <div className="p-6 border-b border-industrial-border flex items-center gap-3">
-          <Shield className="w-8 h-8 text-industrial-argent" />
-          <span className="hidden md:block font-bold tracking-[0.2em] text-sm italic argent-glow uppercase">ARC ARGENT</span>
+      <nav className="w-20 md:w-56 border-r border-industrial-border flex flex-col bg-industrial-base relative z-20">
+        <div className="p-4 md:p-6 border-b border-industrial-border flex items-center gap-3">
+          <Shield className="w-6 h-6 text-industrial-argent" />
+          <span className="hidden md:block font-bold tracking-[0.1em] text-xs italic argent-glow uppercase">ARC ARGENT</span>
         </div>
         
-        <div className="flex-1 py-8 flex flex-col gap-2 px-3">
+        <div className="flex-1 py-4 md:py-8 flex flex-col gap-1 px-2 md:px-3">
           <NavBtn active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
           <NavBtn active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
           <NavBtn active={activeTab === 'protocol'} onClick={() => setActiveTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
@@ -74,46 +74,46 @@ function App() {
         </header>
 
         {/* Console Content */}
-        <div className="flex-1 p-8 overflow-hidden relative z-10 flex flex-col">
+        <div className="flex-1 p-4 md:p-6 overflow-hidden relative z-10 flex flex-col">
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-12 gap-6 h-full"
+                className="grid grid-cols-12 gap-4 h-full overflow-y-auto lg:overflow-hidden pb-12 lg:pb-0"
               >
                 {/* Statistics Grid */}
-                <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-                   <div className="grid grid-cols-2 gap-6 shrink-0">
-                      <MetricCard label="TOTAL_AGENT_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Processed" icon={<Cpu size={24}/>} />
-                      <MetricCard label="ESCROW_LIQUID_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Chain Balance" icon={<HardDrive size={24}/>} />
+                <div className="col-span-12 lg:col-span-8 flex flex-col gap-4 overflow-hidden">
+                   <div className="grid grid-cols-2 gap-4 shrink-0">
+                      <MetricCard label="TOTAL_AGENT_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Processed" icon={<Cpu size={20}/>} />
+                      <MetricCard label="ESCROW_LIQUID_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Chain Balance" icon={<HardDrive size={20}/>} />
                    </div>
                    
-                   <div className="industrial-panel p-8 flex-1 overflow-y-auto">
-                      <div className="flex justify-between items-start mb-8">
+                   <div className="industrial-panel p-4 md:p-6 flex-1 overflow-y-auto">
+                      <div className="flex justify-between items-start mb-6">
                         <div className="flex flex-col gap-1">
-                          <h3 className="text-xs font-bold tracking-[0.3em] text-industrial-argent">PROTOCOL_GUARD_MANIFEST</h3>
-                          <p className="text-[10px] text-industrial-argent/40 uppercase">Active economic constraints and enforcement logic</p>
+                          <h3 className="text-[10px] font-bold tracking-[0.3em] text-industrial-argent">PROTOCOL_GUARD_MANIFEST</h3>
+                          <p className="text-[8px] text-industrial-argent/40 uppercase">Active economic constraints and enforcement logic</p>
                         </div>
-                        <Lock className="text-industrial-gold" size={20} />
+                        <Lock className="text-industrial-gold" size={16} />
                       </div>
-                      <div className="grid md:grid-cols-3 gap-8">
-                        <ProtocolItem label="Cooling_Off" value="60 MINS" desc="Mandatory window for buyer/seller disputes before final settlement." />
-                        <ProtocolItem label="Dispute_Penalty" value="20.00 %" desc="Stake reduction applied to malicious or sub-par agent performance." />
-                        <ProtocolItem label="Verifier_Liveness" value="TIMEOUT_ENABLED" desc="Zombie slashing protocol for inactive verification nodes." />
+                      <div className="grid md:grid-cols-3 gap-6">
+                        <ProtocolItem label="Cooling_Off" value="60 MINS" desc="Mandatory window for disputes before final settlement." />
+                        <ProtocolItem label="Dispute_Penalty" value="20.00 %" desc="Stake reduction applied to malicious agent performance." />
+                        <ProtocolItem label="Verifier_Liveness" value="TIMEOUT_ACTIVE" desc="Zombie slashing protocol for inactive nodes." />
                       </div>
                    </div>
                 </div>
 
                 {/* Right Quick Access */}
-                <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-hidden">
-                   <div className="industrial-panel p-6 flex flex-col gap-6 shrink-0">
+                <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+                   <div className="industrial-panel p-4 md:p-6 flex flex-col gap-6 shrink-0">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-industrial-argent text-industrial-base rounded-sm">
-                           <Box size={20} />
+                        <div className="p-1.5 bg-industrial-argent text-industrial-base rounded-sm">
+                           <Box size={16} />
                         </div>
-                        <span className="font-bold tracking-widest text-xs uppercase italic">On-Chain Contracts</span>
+                        <span className="font-bold tracking-widest text-[10px] uppercase italic">On-Chain Contracts</span>
                       </div>
                       <div className="space-y-4">
                          <ContractEntry label="Registry_Core" addr={REGISTRY} />
@@ -121,13 +121,13 @@ function App() {
                       </div>
                    </div>
 
-                   <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20 flex-1 overflow-y-auto">
+                   <div className="industrial-panel p-4 md:p-6 bg-industrial-danger/5 border-industrial-danger/20 flex-1 overflow-y-auto">
                       <div className="flex items-center gap-3 mb-4 text-industrial-danger">
-                        <Shield size={20} />
-                        <span className="font-bold tracking-widest text-xs uppercase italic">Balanced Economy Audit</span>
+                        <Shield size={16} />
+                        <span className="font-bold tracking-widest text-[10px] uppercase italic">Economic Audit</span>
                       </div>
-                      <p className="text-[10px] leading-relaxed text-industrial-danger/70 uppercase">
-                        Symmetric dispute rights enabled. Any party in a task cycle can flag governance oversight if verification quorum is not reached within the liveness window.
+                      <p className="text-[9px] leading-relaxed text-industrial-danger/70 uppercase">
+                        Symmetric dispute rights enabled. Any party can flag governance oversight if verification quorum is not reached within liveness.
                       </p>
                    </div>
                 </div>
@@ -223,27 +223,27 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
   return (
     <button 
       onClick={onClick}
-      className={`group flex items-center gap-4 px-4 py-3 transition-all rounded-sm relative ${
+      className={`group flex items-center gap-4 px-3 py-2.5 transition-all rounded-sm relative ${
         active ? 'bg-industrial-argent text-industrial-base shadow-lg scale-[1.02]' : 'text-industrial-argent/40 hover:bg-industrial-border/20'
       }`}
     >
       <div className={`${active ? 'text-industrial-base' : 'text-industrial-argent'} transition-colors`}>{icon}</div>
-      <span className="hidden md:block text-[10px] font-bold tracking-[0.3em] uppercase">{label}</span>
+      <span className="hidden md:block text-[9px] font-bold tracking-[0.3em] uppercase">{label}</span>
       {active && <div className="absolute left-0 w-1 h-1/2 bg-industrial-gold top-1/4" />}
     </button>
   )
 }
 
-function MetricCard({ label, value, sub, icon }: { label: string, value: string | number, subText?: string, icon?: any }) {
+function MetricCard({ label, value, sub, icon }: { label: string, value: string | number, sub?: string, icon?: any }) {
   return (
-    <div className="industrial-panel p-8 relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
+    <div className="industrial-panel p-4 md:p-6 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-3 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
         {icon}
       </div>
-      <div className="flex flex-col gap-2 relative z-10">
-        <span className="text-[10px] font-bold tracking-[0.3em] text-industrial-argent/40 uppercase">{label}</span>
-        <span className="text-4xl font-bold tracking-tighter text-industrial-argent italic argent-glow tabular-nums uppercase">{value}</span>
-        {sub && <span className="text-[9px] text-industrial-argent/20 tracking-widest uppercase mt-2">{sub}</span>}
+      <div className="flex flex-col gap-1 relative z-10">
+        <span className="text-[8px] font-bold tracking-[0.3em] text-industrial-argent/40 uppercase">{label}</span>
+        <span className="text-2xl md:text-3xl font-bold tracking-tighter text-industrial-argent italic argent-glow tabular-nums uppercase">{value}</span>
+        {sub && <span className="text-[8px] text-industrial-argent/20 tracking-widest uppercase mt-1">{sub}</span>}
       </div>
       <div className="absolute bottom-0 left-0 w-1/4 h-1 bg-industrial-gold/10 group-hover:w-full transition-all duration-700" />
     </div>
@@ -252,10 +252,10 @@ function MetricCard({ label, value, sub, icon }: { label: string, value: string 
 
 function ProtocolItem({ label, value, desc }: { label: string, value: string, desc: string }) {
   return (
-    <div className="flex flex-col gap-3">
-       <span className="text-[10px] font-bold text-industrial-argent tracking-widest underline decoration-industrial-gold decoration-2 underline-offset-4">{label}</span>
-       <span className="text-lg font-bold text-industrial-argent italic">{value}</span>
-       <p className="text-[9px] text-industrial-argent/30 leading-relaxed uppercase">{desc}</p>
+    <div className="flex flex-col gap-2">
+       <span className="text-[9px] font-bold text-industrial-argent tracking-widest underline decoration-industrial-gold decoration-2 underline-offset-4">{label}</span>
+       <span className="text-base font-bold text-industrial-argent italic">{value}</span>
+       <p className="text-[8px] text-industrial-argent/30 leading-relaxed uppercase">{desc}</p>
     </div>
   )
 }
