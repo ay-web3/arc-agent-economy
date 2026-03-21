@@ -52,6 +52,21 @@ function App() {
             {/* Hero Section */}
             <div className="max-w-5xl w-full pt-24 md:pt-40 pb-20 relative z-10">
               <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex justify-center mb-12"
+              >
+                <div className="relative group">
+                  <div className="absolute -inset-1 bg-industrial-gold rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                  <img 
+                    src="/assets/logo.jpg" 
+                    alt="Arc Argent Logo" 
+                    className="relative w-32 h-32 md:w-48 md:h-48 rounded-full border-2 border-industrial-border shadow-2xl"
+                  />
+                </div>
+              </motion.div>
+
+              <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-4 mb-8"
@@ -129,7 +144,7 @@ function App() {
             `}>
               <div className="p-6 border-b border-industrial-border flex items-center justify-between">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('landing')}>
-                  <Shield className="w-8 h-8 text-industrial-argent" />
+                  <img src="/assets/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-industrial-border" />
                   <span className="font-bold tracking-[0.1em] text-xs italic argent-glow uppercase">ARC ARGENT</span>
                 </div>
                 <button className="lg:hidden" onClick={() => setIsMobileMenuOpen(false)}><X size={20}/></button>
