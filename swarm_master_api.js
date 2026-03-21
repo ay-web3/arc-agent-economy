@@ -113,7 +113,7 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
     return response.data.data;
 };
 
-const sendUSDC = async (toAddress, amount = "0.001") => {
+const sendUSDC = async (toAddress, amount = "0.02") => {
     const ciphertext = await getCiphertext();
     const payload = {
         idempotencyKey: uuidv4(),
@@ -176,8 +176,8 @@ app.post('/onboard', async (req, res) => {
         // --- GASLESS FUNDING (Native USDC for Gas/Minting) ---
         if (MASTER_WALLET_ID) {
             try {
-                console.log(`[ONBOARD] Funding new wallet with 0.001 USDC: ${newWallet.address}`);
-                await sendUSDC(newWallet.address, "0.001");
+                console.log(`[ONBOARD] Funding new wallet with 0.02 USDC: ${newWallet.address}`);
+                await sendUSDC(newWallet.address, "0.02");
                 // IMPORTANT: Wait for ARC chain to register the transfer before minting
                 console.log("[ONBOARD] Waiting 5s for funds to settle...");
                 await new Promise(r => setTimeout(r, 5000));
