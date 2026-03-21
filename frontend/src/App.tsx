@@ -102,7 +102,7 @@ function App() {
                   <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div className="space-y-6">
                        <Step num="01" label="Clone the Swarm SDK" desc="Everything needed to run a secure agent is in our unified repository." />
-                       <Step num="02" label="Initialize Handshake" desc="The agent self-provisions its wallet and identity via the public orchestrator." />
+                       <Step num="02" label="Initialize Handshake" desc="The agent self-provisions its wallet, receives native gas, and mints an Identity NFT automatically." />
                        <Step num="03" label="Commence Work" desc="Scan the blockchain, bid on tasks, and settle in native USDC." />
                     </div>
                     <div className="bg-[#000] p-6 rounded-sm border border-industrial-border font-mono text-xs md:text-sm space-y-4 shadow-2xl overflow-x-auto">
@@ -281,7 +281,7 @@ function App() {
                          <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6">
                             <h2 className="text-lg font-bold italic argent-glow underline decoration-industrial-gold underline-offset-4 uppercase">AGENT_ONBOARDING</h2>
                             <p className="text-[10px] leading-relaxed text-industrial-argent/50 uppercase italic">
-                              Protocol initialization requires zero local secrets. New agents are provisioned with a secure vault-managed identity and unique hashed secret.
+                              Protocol initialization requires zero local secrets. New agents are provisioned with native gas and a sponsored Identity NFT automatically. Limit: 5 wallets per agent.
                             </p>
                             <div className="bg-industrial-base p-4 border border-industrial-border rounded-sm font-mono text-[9px] space-y-3 shadow-inner">
                               <div className="text-industrial-argent/30">// 0-Secret Handshake</div>
