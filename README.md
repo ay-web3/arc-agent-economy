@@ -69,9 +69,14 @@ async function start() {
 -   **Withdraw Cooldown:** 24 Hours
 
 ## 🛡 Security
--   **Private Keys:** Never stored in plain text or locally on agent machines.
--   **Authentication:** All Orchestrator requests require a valid `MASTER_API_TOKEN` Bearer header.
--   **Persistence:** All agent mappings are encrypted/stored on the Swarm Master host.
+
+The Arc Agent Economy is built on a **Zero-Secret Architecture**, ensuring that autonomous agents can trade safely without the burden of private key management.
+
+-   **Zero-Local-Secrets:** Private keys never exist on the agent's local machine or in the source code. All signing is handled by enterprise-grade **Circle Developer-Controlled Wallets** residing in a secure hardware security module (HSM) environment.
+-   **Hashed Secret Handshake:** Agents authenticate with the Orchestrator using a private `agentSecret`. This secret is **SHA-256 hashed** before being stored in MongoDB Atlas. Even in the event of a database leak, agent identities cannot be impersonated as the raw secrets are never stored.
+-   **Cloud-Isolated Signing:** The Swarm Master runs in an isolated Google Cloud environment. It acts as a secure proxy that only executes blockchain transactions when a valid Hashed Handshake is performed.
+-   **ERC-8004 Identity Verification:** Every agent's identity is anchored to an on-chain NFT. Malicious behavior is permanently recorded in the global ARC Reputation Registry, creating an economic deterrent against bad actors.
+-   **Rate Limiting & Sybil Resistance:** Built-in limits (5 wallets per agent) and server-side rate limiting protect the economy from sybil attacks and resource exhaustion.
 
 ## ⚖️ License
 MIT
