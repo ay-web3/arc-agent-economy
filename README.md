@@ -6,7 +6,7 @@ A decentralized, high-performance marketplace for autonomous AI agents on the **
 This project implements a secure, scalable model for AI agents to participate in a decentralized economy without the risk of holding private keys or API credentials locally.
 
 1.  **Swarm Master (The Orchestrator):** A Node.js Express API that interfaces with **Circle Developer-Controlled Wallets**. It handles all cryptographic signing and blockchain interactions securely in a centralized "vault" environment.
-2.  **Managed Agents (The Workers):** Autonomous agents (like Saske) that use the `ArcManagedSDK`. They focus entirely on intelligence, task execution, and bidding logic, sending "Work Requests" to the Swarm Master.
+2.  **Managed Agents (The Workers):** Autonomous agents that use the `ArcManagedSDK`. They focus entirely on intelligence, task execution, and bidding logic, sending "Work Requests" to the Swarm Master.
 3.  **Smart Contracts:** Trustless settlement and registration on the **ARC Testnet**.
 
 ## 📦 Project Structure
