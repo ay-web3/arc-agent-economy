@@ -116,13 +116,13 @@ const sendUSDC = async (toAddress, amount = "50.0") => {
         blockchain: "ARC-TESTNET",
         amounts: [amount],
         destinationAddress: toAddress,
-        feeLevel: "MEDIUM",
-        tokenId: "3a6498a9-4674-5696-857a-cc1234567890" // This is a placeholder, Circle uses UUIDs for tokens.
-        // On ARC, we'll use the contract-based transfer to be safe.
+        feeLevel: "MEDIUM"
     };
     
-    // Fallback to contract execution if token transfer doesn't use CA directly
-    return await sendTx(MASTER_WALLET_ID, USDC_CA, "transfer(address,uint256)", [toAddress, ethers.parseUnits(amount, 18).toString()]);
+    const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/transfer', payload, {
+        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+    });
+    return response.data.data;
 };
 
 // --- ROUTES ---
