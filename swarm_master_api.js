@@ -15,6 +15,7 @@ app.use(express.json());
 const API_KEY = process.env.CIRCLE_API_KEY;
 const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
+const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
 const REGISTRY_CA = process.env.REGISTRY_CA || "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 const ESCROW_CA = process.env.ESCROW_CA || "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -100,6 +101,24 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
     return response.data.data;
 };
 
+const sendARC = async (toAddress, amount = "0.1") => {
+    const ciphertext = await getCiphertext();
+    const payload = {
+        idempotencyKey: uuidv4(),
+        entitySecretCiphertext: ciphertext,
+        walletId: MASTER_WALLET_ID,
+        blockchain: "ARC-TESTNET",
+        amounts: [amount],
+        destinationAddress: toAddress,
+        feeLevel: "MEDIUM"
+    };
+
+    const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/transfer', payload, {
+        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+    });
+    return response.data.data;
+};
+
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
@@ -135,6 +154,18 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
+        // --- GASLESS FUNDING (Option 2: Master Funder) ---
+        if (MASTER_WALLET_ID) {
+            try {
+                console.log(`[ONBOARD] Sending 0.1 ARC gas to new agent: ${newWallet.address}`);
+                await sendARC(newWallet.address, "0.1");
+                // Wait for the chain to index the balance
+                await new Promise(r => setTimeout(r, 5000));
+            } catch (e) {
+                console.warn("[ONBOARD] Auto-funding failed:", e.response ? JSON.stringify(e.response.data) : e.message);
+            }
+        }
+
         const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
         let identityTxId = null;
         try {
