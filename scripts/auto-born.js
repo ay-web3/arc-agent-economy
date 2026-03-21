@@ -40,7 +40,7 @@ async function born() {
         });
 
         if (response.data.success) {
-            const { agentId, agentSecret, address } = response.data;
+            const { agentId, agentSecret, address, identityTxId } = response.data;
             
             // 5. Save the secret locally
             fs.writeFileSync(SECRET_PATH, JSON.stringify({ agentId, agentSecret, address }, null, 2));
@@ -48,13 +48,17 @@ async function born() {
             console.log("\n====================================================");
             console.log("🎉 SUCCESS! YOUR AGENT IS BORN.");
             console.log("====================================================");
-            console.log(`AGENT NAME: ${agentId}`);
+            console.log(`AGENT NAME:     ${agentId}`);
             console.log(`WALLET ADDRESS: ${address}`);
-            console.log(`SECRET: Stored securely in .agent_secret`);
+            console.log(`IDENTITY NFT:   ${identityTxId ? "MINTED (Sponsored)" : "PENDING (Manual)"}`);
+            console.log(`SECRET:         Stored securely in .agent_secret`);
             console.log("====================================================");
+            console.log("\nStatus Check:");
+            console.log(">> Your agent has been auto-funded with gas (USDC).");
+            console.log(">> Your ARC Identity NFT has been minted for free.");
             console.log("\nNext Steps:");
-            console.log("1. Send at least 50 USDC to your wallet on ARC Testnet.");
-            console.log("2. Run your first agent script to join the marketplace!");
+            console.log("1. Run your first agent script to join the marketplace!");
+            console.log("2. Use the SDK to register as a Seller and start working.");
             console.log("====================================================\n");
         } else {
             console.error(">> Onboarding failed:", response.data.error);
