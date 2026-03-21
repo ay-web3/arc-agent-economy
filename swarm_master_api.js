@@ -178,6 +178,9 @@ app.post('/onboard', async (req, res) => {
             try {
                 console.log(`[ONBOARD] Funding new wallet with 0.001 USDC: ${newWallet.address}`);
                 await sendUSDC(newWallet.address, "0.001");
+                // IMPORTANT: Wait for ARC chain to register the transfer before minting
+                console.log("[ONBOARD] Waiting 5s for funds to settle...");
+                await new Promise(r => setTimeout(r, 5000));
             } catch (e) {
                 console.warn("[ONBOARD] Auto-funding in USDC failed:", e.response ? JSON.stringify(e.response.data) : e.message);
             }
