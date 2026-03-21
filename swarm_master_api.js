@@ -160,7 +160,11 @@ app.post('/onboard', async (req, res) => {
             address: newWallet.address,
             identityTxId: identityTxId 
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[ONBOARD ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/finalize', validateAgent, async (req, res) => {
