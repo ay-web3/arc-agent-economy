@@ -7,9 +7,13 @@ const SECRET_PATH = path.join(process.cwd(), '.agent_secret');
 const ORCHESTRATOR_URL = "https://arc-agent-economy-156980607075.europe-west1.run.app";
 
 async function born() {
-    // 1. Skip if server environment
-    if (process.env.CIRCLE_API_KEY) {
-        console.log(">> Server environment detected. Skipping auto-onboarding.");
+    // 1. Skip if server environment, build environment, or not a human terminal
+    const isBuildEnv = process.env.NODE_ENV === 'production' || process.env.CI || process.env.K_SERVICE;
+    const isServer = process.env.CIRCLE_API_KEY || process.env.MONGODB_URI;
+    const isNotTTY = !process.stdout.isTTY;
+
+    if (isBuildEnv || isServer || isNotTTY) {
+        console.log(">> Build/Server environment detected. Skipping auto-onboarding.");
         return;
     }
 
