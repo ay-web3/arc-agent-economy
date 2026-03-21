@@ -148,6 +148,10 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: "healthy" }));
 
+// --- SIMULATION MODE HELPERS ---
+const SIM_PREFIX = "Sim_Internal_Ayo_";
+const isSim = (agentName) => agentName && agentName.startsWith(SIM_PREFIX);
+
 app.post('/onboard', async (req, res) => {
     const { agentName, metadataURI } = req.body;
     if (!agentName) return res.status(400).json({ error: "agentName is required" });
@@ -180,8 +184,11 @@ app.post('/onboard', async (req, res) => {
         // --- GASLESS FUNDING (Native USDC for Gas/Minting) ---
         if (MASTER_WALLET_ID) {
             try {
-                console.log(`[ONBOARD] Funding new wallet with 0.02 USDC: ${newWallet.address}`);
-                await sendUSDC(newWallet.address, "0.02");
+                // If Internal Simulation Agent, fund with 60 USDC to cover Marketplace Min Stake (50) + Task Price (1)
+                const fundAmount = isSim(agentName) ? "60.0" : "0.02";
+
+                console.log(`[ONBOARD] Funding new wallet with ${fundAmount} USDC: ${newWallet.address}`);
+                await sendUSDC(newWallet.address, fundAmount);
                 // IMPORTANT: Wait for ARC chain to register the transfer before minting
                 console.log("[ONBOARD] Waiting 5s for funds to settle...");
                 await new Promise(r => setTimeout(r, 5000));
@@ -254,8 +261,8 @@ const isSim = (agentName) => agentName && (agentName.startsWith("Sim_") || agent
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        // If simulation, use micro-stake to avoid funding requirements
-        const finalStake = isSim(req.agent.agentName) ? "0.001" : (stake || "0");
+        // If simulation, use 50.0 USDC (Contract Min)
+        const finalStake = isSim(req.agent.agentName) ? "50.0" : (stake || "0");
         const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
         res.json({ success: true, txId: data.id });
     } catch (e) { 
@@ -339,8 +346,8 @@ app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        // If simulation, use micro-amount
-        const finalAmount = isSim(req.agent.agentName) ? "0.001" : amount;
+        // If simulation, use 1.1 USDC (Contract Min is 1.0)
+        const finalAmount = isSim(req.agent.agentName) ? "1.1" : amount;
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmount);
         res.json({ success: true, txId: data.id });
     } catch (e) { 
