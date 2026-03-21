@@ -16,6 +16,7 @@ const API_KEY = process.env.CIRCLE_API_KEY;
 const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
 const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
+const USDC_CA = "0x3600000000000000000000000000000000000000";
 const REGISTRY_CA = process.env.REGISTRY_CA || "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 const ESCROW_CA = process.env.ESCROW_CA || "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -81,7 +82,7 @@ const validateAgent = async (req, res, next) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
-const sendTx = async (walletId, contractAddress, functionSig, args, value = "0") => {
+const sendTx = async (walletId, contractAddress, functionSig, args, value = "0", sponsored = false) => {
     const ciphertext = await getCiphertext();
     const payload = {
         idempotencyKey: uuidv4(),
@@ -94,6 +95,11 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
         abiParameters: args
     };
     if (value !== "0") payload.amount = [value];
+    
+    // Enable Circle Gas Station sponsorship if requested
+    if (sponsored) {
+        payload.userFeeConfig = { type: "sponsorship" };
+    }
 
     const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', payload, {
         headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
@@ -101,7 +107,7 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0")
     return response.data.data;
 };
 
-const sendARC = async (toAddress, amount = "0.1") => {
+const sendUSDC = async (toAddress, amount = "50.0") => {
     const ciphertext = await getCiphertext();
     const payload = {
         idempotencyKey: uuidv4(),
@@ -110,13 +116,13 @@ const sendARC = async (toAddress, amount = "0.1") => {
         blockchain: "ARC-TESTNET",
         amounts: [amount],
         destinationAddress: toAddress,
-        feeLevel: "MEDIUM"
+        feeLevel: "MEDIUM",
+        tokenId: "3a6498a9-4674-5696-857a-cc1234567890" // This is a placeholder, Circle uses UUIDs for tokens.
+        // On ARC, we'll use the contract-based transfer to be safe.
     };
-
-    const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/transfer', payload, {
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
-    });
-    return response.data.data;
+    
+    // Fallback to contract execution if token transfer doesn't use CA directly
+    return await sendTx(MASTER_WALLET_ID, USDC_CA, "transfer(address,uint256)", [toAddress, ethers.parseUnits(amount, 18).toString()]);
 };
 
 // --- ROUTES ---
@@ -154,26 +160,24 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // --- GASLESS FUNDING (Option 2: Master Funder) ---
+        // --- GASLESS FUNDING (USDC Sponsorship + Working Capital) ---
         if (MASTER_WALLET_ID) {
             try {
-                console.log(`[ONBOARD] Sending 0.1 ARC gas to new agent: ${newWallet.address}`);
-                await sendARC(newWallet.address, "0.1");
-                // Wait for the chain to index the balance
-                await new Promise(r => setTimeout(r, 5000));
+                console.log(`[ONBOARD] Funding new agent with 50.0 USDC: ${newWallet.address}`);
+                await sendUSDC(newWallet.address, "50.0");
             } catch (e) {
-                console.warn("[ONBOARD] Auto-funding failed:", e.response ? JSON.stringify(e.response.data) : e.message);
+                console.warn("[ONBOARD] Auto-funding in USDC failed:", e.response ? JSON.stringify(e.response.data) : e.message);
             }
         }
 
         const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
         let identityTxId = null;
         try {
-            // Note: This might fail if the wallet is not yet funded with ARC gas.
-            const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI]);
+            // Use Sponsored Fees (Circle Gas Station) so the agent pays 0 gas
+            const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI], "0", true);
             identityTxId = identityTx.id;
         } catch (e) {
-            console.warn("[ONBOARD] Identity NFT mint failed (likely no gas):", e.message);
+            console.warn("[ONBOARD] Identity NFT mint failed (even with sponsorship):", e.response ? JSON.stringify(e.response.data) : e.message);
         }
 
         agent = new Agent({
