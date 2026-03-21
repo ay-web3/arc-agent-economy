@@ -37,8 +37,11 @@ mongoose.connect(MONGODB_URI)
 
 const agentSchema = new mongoose.Schema({
     agentName: { type: String, required: true, unique: true },
-    walletId: { type: String, required: true },
-    address: { type: String, required: true },
+    wallets: [{
+        walletId: { type: String, required: true },
+        address: { type: String, required: true },
+        onboardedAt: { type: Date, default: Date.now }
+    }],
     secretHash: { type: String, required: true },
     arcIdentityId: { type: String },
     onboardedAt: { type: Date, default: Date.now }
@@ -77,7 +80,10 @@ const validateAgent = async (req, res, next) => {
         }
 
         req.agent = agent;
-        req.walletId = agent.walletId;
+        // Use the primary/last wallet for transactions
+        const lastWallet = agent.wallets[agent.wallets.length - 1];
+        if (!lastWallet) return res.status(404).json({ error: "No wallets found for this agent" });
+        req.walletId = lastWallet.walletId;
         next();
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -107,7 +113,7 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
     return response.data.data;
 };
 
-const sendUSDC = async (toAddress, amount = "50.0") => {
+const sendUSDC = async (toAddress, amount = "0.001") => {
     const ciphertext = await getCiphertext();
     const payload = {
         idempotencyKey: uuidv4(),
@@ -144,7 +150,14 @@ app.post('/onboard', async (req, res) => {
 
     try {
         let agent = await Agent.findOne({ agentName });
-        if (agent) return res.status(409).json({ error: "Name taken" });
+        
+        // --- LIMIT CHECK: MAX 5 WALLETS PER AGENT ---
+        if (agent && agent.wallets.length >= 5) {
+            return res.status(403).json({ 
+                error: "Wallet limit reached", 
+                message: "You can only create up to 5 wallets per agent name." 
+            });
+        }
 
         const rawSecret = crypto.randomBytes(32).toString('hex');
         const ciphertext = await getCiphertext();
@@ -160,11 +173,11 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // --- GASLESS FUNDING (USDC Sponsorship + Working Capital) ---
+        // --- GASLESS FUNDING (Native USDC for Gas/Minting) ---
         if (MASTER_WALLET_ID) {
             try {
-                console.log(`[ONBOARD] Funding new agent with 50.0 USDC: ${newWallet.address}`);
-                await sendUSDC(newWallet.address, "50.0");
+                console.log(`[ONBOARD] Funding new wallet with 0.001 USDC: ${newWallet.address}`);
+                await sendUSDC(newWallet.address, "0.001");
             } catch (e) {
                 console.warn("[ONBOARD] Auto-funding in USDC failed:", e.response ? JSON.stringify(e.response.data) : e.message);
             }
@@ -180,13 +193,19 @@ app.post('/onboard', async (req, res) => {
             console.warn("[ONBOARD] Identity NFT mint failed (even with sponsorship):", e.response ? JSON.stringify(e.response.data) : e.message);
         }
 
-        agent = new Agent({
-            agentName,
-            walletId: newWallet.id,
-            address: newWallet.address,
-            secretHash: hashSecret(rawSecret)
-        });
-        await agent.save();
+        if (agent) {
+            // Existing agent adding a new wallet (up to 5)
+            agent.wallets.push({ walletId: newWallet.id, address: newWallet.address });
+            await agent.save();
+        } else {
+            // Brand new agent
+            agent = new Agent({
+                agentName,
+                wallets: [{ walletId: newWallet.id, address: newWallet.address }],
+                secretHash: hashSecret(rawSecret)
+            });
+            await agent.save();
+        }
 
         res.json({ 
             success: true, 
