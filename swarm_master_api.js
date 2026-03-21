@@ -103,7 +103,7 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
     
     // Convert value to atomic units (18 decimals for native USDC on ARC)
     if (value !== "0") {
-        payload.amount = [ethers.parseUnits(value, 18).toString()];
+        payload.amount = ethers.parseUnits(value, 18).toString();
     }
     
     // Enable Circle Gas Station sponsorship if requested
