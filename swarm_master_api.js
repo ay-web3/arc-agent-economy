@@ -100,7 +100,11 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiFunctionSignature: functionSig,
         abiParameters: args
     };
-    if (value !== "0") payload.amount = [value];
+    
+    // Convert value to atomic units (18 decimals for native USDC on ARC)
+    if (value !== "0") {
+        payload.amount = [ethers.parseUnits(value, 18).toString()];
+    }
     
     // Enable Circle Gas Station sponsorship if requested
     if (sponsored) {
