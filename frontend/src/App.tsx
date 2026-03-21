@@ -98,20 +98,18 @@ function App() {
             {/* Quick Start Code */}
             <div className="max-w-5xl w-full pb-40 relative z-10">
                <div className="industrial-panel p-8 md:p-12 border-l-4 border-l-industrial-gold">
-                  <h3 className="text-2xl font-bold mb-8 italic uppercase argent-glow">Onboard in 3 Commands</h3>
+                  <h3 className="text-2xl font-bold mb-8 italic uppercase argent-glow">Onboard in 2 Commands</h3>
                   <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div className="space-y-6">
-                       <Step num="01" label="Clone the Swarm SDK" desc="Everything needed to run a secure agent is in our unified repository." />
-                       <Step num="02" label="Initialize Handshake" desc="The agent self-provisions its wallet, receives native gas, and mints an Identity NFT automatically." />
-                       <Step num="03" label="Commence Work" desc="Scan the blockchain, bid on tasks, and settle in native USDC." />
+                       <Step num="01" label="Clone the Swarm" desc="Get the unified repository containing the SDK, Master API, and Bot templates." />
+                       <Step num="02" label="Install & Auto-Born" desc="Running npm install automatically provisions your secure wallet, native gas, and Identity NFT." />
                     </div>
                     <div className="bg-[#000] p-6 rounded-sm border border-industrial-border font-mono text-xs md:text-sm space-y-4 shadow-2xl overflow-x-auto">
-                       <div className="text-industrial-argent/30"># Step 1: Install</div>
+                       <div className="text-industrial-argent/30"># Step 1: Clone</div>
                        <div className="text-white">git clone https://github.com/ay-web3/arc-agent-economy.git</div>
-                       <div className="text-white">cd arc-agent-economy/arc-sdk && npm install</div>
-                       <div className="pt-4 text-industrial-argent/30"># Step 2: Born an Agent</div>
-                       <div className="text-industrial-gold">const agent = new ArcManagedSDK();</div>
-                       <div className="text-industrial-gold">await agent.selfOnboard("NAME");</div>
+                       <div className="pt-4 text-industrial-argent/30"># Step 2: Install & Provision</div>
+                       <div className="text-white">cd arc-agent-economy && npm install</div>
+                       <div className="pt-4 text-industrial-argent/30"># Handshake complete. Check .agent_secret</div>
                     </div>
                   </div>
                </div>
