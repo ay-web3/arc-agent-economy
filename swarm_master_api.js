@@ -236,7 +236,11 @@ app.post('/execute/finalize', validateAgent, async (req, res) => {
             [req.agent.arcIdentityId || "0", "100", "0", tag, `Task #${taskId}`, "", "", feedbackHash]);
 
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[FINALIZE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 // --- SIMULATION MODE HELPERS ---
@@ -250,7 +254,11 @@ app.post('/execute/register', validateAgent, async (req, res) => {
         const finalStake = isSim(req.agent.agentName) ? "0.001" : (stake || "0");
         const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[REGISTER ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/updateProfile', validateAgent, async (req, res) => {
@@ -258,7 +266,11 @@ app.post('/execute/updateProfile', validateAgent, async (req, res) => {
         const { capHash, pubKey, active } = req.body;
         const data = await sendTx(req.walletId, REGISTRY_CA, "updateProfile(bytes32,bytes32,bool)", [capHash, pubKey, active]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[UPDATE_PROFILE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/setRoles', validateAgent, async (req, res) => {
@@ -266,7 +278,11 @@ app.post('/execute/setRoles', validateAgent, async (req, res) => {
         const { wantSeller, wantVerifier } = req.body;
         const data = await sendTx(req.walletId, REGISTRY_CA, "setRoles(bool,bool)", [wantSeller, wantVerifier]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[SET_ROLES ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/topUpStake', validateAgent, async (req, res) => {
@@ -274,7 +290,11 @@ app.post('/execute/topUpStake', validateAgent, async (req, res) => {
         const { amount } = req.body;
         const data = await sendTx(req.walletId, REGISTRY_CA, "topUpStake()", [], amount);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[TOPUP ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/withdraw/request', validateAgent, async (req, res) => {
@@ -282,21 +302,33 @@ app.post('/execute/withdraw/request', validateAgent, async (req, res) => {
         const { amount } = req.body;
         const data = await sendTx(req.walletId, REGISTRY_CA, "requestWithdraw(uint256)", [ethers.parseUnits(amount, 18).toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[WITHDRAW_REQ ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/withdraw/cancel', validateAgent, async (req, res) => {
     try {
         const data = await sendTx(req.walletId, REGISTRY_CA, "cancelWithdraw()", []);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[WITHDRAW_CANCEL ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
     try {
         const data = await sendTx(req.walletId, REGISTRY_CA, "completeWithdraw()", []);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[WITHDRAW_COMPLETE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 // Escrow Endpoints
@@ -307,7 +339,11 @@ app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
         const finalAmount = isSim(req.agent.agentName) ? "0.001" : amount;
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmount);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[CREATE_TASK ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/reject', validateAgent, async (req, res) => {
@@ -315,7 +351,11 @@ app.post('/execute/reject', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[REJECT ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
@@ -323,7 +363,11 @@ app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[VERIFIER_TIMEOUT ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/placeBid', validateAgent, async (req, res) => {
@@ -331,7 +375,11 @@ app.post('/execute/placeBid', validateAgent, async (req, res) => {
         const { taskId, price, eta, meta } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[BID ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/selectBid', validateAgent, async (req, res) => {
@@ -339,7 +387,11 @@ app.post('/execute/selectBid', validateAgent, async (req, res) => {
         const { taskId, bidIndex } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "selectBid(uint256,uint256)", [taskId.toString(), bidIndex.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[SELECT_BID ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/finalizeAuction', validateAgent, async (req, res) => {
@@ -347,7 +399,11 @@ app.post('/execute/finalizeAuction', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "finalizeAuction(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[FINALIZE_AUCTION ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/cancelIfNoBids', validateAgent, async (req, res) => {
@@ -355,7 +411,11 @@ app.post('/execute/cancelIfNoBids', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "cancelIfNoBids(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[CANCEL_TASK ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/submitResult', validateAgent, async (req, res) => {
@@ -363,7 +423,11 @@ app.post('/execute/submitResult', validateAgent, async (req, res) => {
         const { taskId, resultHash, resultURI } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [taskId.toString(), resultHash, resultURI]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[SUBMIT ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/timeoutRefund', validateAgent, async (req, res) => {
@@ -371,7 +435,11 @@ app.post('/execute/timeoutRefund', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "timeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[TIMEOUT ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/approve', validateAgent, async (req, res) => {
@@ -379,7 +447,11 @@ app.post('/execute/approve', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "approve(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[APPROVE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/openDispute', validateAgent, async (req, res) => {
@@ -387,7 +459,11 @@ app.post('/execute/openDispute', validateAgent, async (req, res) => {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "openDispute(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[DISPUTE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
@@ -395,7 +471,11 @@ app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
         const { taskId, ruling, buyerBps } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "resolveDispute(uint256,uint8,uint16)", [taskId.toString(), ruling.toString(), buyerBps.toString()]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("[RESOLVE ERROR]", errMsg);
+        res.status(500).json({ error: errMsg }); 
+    }
 });
 
 app.post('/updateArcIdentity', validateAgent, async (req, res) => {
