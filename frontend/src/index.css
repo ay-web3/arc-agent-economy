@@ -6,6 +6,8 @@
   body {
     @apply bg-industrial-base text-industrial-argent font-mono;
     -webkit-font-smoothing: antialiased;
+    /* Improved mobile scrolling */
+    -webkit-overflow-scrolling: touch;
   }
 }
 
