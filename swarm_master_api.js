@@ -31,10 +31,6 @@ if (!API_KEY || !ENTITY_SECRET || !WALLET_SET_ID || !MONGODB_URI) {
 }
 
 // --- DATABASE SETUP (MONGODB) ---
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log("[DATABASE] Connected to MongoDB Atlas"))
-    .catch(err => console.error("[DATABASE] Connection error:", err));
-
 const agentSchema = new mongoose.Schema({
     agentName: { type: String, required: true, unique: true },
     wallets: [{
@@ -42,6 +38,8 @@ const agentSchema = new mongoose.Schema({
         address: { type: String, required: true },
         onboardedAt: { type: Date, default: Date.now }
     }],
+    walletId: { type: String }, // Legacy field for backwards compatibility
+    address: { type: String },  // Legacy field
     secretHash: { type: String, required: true },
     arcIdentityId: { type: String },
     onboardedAt: { type: Date, default: Date.now }
@@ -80,8 +78,8 @@ const validateAgent = async (req, res, next) => {
         }
 
         req.agent = agent;
+        
         // --- BACKWARDS COMPATIBILITY FIX ---
-        // Handle both new schema (wallets array) and old schema (walletId at root)
         let activeWalletId = agent.walletId;
         if (agent.wallets && agent.wallets.length > 0) {
             activeWalletId = agent.wallets[agent.wallets.length - 1].walletId;
@@ -112,7 +110,6 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         payload.amount = ethers.parseUnits(value, 18).toString();
     }
     
-    // Enable Circle Gas Station sponsorship if requested
     if (sponsored) {
         payload.userFeeConfig = { type: "sponsorship" };
     }
@@ -141,6 +138,10 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
     return response.data.data;
 };
 
+// --- SIMULATION MODE HELPERS ---
+const SIM_PREFIX = "Sim_Internal_Ayo_";
+const isSim = (agentName) => agentName && agentName.startsWith(SIM_PREFIX);
+
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
@@ -154,10 +155,6 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: "healthy" }));
 
-// --- SIMULATION MODE HELPERS ---
-const SIM_PREFIX = "Sim_Internal_Ayo_";
-const isSim = (agentName) => agentName && agentName.startsWith(SIM_PREFIX);
-
 app.post('/onboard', async (req, res) => {
     const { agentName, metadataURI } = req.body;
     if (!agentName) return res.status(400).json({ error: "agentName is required" });
@@ -165,8 +162,7 @@ app.post('/onboard', async (req, res) => {
     try {
         let agent = await Agent.findOne({ agentName });
         
-        // --- LIMIT CHECK: MAX 5 WALLETS PER AGENT ---
-        if (agent && agent.wallets.length >= 5) {
+        if (agent && agent.wallets && agent.wallets.length >= 5) {
             return res.status(403).json({ 
                 error: "Wallet limit reached", 
                 message: "You can only create up to 5 wallets per agent name." 
@@ -187,15 +183,11 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = response.data.data.wallets[0];
         
-        // --- GASLESS FUNDING (Native USDC for Gas/Minting) ---
         if (MASTER_WALLET_ID) {
             try {
-                // If Internal Simulation Agent, fund with 60 USDC to cover Marketplace Min Stake (50) + Task Price (1)
                 const fundAmount = isSim(agentName) ? "60.0" : "0.02";
-
                 console.log(`[ONBOARD] Funding new wallet with ${fundAmount} USDC: ${newWallet.address}`);
                 await sendUSDC(newWallet.address, fundAmount);
-                // IMPORTANT: Wait for ARC chain to register the transfer before minting
                 console.log("[ONBOARD] Waiting 5s for funds to settle...");
                 await new Promise(r => setTimeout(r, 5000));
             } catch (e) {
@@ -206,7 +198,6 @@ app.post('/onboard', async (req, res) => {
         const defaultURI = "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei";
         let identityTxId = null;
         try {
-            // Use Sponsored Fees (Circle Gas Station) so the agent pays 0 gas
             const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI], "0", true);
             identityTxId = identityTx.id;
         } catch (e) {
@@ -214,12 +205,10 @@ app.post('/onboard', async (req, res) => {
         }
 
         if (agent) {
-            // Existing agent adding a new wallet (up to 5)
-            if (!agent.wallets) agent.wallets = []; // Initialize if coming from old schema
+            if (!agent.wallets) agent.wallets = []; 
             agent.wallets.push({ walletId: newWallet.id, address: newWallet.address });
             await agent.save();
         } else {
-            // Brand new agent
             agent = new Agent({
                 agentName,
                 wallets: [{ walletId: newWallet.id, address: newWallet.address }],
@@ -261,14 +250,10 @@ app.post('/execute/finalize', validateAgent, async (req, res) => {
     }
 });
 
-// --- SIMULATION MODE HELPERS ---
-const isSim = (agentName) => agentName && (agentName.startsWith("Sim_") || agentName.startsWith("Sovereign_Launch"));
-
 // Registry Endpoints
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        // If simulation, use 50.0 USDC (Contract Min)
         const finalStake = isSim(req.agent.agentName) ? "50.0" : (stake || "0");
         const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
         res.json({ success: true, txId: data.id });
@@ -353,7 +338,6 @@ app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        // If simulation, use 1.1 USDC (Contract Min is 1.0)
         const finalAmount = isSim(req.agent.agentName) ? "1.1" : amount;
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmount);
         res.json({ success: true, txId: data.id });
@@ -543,4 +527,23 @@ app.get('/escrow/counter', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Swarm Master (V1-PRO Secure) on port ${PORT}`));
+
+async function startServer() {
+    try {
+        console.log("[STARTUP] Connecting to MongoDB...");
+        await mongoose.connect(MONGODB_URI);
+        console.log("[STARTUP] Database connected.");
+
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`Swarm Master (V1-PRO Secure) listening on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error("[STARTUP ERROR] Critical failure:", err.message);
+        // Bind to port anyway to prevent Cloud Run "failed to listen" loop
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`Emergency mode active on port ${PORT} due to startup error.`);
+        });
+    }
+}
+
+startServer();
