@@ -36,8 +36,8 @@ const agentSchema = new mongoose.Schema({
         address: { type: String, required: true },
         onboardedAt: { type: Date, default: Date.now }
     }],
-    walletId: String, // Backwards compat
-    address: String,  // Backwards compat
+    walletId: String, 
+    address: String,  
     secretHash: { type: String, required: true },
     arcIdentityId: String,
     onboardedAt: { type: Date, default: Date.now }
@@ -90,9 +90,12 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiFunctionSignature: functionSig,
         abiParameters: args
     };
+    
+    // Circle ARC API expects human-readable amount strings.
     if (value !== "0") {
-        payload.amount = ethers.parseUnits(value, 18).toString();
+        payload.amount = value;
     }
+    
     if (sponsored) {
         payload.userFeeConfig = { type: "sponsorship" };
     }
@@ -110,7 +113,7 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
         entitySecretCiphertext: ciphertext,
         walletId: MASTER_WALLET_ID,
         blockchain: "ARC-TESTNET",
-        amounts: [ethers.parseUnits(amount, 18).toString()],
+        amounts: [amount], // Array of human-readable strings
         destinationAddress: toAddress,
         feeLevel: "MEDIUM"
     };
@@ -121,7 +124,6 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
     return response.data.data;
 };
 
-// Simulation prefix
 const SIM_PREFIX = "Sim_Internal_Ayo_";
 const isSim = (name) => name && name.startsWith(SIM_PREFIX);
 
@@ -152,22 +154,19 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = walletRes.data.data.wallets[0];
         
-        // Airdrop Gas/Capital
         if (MASTER_WALLET_ID) {
             try {
-                // For Sim, give 2.0 USDC (Enough for gas and small task)
                 const amt = isSim(agentName) ? "2.0" : "0.02";
                 await sendUSDC(newWallet.address, amt);
-                await new Promise(r => setTimeout(r, 12000)); // wait for chain
-            } catch (e) {}
+                await new Promise(r => setTimeout(r, 12000));
+            } catch (e) { console.error("[FUNDING]", e.message); }
         }
 
-        // Identity Mint
         let identityTxId = null;
         try {
             const idTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"], "0", true);
             identityTxId = idTx.id;
-        } catch (e) {}
+        } catch (e) { console.error("[IDENTITY]", e.message); }
 
         if (agent) {
             if (!agent.wallets) agent.wallets = [];
@@ -186,21 +185,21 @@ app.post('/onboard', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Marketplace Endpoints
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        // Sim agents can register with 0.1 USDC stake
         const finalStake = isSim(req.agent.agentName) ? "0.1" : (stake || "0");
         const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        const msg = e.response ? JSON.stringify(e.response.data) : e.message;
+        res.status(500).json({ error: msg }); 
+    }
 });
 
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        // Sim agents can create tasks for 0.1 USDC
         const finalAmt = isSim(req.agent.agentName) ? "1.1" : amount;
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmt);
         res.json({ success: true, txId: data.id });
@@ -210,41 +209,11 @@ app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
 app.post('/execute/placeBid', validateAgent, async (req, res) => {
     try {
         const { taskId, price, eta, meta } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
+        const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), price, (eta || 3600).toString(), meta || ethers.ZeroHash]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Other endpoints (minimal implementations for stability)
-app.post('/execute/selectBid', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, ESCROW_CA, "selectBid(uint256,uint256)", [req.body.taskId.toString(), req.body.bidIndex.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/execute/submitResult', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [req.body.taskId.toString(), req.body.resultHash, req.body.resultURI]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/execute/approve', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, ESCROW_CA, "approve(uint256)", [req.body.taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/execute/finalize', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [req.body.taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Data endpoints
 app.get('/escrow/counter', async (req, res) => {
     try {
         const p = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
@@ -266,6 +235,6 @@ app.get('/registry/profile/:address', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 async function start() {
     await mongoose.connect(MONGODB_URI);
-    app.listen(PORT, "0.0.0.0", () => console.log(`Master alive on ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () => console.log(`Master live on ${PORT}`));
 }
 start().catch(err => console.error(err));
