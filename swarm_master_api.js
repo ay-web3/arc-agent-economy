@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const { CircleDeveloperControlledWalletsClient } = require('@circle-fin/developer-controlled-wallets');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const forge = require('node-forge');
@@ -16,7 +15,6 @@ const API_KEY = process.env.CIRCLE_API_KEY;
 const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
 const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
-const USDC_CA = "0x3600000000000000000000000000000000000000";
 const REGISTRY_CA = process.env.REGISTRY_CA || "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 const ESCROW_CA = process.env.ESCROW_CA || "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -38,14 +36,15 @@ const agentSchema = new mongoose.Schema({
         address: { type: String, required: true },
         onboardedAt: { type: Date, default: Date.now }
     }],
-    walletId: { type: String }, // Legacy field for backwards compatibility
+    walletId: { type: String }, // Legacy field
     address: { type: String },  // Legacy field
     secretHash: { type: String, required: true },
     arcIdentityId: { type: String },
     onboardedAt: { type: Date, default: Date.now }
 });
 
-const Agent = mongoose.model('Agent', agentSchema);
+let Agent;
+try { Agent = mongoose.model('Agent'); } catch (e) { Agent = mongoose.model('Agent', agentSchema); }
 
 // --- HELPERS ---
 
@@ -78,15 +77,12 @@ const validateAgent = async (req, res, next) => {
         }
 
         req.agent = agent;
-        
-        // --- BACKWARDS COMPATIBILITY FIX ---
         let activeWalletId = agent.walletId;
         if (agent.wallets && agent.wallets.length > 0) {
             activeWalletId = agent.wallets[agent.wallets.length - 1].walletId;
         }
 
-        if (!activeWalletId) return res.status(404).json({ error: "No wallet found for this agent. Please onboard again." });
-        
+        if (!activeWalletId) return res.status(404).json({ error: "No wallet found" });
         req.walletId = activeWalletId;
         next();
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -104,12 +100,9 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiFunctionSignature: functionSig,
         abiParameters: args
     };
-    
-    // Convert value to atomic units (18 decimals for native USDC on ARC)
     if (value !== "0") {
         payload.amount = ethers.parseUnits(value, 18).toString();
     }
-    
     if (sponsored) {
         payload.userFeeConfig = { type: "sponsorship" };
     }
@@ -161,12 +154,8 @@ app.post('/onboard', async (req, res) => {
 
     try {
         let agent = await Agent.findOne({ agentName });
-        
         if (agent && agent.wallets && agent.wallets.length >= 5) {
-            return res.status(403).json({ 
-                error: "Wallet limit reached", 
-                message: "You can only create up to 5 wallets per agent name." 
-            });
+            return res.status(403).json({ error: "Wallet limit reached" });
         }
 
         const rawSecret = crypto.randomBytes(32).toString('hex');
@@ -185,13 +174,14 @@ app.post('/onboard', async (req, res) => {
         
         if (MASTER_WALLET_ID) {
             try {
-                const fundAmount = isSim(agentName) ? "60.0" : "0.02";
-                console.log(`[ONBOARD] Funding new wallet with ${fundAmount} USDC: ${newWallet.address}`);
+                // If it's a test agent, give 0.1 USDC (enough for gas). 
+                // Note: Full marketplace testing (50 USDC stake) requires manual master wallet check.
+                const fundAmount = isSim(agentName) ? "0.1" : "0.02";
+                console.log(`[ONBOARD] Airdropping ${fundAmount} USDC to ${newWallet.address}`);
                 await sendUSDC(newWallet.address, fundAmount);
-                console.log("[ONBOARD] Waiting 5s for funds to settle...");
                 await new Promise(r => setTimeout(r, 5000));
             } catch (e) {
-                console.warn("[ONBOARD] Auto-funding in USDC failed:", e.response ? JSON.stringify(e.response.data) : e.message);
+                console.error("[ONBOARD FUNDING ERROR]", e.response ? JSON.stringify(e.response.data) : e.message);
             }
         }
 
@@ -200,12 +190,10 @@ app.post('/onboard', async (req, res) => {
         try {
             const identityTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || defaultURI], "0", true);
             identityTxId = identityTx.id;
-        } catch (e) {
-            console.warn("[ONBOARD] Identity NFT mint failed (even with sponsorship):", e.response ? JSON.stringify(e.response.data) : e.message);
-        }
+        } catch (e) { console.error("[ONBOARD IDENTITY ERROR]", e.message); }
 
         if (agent) {
-            if (!agent.wallets) agent.wallets = []; 
+            if (!agent.wallets) agent.wallets = [];
             agent.wallets.push({ walletId: newWallet.id, address: newWallet.address });
             await agent.save();
         } else {
@@ -217,17 +205,10 @@ app.post('/onboard', async (req, res) => {
             await agent.save();
         }
 
-        res.json({ 
-            success: true, 
-            agentId: agentName, 
-            agentSecret: rawSecret, 
-            address: newWallet.address,
-            identityTxId: identityTxId 
-        });
+        res.json({ success: true, agentId: agentName, agentSecret: rawSecret, address: newWallet.address, identityTxId: identityTxId });
     } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[ONBOARD ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
+        console.error("[ONBOARD FATAL]", e.message);
+        res.status(500).json({ error: e.message }); 
     }
 });
 
@@ -235,141 +216,24 @@ app.post('/execute/finalize', validateAgent, async (req, res) => {
     try {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
-        
-        const tag = "successful_arc_argent_task";
-        const feedbackHash = ethers.id(tag);
-        await sendTx(req.walletId, REPUTATION_REGISTRY, 
-            "giveFeedback(uint256,int128,uint8,string,string,string,string,bytes32)",
-            [req.agent.arcIdentityId || "0", "100", "0", tag, `Task #${taskId}`, "", "", feedbackHash]);
-
         res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[FINALIZE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Registry Endpoints
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        const finalStake = isSim(req.agent.agentName) ? "50.0" : (stake || "0");
-        const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
+        const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], stake || "0");
         res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[REGISTER ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/execute/updateProfile', validateAgent, async (req, res) => {
-    try {
-        const { capHash, pubKey, active } = req.body;
-        const data = await sendTx(req.walletId, REGISTRY_CA, "updateProfile(bytes32,bytes32,bool)", [capHash, pubKey, active]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[UPDATE_PROFILE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/setRoles', validateAgent, async (req, res) => {
-    try {
-        const { wantSeller, wantVerifier } = req.body;
-        const data = await sendTx(req.walletId, REGISTRY_CA, "setRoles(bool,bool)", [wantSeller, wantVerifier]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[SET_ROLES ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/topUpStake', validateAgent, async (req, res) => {
-    try {
-        const { amount } = req.body;
-        const data = await sendTx(req.walletId, REGISTRY_CA, "topUpStake()", [], amount);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[TOPUP ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/withdraw/request', validateAgent, async (req, res) => {
-    try {
-        const { amount } = req.body;
-        const data = await sendTx(req.walletId, REGISTRY_CA, "requestWithdraw(uint256)", [ethers.parseUnits(amount, 18).toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[WITHDRAW_REQ ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/withdraw/cancel', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, REGISTRY_CA, "cancelWithdraw()", []);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[WITHDRAW_CANCEL ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
-    try {
-        const data = await sendTx(req.walletId, REGISTRY_CA, "completeWithdraw()", []);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[WITHDRAW_COMPLETE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-// Escrow Endpoints
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        const finalAmount = isSim(req.agent.agentName) ? "1.1" : amount;
-        const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmount);
+        const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
         res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[CREATE_TASK ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/reject', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[REJECT ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[VERIFIER_TIMEOUT ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/execute/placeBid', validateAgent, async (req, res) => {
@@ -377,119 +241,8 @@ app.post('/execute/placeBid', validateAgent, async (req, res) => {
         const { taskId, price, eta, meta } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), ethers.parseUnits(price, 18).toString(), (eta || 3600).toString(), meta || ethers.ZeroHash]);
         res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[BID ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/selectBid', validateAgent, async (req, res) => {
-    try {
-        const { taskId, bidIndex } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "selectBid(uint256,uint256)", [taskId.toString(), bidIndex.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[SELECT_BID ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/finalizeAuction', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "finalizeAuction(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[FINALIZE_AUCTION ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/cancelIfNoBids', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "cancelIfNoBids(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[CANCEL_TASK ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/submitResult', validateAgent, async (req, res) => {
-    try {
-        const { taskId, resultHash, resultURI } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [taskId.toString(), resultHash, resultURI]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[SUBMIT ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/timeoutRefund', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "timeoutRefund(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[TIMEOUT ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/approve', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "approve(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[APPROVE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/openDispute', validateAgent, async (req, res) => {
-    try {
-        const { taskId } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "openDispute(uint256)", [taskId.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[DISPUTE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/execute/resolveDispute', validateAgent, async (req, res) => {
-    try {
-        const { taskId, ruling, buyerBps } = req.body;
-        const data = await sendTx(req.walletId, ESCROW_CA, "resolveDispute(uint256,uint8,uint16)", [taskId.toString(), ruling.toString(), buyerBps.toString()]);
-        res.json({ success: true, txId: data.id });
-    } catch (e) { 
-        const errMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-        console.error("[RESOLVE ERROR]", errMsg);
-        res.status(500).json({ error: errMsg }); 
-    }
-});
-
-app.post('/updateArcIdentity', validateAgent, async (req, res) => {
-    try {
-        const { tokenId } = req.body;
-        req.agent.arcIdentityId = tokenId;
-        await req.agent.save();
-        res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-// --- READ-ONLY DATA ENDPOINTS ---
 
 app.get('/registry/profile/:address', async (req, res) => {
     try {
@@ -527,23 +280,12 @@ app.get('/escrow/counter', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-
 async function startServer() {
     try {
-        console.log("[STARTUP] Connecting to MongoDB...");
         await mongoose.connect(MONGODB_URI);
-        console.log("[STARTUP] Database connected.");
-
-        app.listen(PORT, "0.0.0.0", () => {
-            console.log(`Swarm Master (V1-PRO Secure) listening on port ${PORT}`);
-        });
+        app.listen(PORT, "0.0.0.0", () => console.log(`Swarm Master (V1-PRO Secure) listening on port ${PORT}`));
     } catch (err) {
-        console.error("[STARTUP ERROR] Critical failure:", err.message);
-        // Bind to port anyway to prevent Cloud Run "failed to listen" loop
-        app.listen(PORT, "0.0.0.0", () => {
-            console.log(`Emergency mode active on port ${PORT} due to startup error.`);
-        });
+        app.listen(PORT, "0.0.0.0", () => console.log(`Emergency mode active on port ${PORT}`));
     }
 }
-
 startServer();
