@@ -46,9 +46,9 @@ async function run() {
         const taskRes = await axios.post(`${ORCHESTRATOR}/execute/createOpenTask`, {
             agentId: buyer.agentId,
             agentSecret: buyer.agentSecret,
-            jobDeadline: now + 3600,
-            bidDeadline: now + 600,
-            verifierDeadline: now + 1200,
+            jobDeadline: now + 3600,        // Job due in 1 hour
+            bidDeadline: now + 600,         // Bidding ends in 10 mins
+            verifierDeadline: now + 7200,   // Verification ends in 2 hours (MUST be > jobDeadline)
             taskHash: ethers.id(`Autonomous Task ${id}`),
             verifiers: ["0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"], 
             quorumM: 1,
