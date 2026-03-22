@@ -80,10 +80,16 @@ const validateAgent = async (req, res, next) => {
         }
 
         req.agent = agent;
-        // Use the primary/last wallet for transactions
-        const lastWallet = agent.wallets[agent.wallets.length - 1];
-        if (!lastWallet) return res.status(404).json({ error: "No wallets found for this agent" });
-        req.walletId = lastWallet.walletId;
+        // --- BACKWARDS COMPATIBILITY FIX ---
+        // Handle both new schema (wallets array) and old schema (walletId at root)
+        let activeWalletId = agent.walletId;
+        if (agent.wallets && agent.wallets.length > 0) {
+            activeWalletId = agent.wallets[agent.wallets.length - 1].walletId;
+        }
+
+        if (!activeWalletId) return res.status(404).json({ error: "No wallet found for this agent. Please onboard again." });
+        
+        req.walletId = activeWalletId;
         next();
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -209,6 +215,7 @@ app.post('/onboard', async (req, res) => {
 
         if (agent) {
             // Existing agent adding a new wallet (up to 5)
+            if (!agent.wallets) agent.wallets = []; // Initialize if coming from old schema
             agent.wallets.push({ walletId: newWallet.id, address: newWallet.address });
             await agent.save();
         } else {
