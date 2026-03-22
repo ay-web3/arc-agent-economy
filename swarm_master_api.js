@@ -102,8 +102,10 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiParameters: args
     };
     
+    // Circle's payload.amount for ARC handles decimals automatically when passed as a human-readable string.
+    // Do NOT parseUnits here or it will result in a massive number.
     if (value !== "0") {
-        payload.amount = ethers.parseUnits(value, 18).toString();
+        payload.amount = value;
     }
     
     if (sponsored) {
