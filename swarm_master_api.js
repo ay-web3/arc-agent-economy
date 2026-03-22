@@ -177,7 +177,9 @@ app.post('/onboard', async (req, res) => {
         
         if (MASTER_WALLET_ID) {
             try {
-                const fundAmount = isSim(agentName) ? "0.1" : "0.02";
+                // To complete a full simulation, agents need 50 USDC to stake.
+                // We fund internal simulation agents with 55 USDC.
+                const fundAmount = isSim(agentName) ? "55.0" : "0.02";
                 console.log(`[ONBOARD] Airdropping ${fundAmount} USDC to ${newWallet.address}`);
                 await sendUSDC(newWallet.address, fundAmount);
                 await new Promise(r => setTimeout(r, 5000));
