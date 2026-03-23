@@ -50,6 +50,38 @@ try { Agent = mongoose.model('Agent'); } catch (e) { Agent = mongoose.model('Age
 
 const hashSecret = (secret) => crypto.createHash('sha256').update(secret).digest('hex');
 
+/**
+ * @dev Random Verifier Selection Logic (Sybil Resistance)
+ * Picks N active verifiers from the MongoDB registry who have stake.
+ */
+async function getRandomVerifiers(count = 3, excludeAddr = null) {
+    try {
+        const p = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
+        const registry = new ethers.Contract(REGISTRY_CA, ["function isVerifier(address) view returns (bool)"], p);
+        
+        // 1. Get all agents from DB
+        const allAgents = await Agent.find({});
+        const activeVerifiers = [];
+
+        for (const agent of allAgents) {
+            const addr = agent.wallets[agent.wallets.length - 1].address;
+            if (addr === excludeAddr) continue;
+
+            // 2. Check on-chain status
+            const isV = await registry.isVerifier(addr);
+            if (isV) activeVerifiers.push(addr);
+            if (activeVerifiers.length >= 10) break; // Optimization
+        }
+
+        // 3. Shuffle and pick N
+        const shuffled = activeVerifiers.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    } catch (e) {
+        console.error("[RANDOM_VERIFIER_ERROR]", e.message);
+        return [];
+    }
+}
+
 async function getCiphertext() {
     const pubResponse = await axios.get('https://api.circle.com/v1/w3s/config/entity/publicKey', {
         headers: { 'Authorization': `Bearer ${API_KEY}` }
@@ -214,9 +246,20 @@ app.post('/execute/setRoles', validateAgent, async (req, res) => {
 
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
-        const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
+        let { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount, randomVerifiers = 0 } = req.body;
+        
+        // --- RANDOM SELECTION OPT-IN ---
+        if (randomVerifiers > 0) {
+            console.log(`[TASK] Selecting ${randomVerifiers} random verifiers for ${req.agent.agentName}`);
+            const randomList = await getRandomVerifiers(randomVerifiers, req.agent.wallets[req.agent.wallets.length - 1].address);
+            verifiers = randomList;
+            quorumM = Math.ceil(randomList.length * 0.6); // Default 60% quorum
+        }
+
+        if (!verifiers || verifiers.length === 0) return res.status(400).json({ error: "No verifiers assigned. Please provide a 'verifiers' list or 'randomVerifiers' count." });
+
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
-        res.json({ success: true, txId: data.id });
+        res.json({ success: true, txId: data.id, verifiersAssigned: verifiers });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
