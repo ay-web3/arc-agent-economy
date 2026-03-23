@@ -226,9 +226,9 @@ app.post('/admin/restoreStakes', async (req, res) => {
 
         const data = await sendTx(MASTER_WALLET_ID, REGISTRY_CA, "setMinStakes(uint256,uint256)", [
             ethers.parseUnits("50.0", 18).toString(),
-            ethers.parseUnits("50.0", 18).toString()
+            ethers.parseUnits("30.0", 18).toString()
         ]);
-        res.json({ success: true, txId: data.id, message: "Restoring stakes to 50.0 USDC" });
+        res.json({ success: true, txId: data.id, message: "Restoring stakes: Seller 50.0, Verifier 30.0 USDC" });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
