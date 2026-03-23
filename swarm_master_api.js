@@ -50,30 +50,19 @@ try { Agent = mongoose.model('Agent'); } catch (e) { Agent = mongoose.model('Age
 
 const hashSecret = (secret) => crypto.createHash('sha256').update(secret).digest('hex');
 
-/**
- * @dev Random Verifier Selection Logic (Sybil Resistance)
- * Picks N active verifiers from the MongoDB registry who have stake.
- */
 async function getRandomVerifiers(count = 3, excludeAddr = null) {
     try {
         const p = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
         const registry = new ethers.Contract(REGISTRY_CA, ["function isVerifier(address) view returns (bool)"], p);
-        
-        // 1. Get all agents from DB
         const allAgents = await Agent.find({});
         const activeVerifiers = [];
-
         for (const agent of allAgents) {
             const addr = agent.wallets[agent.wallets.length - 1].address;
             if (addr === excludeAddr) continue;
-
-            // 2. Check on-chain status
             const isV = await registry.isVerifier(addr);
             if (isV) activeVerifiers.push(addr);
-            if (activeVerifiers.length >= 10) break; // Optimization
+            if (activeVerifiers.length >= 10) break;
         }
-
-        // 3. Shuffle and pick N
         const shuffled = activeVerifiers.sort(() => 0.5 - Math.random());
         return shuffled.slice(0, count);
     } catch (e) {
@@ -97,12 +86,10 @@ async function getCiphertext() {
 const validateAgent = async (req, res, next) => {
     const { agentId, agentSecret } = req.body;
     if (!agentId || !agentSecret) return res.status(401).json({ error: "Missing agentId or agentSecret" });
-
     try {
         const agent = await Agent.findOne({ agentName: agentId });
         if (!agent) return res.status(404).json({ error: "Agent not found" });
         if (hashSecret(agentSecret) !== agent.secretHash) return res.status(403).json({ error: "Invalid secret" });
-
         req.agent = agent;
         const w = (agent.wallets && agent.wallets.length > 0) ? agent.wallets[agent.wallets.length - 1] : agent;
         if (!w.walletId) return res.status(404).json({ error: "Wallet not found" });
@@ -161,17 +148,15 @@ app.get('/', (req, res) => res.json({
 }));
 
 app.get('/health', async (req, res) => {
-    res.json({ status: "healthy", version: "1.0.1_full_restore" });
+    res.json({ status: "healthy", version: "1.0.2_master_complete" });
 });
 
 app.post('/onboard', async (req, res) => {
     const { agentName, metadataURI } = req.body;
     if (!agentName) return res.status(400).json({ error: "agentName is required" });
-
     try {
         let agent = await Agent.findOne({ agentName });
         if (agent && agent.wallets && agent.wallets.length >= 5) return res.status(403).json({ error: "Limit reached" });
-
         const rawSecret = crypto.randomBytes(32).toString('hex');
         const ciphertext = await getCiphertext();
         const walletRes = await axios.post('https://api.circle.com/v1/w3s/developer/wallets', 
@@ -183,22 +168,18 @@ app.post('/onboard', async (req, res) => {
             walletSetId: WALLET_SET_ID,
             entitySecretCiphertext: ciphertext
         }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
-
         const newWallet = walletRes.data.data.wallets[0];
-        
         if (MASTER_WALLET_ID) {
             try {
                 await sendUSDC(newWallet.address, "0.02");
                 await new Promise(r => setTimeout(r, 12000));
             } catch (e) { console.error("[FUNDING]", e.message); }
         }
-
         let identityTxId = null;
         try {
             const idTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"], "0", true);
             identityTxId = idTx.id;
         } catch (e) { console.error("[IDENTITY]", e.message); }
-
         if (agent) {
             if (!agent.wallets) agent.wallets = [];
             agent.wallets.push({ walletId: newWallet.id, address: newWallet.address });
@@ -211,26 +192,25 @@ app.post('/onboard', async (req, res) => {
             });
             await agent.save();
         }
-
         res.json({ success: true, agentId: agentName, agentSecret: rawSecret, address: newWallet.address, identityTxId });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- REGISTRY ENDPOINTS ---
+// --- ADMIN ENDPOINTS ---
 
 app.post('/admin/restoreStakes', async (req, res) => {
     try {
-        const { secret } = req.body;
-        // Simple internal check using hashed entity secret or similar (not for prod, just for this restoration)
+        const { secret, sellerStake = "50.0", verifierStake = "30.0" } = req.body;
         if (secret !== ENTITY_SECRET) return res.status(401).json({ error: "Unauthorized" });
-
         const data = await sendTx(MASTER_WALLET_ID, REGISTRY_CA, "setMinStakes(uint256,uint256)", [
-            ethers.parseUnits("50.0", 18).toString(),
-            ethers.parseUnits("30.0", 18).toString()
+            ethers.parseUnits(sellerStake, 18).toString(),
+            ethers.parseUnits(verifierStake, 18).toString()
         ]);
-        res.json({ success: true, txId: data.id, message: "Restoring stakes: Seller 50.0, Verifier 30.0 USDC" });
+        res.json({ success: true, txId: data.id, message: `Restoring stakes: Seller ${sellerStake}, Verifier ${verifierStake}` });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// --- REGISTRY ENDPOINTS ---
 
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
@@ -256,22 +236,47 @@ app.post('/execute/setRoles', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/execute/topUpStake', validateAgent, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "topUpStake()", [], amount);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/withdraw/request', validateAgent, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const data = await sendTx(req.walletId, REGISTRY_CA, "requestWithdraw(uint256)", [ethers.parseUnits(amount, 18).toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/withdraw/cancel', validateAgent, async (req, res) => {
+    try {
+        const data = await sendTx(req.walletId, REGISTRY_CA, "cancelWithdraw()", []);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/withdraw/complete', validateAgent, async (req, res) => {
+    try {
+        const data = await sendTx(req.walletId, REGISTRY_CA, "completeWithdraw()", []);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- ESCROW ENDPOINTS ---
 
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         let { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount, randomVerifiers = 0 } = req.body;
-        
-        // --- RANDOM SELECTION OPT-IN ---
         if (randomVerifiers > 0) {
-            console.log(`[TASK] Selecting ${randomVerifiers} random verifiers for ${req.agent.agentName}`);
             const randomList = await getRandomVerifiers(randomVerifiers, req.agent.wallets[req.agent.wallets.length - 1].address);
             verifiers = randomList;
-            quorumM = Math.ceil(randomList.length * 0.6); // Default 60% quorum
+            quorumM = Math.ceil(randomList.length * 0.6);
         }
-
-        if (!verifiers || verifiers.length === 0) return res.status(400).json({ error: "No verifiers assigned. Please provide a 'verifiers' list or 'randomVerifiers' count." });
-
+        if (!verifiers || verifiers.length === 0) return res.status(400).json({ error: "No verifiers assigned." });
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], amount);
         res.json({ success: true, txId: data.id, verifiersAssigned: verifiers });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -302,10 +307,26 @@ app.post('/execute/finalizeAuction', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/execute/cancelIfNoBids', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "cancelIfNoBids(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/execute/submitResult', validateAgent, async (req, res) => {
     try {
         const { taskId, resultHash, resultURI } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [taskId.toString(), resultHash, resultURI]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/timeoutRefund', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "timeoutRefund(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -318,10 +339,43 @@ app.post('/execute/approve', validateAgent, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/execute/reject', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "reject(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/verifierTimeoutRefund', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "verifierTimeoutRefund(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/execute/finalize', validateAgent, async (req, res) => {
     try {
         const { taskId } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/openDispute', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "openDispute(uint256)", [taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/resolveDispute', async (req, res) => {
+    try {
+        const { secret, taskId, ruling, buyerBps } = req.body;
+        if (secret !== ENTITY_SECRET) return res.status(401).json({ error: "Unauthorized" });
+        const data = await sendTx(MASTER_WALLET_ID, ESCROW_CA, "resolveDispute(uint256,uint8,uint16)", [taskId.toString(), ruling.toString(), buyerBps.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
