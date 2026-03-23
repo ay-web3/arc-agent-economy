@@ -114,7 +114,7 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
         entitySecretCiphertext: ciphertext,
         walletId: MASTER_WALLET_ID,
         blockchain: "ARC-TESTNET",
-        amounts: [ethers.parseUnits(amount, 18).toString()], // Atomic units for native transfer
+        amounts: [amount], // Use human-readable string directly for native transfer
         destinationAddress: toAddress,
         feeLevel: "MEDIUM"
     };
