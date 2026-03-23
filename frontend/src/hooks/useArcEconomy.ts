@@ -8,7 +8,7 @@ const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [
   "function taskCounter() external view returns (uint256)",
-  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
+  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
   "event TaskOpen(uint256 indexed taskId, uint256 totalEscrow, uint256 sellerBudget, uint256 verifierPool, uint64 bidDeadline)",
   "event BidPlaced(uint256 indexed taskId, address indexed bidder, uint256 bidPrice, uint64 etaSeconds)",
   "event BidSelected(uint256 indexed taskId, address indexed seller, uint256 bidPrice, uint256 refundToBuyer)",
@@ -25,6 +25,7 @@ const ESCROW_ABI = [
 export function useArcEconomy() {
   const [stats, setStats] = useState({ totalTasks: 0, tvl: "0" });
   const [events, setEvents] = useState<any[]>([]);
+  const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -50,7 +51,7 @@ export function useArcEconomy() {
         // Initial fetch of recent tasks
         const total = Number(counter);
         const start = Math.max(1, total - 10);
-        const historicalEvents: any[] = [];
+        const fetchedHistorical: any[] = [];
         
         const stateLabels: {[key: number]: string} = {
           1: "CREATED (Auction Live)",
@@ -70,7 +71,7 @@ export function useArcEconomy() {
             if (t.buyer !== ethers.ZeroAddress) {
               const state = Number(t.state);
               const label = stateLabels[state] || "Discovered";
-              historicalEvents.push({
+              fetchedHistorical.push({
                 id: `hist-${i}`,
                 message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
                 timestamp: "BLOCKCHAIN"
@@ -78,7 +79,7 @@ export function useArcEconomy() {
             }
           } catch (e) {}
         }
-        setEvents(historicalEvents);
+        setHistoricalEvents(fetchedHistorical);
       } catch (err) {
         console.error("Error fetching blockchain data:", err);
       }
@@ -127,5 +128,12 @@ export function useArcEconomy() {
     };
   }, []);
 
-  return { stats, events };
+  // Combine live events with historical task states
+  const combinedEvents = [...events, ...historicalEvents].sort((a, b) => {
+    if (a.timestamp === "BLOCKCHAIN" && b.timestamp !== "BLOCKCHAIN") return 1;
+    if (a.timestamp !== "BLOCKCHAIN" && b.timestamp === "BLOCKCHAIN") return -1;
+    return 0;
+  }).slice(0, 50);
+
+  return { stats, events: combinedEvents };
 }
