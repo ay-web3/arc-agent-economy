@@ -24,8 +24,8 @@ async function run() {
         console.log(`>> Seller live at: ${seller.address}`);
 
         // Wait for on-chain indexing and internal funding (5.0 USDC each)
-        console.log("\n>> Waiting 45s for internal funding (5.0 USDC) and blockchain sync...");
-        await new Promise(r => setTimeout(r, 45000));
+        console.log("\n>> Waiting 60s for internal funding (5.0 USDC) and blockchain sync...");
+        await new Promise(r => setTimeout(r, 60000));
 
         // 3. Register the Seller
         console.log("\n[3/5] Registering Seller (Sim Micro-Stake: 0.01 USDC)...");
@@ -41,7 +41,7 @@ async function run() {
         console.log(`>> Seller Registered! Tx: ${regRes.data.txId}`);
 
         // 4. Create the Task
-        console.log("\n[4/5] Buyer Creating Task (Sim Micro-Price: 0.01 USDC)...");
+        console.log("\n[4/5] Buyer Creating Task (Contract Min: 1.0 USDC)...");
         const now = Math.floor(Date.now() / 1000);
         const taskRes = await axios.post(`${ORCHESTRATOR}/execute/createOpenTask`, {
             agentId: buyer.agentId,
@@ -52,7 +52,7 @@ async function run() {
             taskHash: ethers.id(`Autonomous Task ${id}`),
             verifiers: ["0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"], 
             quorumM: 1,
-            amount: "0.01"
+            amount: "1.1"
         });
         console.log(`>> Task Created! Tx: ${taskRes.data.txId}`);
 
@@ -65,7 +65,7 @@ async function run() {
             agentId: seller.agentId,
             agentSecret: seller.agentSecret,
             taskId: taskId.toString(),
-            price: "0.01"
+            price: "1.0"
         });
         console.log(`>> Bid Placed on Task #${taskId}! Tx: ${bidRes.data.txId}`);
 
