@@ -36,8 +36,8 @@ const agentSchema = new mongoose.Schema({
         address: { type: String, required: true },
         onboardedAt: { type: Date, default: Date.now }
     }],
-    walletId: String, // Legacy support
-    address: String,  // Legacy support
+    walletId: String, 
+    address: String,  
     secretHash: { type: String, required: true },
     arcIdentityId: String,
     onboardedAt: { type: Date, default: Date.now }
@@ -79,6 +79,11 @@ const validateAgent = async (req, res, next) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
+/**
+ * @dev Circle's ARC Testnet API for native USDC (gas token) expects 
+ * human-readable amount strings (e.g. "0.01"). 
+ * Do NOT use ethers.parseUnits or Circle will double-scale the value.
+ */
 const sendTx = async (walletId, contractAddress, functionSig, args, value = "0", sponsored = false) => {
     const ciphertext = await getCiphertext();
     const payload = {
@@ -91,12 +96,16 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiFunctionSignature: functionSig,
         abiParameters: args
     };
+    
+    // Circle ARC handles decimal scaling automatically. Use human-readable string.
     if (value !== "0") {
-        payload.amount = ethers.parseUnits(value, 18).toString();
+        payload.amount = value.toString();
     }
+    
     if (sponsored) {
         payload.userFeeConfig = { type: "sponsorship" };
     }
+
     const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', payload, {
         headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
     });
@@ -110,10 +119,11 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
         entitySecretCiphertext: ciphertext,
         walletId: MASTER_WALLET_ID,
         blockchain: "ARC-TESTNET",
-        amounts: [ethers.parseUnits(amount, 18).toString()], 
+        amounts: [amount.toString()], // Circle ARC expects human-readable strings
         destinationAddress: toAddress,
         feeLevel: "MEDIUM"
     };
+    
     const response = await axios.post('https://api.circle.com/v1/w3s/developer/transactions/transfer', payload, {
         headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
     });
@@ -350,33 +360,18 @@ app.get('/escrow/counter', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/escrow/task/:id', async (req, res) => {
-    try {
-        const p = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
-        const c = new ethers.Contract(ESCROW_CA, ["function tasks(uint256) view returns (address, address, uint256, uint256, uint256, uint64, uint64, uint64, uint64, bytes32, bytes32, string, uint8, uint8, uint8)"], p);
-        const t = await c.tasks(req.params.id);
-        res.json({
-            buyer: t[0], seller: t[1], price: ethers.formatUnits(t[2], 18),
-            verifierPool: ethers.formatUnits(t[3], 18), sellerBudget: ethers.formatUnits(t[4], 18),
-            deadline: Number(t[5]), bidDeadline: Number(t[6]), verifierDeadline: Number(t[7]),
-            state: Number(t[12]), quorumM: Number(t[13]), quorumN: Number(t[14])
-        });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 app.get('/registry/profile/:address', async (req, res) => {
     try {
         const p = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
-        const c = new ethers.Contract(REGISTRY_CA, ["function availableStake(address) view returns (uint256)", "function stakeOf(address) view returns (uint256)"], p);
-        const avail = await c.availableStake(req.params.address);
-        const total = await c.stakeOf(req.params.address);
-        res.json({ availableStake: ethers.formatUnits(avail, 18), totalStake: ethers.formatUnits(total, 18) });
+        const c = new ethers.Contract(REGISTRY_CA, ["function availableStake(address) view returns (uint256)"], p);
+        const bal = await c.availableStake(req.params.address);
+        res.json({ availableStake: ethers.formatUnits(bal, 18) });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const PORT = process.env.PORT || 3001;
 async function start() {
     await mongoose.connect(MONGODB_URI);
-    app.listen(PORT, "0.0.0.0", () => console.log(`Master alive on ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () => console.log(`Master live on ${PORT}`));
 }
 start().catch(err => console.error(err));
