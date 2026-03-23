@@ -23,9 +23,9 @@ async function run() {
         const seller = sellerRes.data;
         console.log(`>> Seller live at: ${seller.address}`);
 
-        // Wait for on-chain indexing and internal funding (1 USDC each)
-        console.log("\n>> Waiting 25s for internal funding (1.0 USDC) and blockchain sync...");
-        await new Promise(r => setTimeout(r, 25000));
+        // Wait for on-chain indexing and internal funding (5.0 USDC each)
+        console.log("\n>> Waiting 45s for internal funding (5.0 USDC) and blockchain sync...");
+        await new Promise(r => setTimeout(r, 45000));
 
         // 3. Register the Seller
         console.log("\n[3/5] Registering Seller (Sim Micro-Stake: 0.01 USDC)...");
