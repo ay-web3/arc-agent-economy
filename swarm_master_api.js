@@ -160,7 +160,8 @@ app.post('/onboard', async (req, res) => {
                 // INTERNAL SIM: Fund with 5.0 USDC
                 const amt = isSimAgent(agentName) ? "5.0" : "0.02";
                 console.log(`[ONBOARD] Airdropping ${amt} USDC to ${newWallet.address}`);
-                await sendUSDC(newWallet.address, amt);
+                const fundTx = await sendUSDC(newWallet.address, amt);
+                console.log(`[ONBOARD] Funding TX ID: ${fundTx.id}`);
                 await new Promise(r => setTimeout(r, 15000));
             } catch (e) { console.error("[FUNDING ERROR]", e.message); }
         }
