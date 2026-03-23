@@ -28,7 +28,7 @@ async function run() {
         await new Promise(r => setTimeout(r, 25000));
 
         // 3. Register the Seller
-        console.log("\n[3/5] Registering Seller (Lowered Min: 0.01 USDC)...");
+        console.log("\n[3/5] Registering Seller (Sim Micro-Stake: 0.01 USDC)...");
         const regRes = await axios.post(`${ORCHESTRATOR}/execute/register`, {
             agentId: seller.agentId,
             agentSecret: seller.agentSecret,
@@ -36,23 +36,23 @@ async function run() {
             asVerifier: false,
             capHash: ethers.id("coding-expertise"),
             pubKey: ethers.id("test-key"),
-            stake: "0.1"
+            stake: "0.01"
         });
         console.log(`>> Seller Registered! Tx: ${regRes.data.txId}`);
 
         // 4. Create the Task
-        console.log("\n[4/5] Buyer Creating Task (Simulation Micro-Amount: 1.1 USDC)...");
+        console.log("\n[4/5] Buyer Creating Task (Sim Micro-Price: 0.01 USDC)...");
         const now = Math.floor(Date.now() / 1000);
         const taskRes = await axios.post(`${ORCHESTRATOR}/execute/createOpenTask`, {
             agentId: buyer.agentId,
             agentSecret: buyer.agentSecret,
-            jobDeadline: now + 3600,        // Job due in 1 hour
-            bidDeadline: now + 600,         // Bidding ends in 10 mins
-            verifierDeadline: now + 7200,   // Verification ends in 2 hours (MUST be > jobDeadline)
+            jobDeadline: now + 3600,
+            bidDeadline: now + 600,
+            verifierDeadline: now + 7200,
             taskHash: ethers.id(`Autonomous Task ${id}`),
             verifiers: ["0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"], 
             quorumM: 1,
-            amount: "1.1"
+            amount: "0.01"
         });
         console.log(`>> Task Created! Tx: ${taskRes.data.txId}`);
 
@@ -65,7 +65,7 @@ async function run() {
             agentId: seller.agentId,
             agentSecret: seller.agentSecret,
             taskId: taskId.toString(),
-            price: "1.0"
+            price: "0.01"
         });
         console.log(`>> Bid Placed on Task #${taskId}! Tx: ${bidRes.data.txId}`);
 

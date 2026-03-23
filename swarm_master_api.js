@@ -43,7 +43,8 @@ const agentSchema = new mongoose.Schema({
     onboardedAt: { type: Date, default: Date.now }
 });
 
-const Agent = mongoose.model('Agent', agentSchema);
+let Agent;
+try { Agent = mongoose.model('Agent'); } catch (e) { Agent = mongoose.model('Agent', agentSchema); }
 
 // --- HELPERS ---
 
@@ -91,9 +92,9 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiParameters: args
     };
     
-    // Circle ARC API expects human-readable amount strings.
+    // Circle ARC API expects atomic units (18 decimals) for contract execution value.
     if (value !== "0") {
-        payload.amount = value;
+        payload.amount = ethers.parseUnits(value, 18).toString();
     }
     
     if (sponsored) {
@@ -113,7 +114,7 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
         entitySecretCiphertext: ciphertext,
         walletId: MASTER_WALLET_ID,
         blockchain: "ARC-TESTNET",
-        amounts: [amount], // Array of human-readable strings
+        amounts: [ethers.parseUnits(amount, 18).toString()], // Atomic units for native transfer
         destinationAddress: toAddress,
         feeLevel: "MEDIUM"
     };
@@ -124,8 +125,9 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
     return response.data.data;
 };
 
+// Simulation prefix
 const SIM_PREFIX = "Sim_Internal_Ayo_";
-const isSim = (name) => name && name.startsWith(SIM_PREFIX);
+const isSimAgent = (name) => name && name.startsWith(SIM_PREFIX);
 
 // --- ROUTES ---
 
@@ -154,21 +156,23 @@ app.post('/onboard', async (req, res) => {
 
         const newWallet = walletRes.data.data.wallets[0];
         
+        // Airdrop Gas/Capital
         if (MASTER_WALLET_ID) {
             try {
-                // INTERNAL SIMULATION: Fund with 2.0 USDC (Enough for 0.1 stake + 1.1 task + gas)
-                const amt = isSim(agentName) ? "2.0" : "0.02";
+                // INTERNAL SIM: Fund with 5.0 USDC (Corrected logic)
+                const amt = isSimAgent(agentName) ? "5.0" : "0.02";
                 console.log(`[ONBOARD] Airdropping ${amt} USDC to ${newWallet.address}`);
                 await sendUSDC(newWallet.address, amt);
-                await new Promise(r => setTimeout(r, 12000));
-            } catch (e) { console.error("[FUNDING]", e.message); }
+                await new Promise(r => setTimeout(r, 15000));
+            } catch (e) { console.error("[FUNDING ERROR]", e.message); }
         }
 
+        // Identity Mint
         let identityTxId = null;
         try {
             const idTx = await sendTx(newWallet.id, IDENTITY_REGISTRY, "register(string)", [metadataURI || "ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"], "0", true);
             identityTxId = idTx.id;
-        } catch (e) { console.error("[IDENTITY]", e.message); }
+        } catch (e) { console.error("[IDENTITY ERROR]", e.message); }
 
         if (agent) {
             if (!agent.wallets) agent.wallets = [];
@@ -184,34 +188,72 @@ app.post('/onboard', async (req, res) => {
         }
 
         res.json({ success: true, agentId: agentName, agentSecret: rawSecret, address: newWallet.address, identityTxId });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("[ONBOARD FATAL]", e.message);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
+// Marketplace Endpoints
 app.post('/execute/register', validateAgent, async (req, res) => {
     try {
         const { asSeller, asVerifier, capHash, pubKey, stake } = req.body;
-        const finalStake = isSim(req.agent.agentName) ? "0.1" : (stake || "0");
+        // Sim agents can register with micro-stake
+        const finalStake = isSimAgent(req.agent.agentName) ? "0.01" : (stake || "0");
         const data = await sendTx(req.walletId, REGISTRY_CA, "register(bool,bool,bytes32,bytes32)", [asSeller, asVerifier, capHash, pubKey], finalStake);
         res.json({ success: true, txId: data.id });
     } catch (e) { 
-        const msg = e.response ? JSON.stringify(e.response.data) : e.message;
-        res.status(500).json({ error: msg }); 
+        console.error("[REGISTER ERROR]", e.response ? JSON.stringify(e.response.data) : e.message);
+        res.status(500).json({ error: e.message }); 
     }
 });
 
 app.post('/execute/createOpenTask', validateAgent, async (req, res) => {
     try {
         const { jobDeadline, bidDeadline, verifierDeadline, taskHash, verifiers, quorumM, amount } = req.body;
-        const finalAmt = isSim(req.agent.agentName) ? "1.1" : amount;
+        // Sim agents can create tasks for micro-amount
+        const finalAmt = isSimAgent(req.agent.agentName) ? "0.01" : amount;
         const data = await sendTx(req.walletId, ESCROW_CA, "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)", [jobDeadline.toString(), bidDeadline.toString(), verifierDeadline.toString(), taskHash, verifiers, quorumM.toString()], finalAmt);
         res.json({ success: true, txId: data.id });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("[CREATE_TASK ERROR]", e.response ? JSON.stringify(e.response.data) : e.message);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 app.post('/execute/placeBid', validateAgent, async (req, res) => {
     try {
         const { taskId, price, eta, meta } = req.body;
         const data = await sendTx(req.walletId, ESCROW_CA, "placeBid(uint256,uint256,uint64,bytes32)", [taskId.toString(), price, (eta || 3600).toString(), meta || ethers.ZeroHash]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/selectBid', validateAgent, async (req, res) => {
+    try {
+        const data = await sendTx(req.walletId, ESCROW_CA, "selectBid(uint256,uint256)", [req.body.taskId.toString(), req.body.bidIndex.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/submitResult', validateAgent, async (req, res) => {
+    try {
+        const data = await sendTx(req.walletId, ESCROW_CA, "submitResult(uint256,bytes32,string)", [req.body.taskId.toString(), req.body.resultHash, req.body.resultURI]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/approve', validateAgent, async (req, res) => {
+    try {
+        const data = await sendTx(req.walletId, ESCROW_CA, "approve(uint256)", [req.body.taskId.toString()]);
+        res.json({ success: true, txId: data.id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/execute/finalize', validateAgent, async (req, res) => {
+    try {
+        const { taskId } = req.body;
+        const data = await sendTx(req.walletId, ESCROW_CA, "finalize(uint256)", [taskId.toString()]);
         res.json({ success: true, txId: data.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -237,6 +279,6 @@ app.get('/registry/profile/:address', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 async function start() {
     await mongoose.connect(MONGODB_URI);
-    app.listen(PORT, "0.0.0.0", () => console.log(`Master live on ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () => console.log(`Master alive on ${PORT}`));
 }
 start().catch(err => console.error(err));
