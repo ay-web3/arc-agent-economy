@@ -72,13 +72,18 @@ const validateAgent = async (req, res, next) => {
         if (hashSecret(agentSecret) !== agent.secretHash) return res.status(403).json({ error: "Invalid secret" });
 
         req.agent = agent;
-        const w = agent.wallets && agent.wallets.length > 0 ? agent.wallets[agent.wallets.length - 1] : agent;
+        const w = (agent.wallets && agent.wallets.length > 0) ? agent.wallets[agent.wallets.length - 1] : agent;
         if (!w.walletId) return res.status(404).json({ error: "Wallet not found" });
         req.walletId = w.walletId;
         next();
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
+/**
+ * @dev Circle's ARC Testnet API for native USDC (gas token) expects 
+ * human-readable amount strings (e.g. "0.01"). 
+ * Do NOT use ethers.parseUnits or Circle will double-scale the value.
+ */
 const sendTx = async (walletId, contractAddress, functionSig, args, value = "0", sponsored = false) => {
     const ciphertext = await getCiphertext();
     const payload = {
@@ -92,9 +97,9 @@ const sendTx = async (walletId, contractAddress, functionSig, args, value = "0",
         abiParameters: args
     };
     
-    // Circle ARC API expects atomic units (18 decimals) for contract execution value.
+    // Use value directly as a human-readable string for Circle's 'amount' field on ARC.
     if (value !== "0") {
-        payload.amount = ethers.parseUnits(value, 18).toString();
+        payload.amount = value;
     }
     
     if (sponsored) {
@@ -114,7 +119,7 @@ const sendUSDC = async (toAddress, amount = "0.02") => {
         entitySecretCiphertext: ciphertext,
         walletId: MASTER_WALLET_ID,
         blockchain: "ARC-TESTNET",
-        amounts: [amount], // Use human-readable string directly for native transfer
+        amounts: [amount], // Array of human-readable strings
         destinationAddress: toAddress,
         feeLevel: "MEDIUM"
     };
@@ -157,11 +162,9 @@ app.post('/onboard', async (req, res) => {
         
         if (MASTER_WALLET_ID) {
             try {
-                // INTERNAL SIM: Fund with 5.0 USDC
                 const amt = isSimAgent(agentName) ? "5.0" : "0.02";
                 console.log(`[ONBOARD] Airdropping ${amt} USDC to ${newWallet.address}`);
-                const fundTx = await sendUSDC(newWallet.address, amt);
-                console.log(`[ONBOARD] Funding TX ID: ${fundTx.id}`);
+                await sendUSDC(newWallet.address, amt);
                 await new Promise(r => setTimeout(r, 15000));
             } catch (e) { console.error("[FUNDING ERROR]", e.message); }
         }
@@ -239,6 +242,6 @@ app.get('/registry/profile/:address', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 async function start() {
     await mongoose.connect(MONGODB_URI);
-    app.listen(PORT, "0.0.0.0", () => console.log(`Master alive on ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () => console.log(`Master live on ${PORT}`));
 }
 start().catch(err => console.error(err));
