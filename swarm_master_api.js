@@ -136,7 +136,18 @@ const isSimAgent = (name) => name && name.startsWith(SIM_PREFIX);
 // --- ROUTES ---
 
 app.get('/', (req, res) => res.json({ message: "Arc Argent V1-PRO Secure is LIVE", network: "ARC Testnet" }));
-app.get('/health', (req, res) => res.json({ status: "healthy" }));
+app.get('/health', async (req, res) => {
+    let masterAddr = "NOT_SET";
+    if (MASTER_WALLET_ID) {
+        try {
+            const response = await axios.get(`https://api.circle.com/v1/w3s/wallets/${MASTER_WALLET_ID}`, {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            });
+            masterAddr = response.data.data.wallet.address;
+        } catch (e) {}
+    }
+    res.json({ status: "healthy", masterAddress: masterAddr });
+});
 
 app.post('/onboard', async (req, res) => {
     const { agentName, metadataURI } = req.body;
