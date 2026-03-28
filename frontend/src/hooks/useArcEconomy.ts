@@ -96,6 +96,34 @@ export function useArcEconomy() {
     }
   };
 
+  const resolveDispute = async (taskId: number, ruling: number) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["function resolveDispute(uint256 taskId, uint8 ruling, uint16 buyerBps) external"], signer);
+      const tx = await escrow.resolveDispute(taskId, ruling, 0); // 0 for simplified ruling
+      await tx.wait();
+      alert(`Dispute for Task #${taskId} resolved!`);
+    } catch (err: any) {
+      console.error("Resolution failed", err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const updateMinStake = async (sellerStake: string, verifierStake: string) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const registry = new ethers.Contract(REGISTRY_ADDR, ["function setMinStakes(uint256 _minSellerStake, uint256 _minVerifierStake) external"], signer);
+      const tx = await registry.setMinStakes(ethers.parseUnits(sellerStake, 18), ethers.parseUnits(verifierStake, 18));
+      await tx.wait();
+      alert("Minimum stakes updated successfully!");
+    } catch (err: any) {
+      console.error("Update failed", err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   useEffect(() => {
     const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
     // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
@@ -205,5 +233,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake };
 }

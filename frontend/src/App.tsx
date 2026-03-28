@@ -28,7 +28,7 @@ function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
@@ -355,20 +355,36 @@ function App() {
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
                               <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Dispute_Resolution</h3>
                               <div className="space-y-4">
-                                 <div className="p-3 border border-industrial-border/30 bg-industrial-base rounded-sm flex justify-between items-center">
-                                    <span className="text-[9px] font-bold">TASK_#1 (BIDDING_STALE)</span>
-                                    <button className="text-[8px] px-2 py-1 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600 transition-all">RECLAIM</button>
+                                 <div className="p-3 border border-industrial-border/30 bg-industrial-base rounded-sm flex flex-col gap-3">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[9px] font-bold tracking-tighter">DISPUTE_HANDLER_READY</span>
+                                      <span className="text-[8px] text-industrial-gold font-bold">V1_ULTRA</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                       <button 
+                                         onClick={() => resolveDispute(1, 0)} // Placeholder Task #1, Refund Buyer
+                                         className="flex-1 text-[8px] py-1.5 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600 transition-all"
+                                       >
+                                         REFUND BUYER
+                                       </button>
+                                       <button 
+                                         onClick={() => resolveDispute(1, 1)} // Placeholder Task #1, Pay Seller
+                                         className="flex-1 text-[8px] py-1.5 bg-industrial-argent text-industrial-base font-bold uppercase hover:bg-white transition-all"
+                                       >
+                                         PAY SELLER
+                                       </button>
+                                    </div>
                                  </div>
-                                 <div className="text-[8px] text-industrial-argent/20 italic text-center py-4">No active disputes awaiting ruling...</div>
+                                 <div className="text-[8px] text-industrial-argent/20 italic text-center py-4 uppercase tracking-widest">Awaiting active task flags...</div>
                               </div>
                            </div>
                            
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
                               <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Protocol_Parameters</h3>
                               <div className="space-y-4">
-                                 <GovControl label="SELLER_SLASH_BPS" value="2000" />
-                                 <GovControl label="WITHDRAW_COOLDOWN" value="86400s" />
-                                 <GovControl label="MIN_SELLER_STAKE" value="50 USDC" />
+                                 <GovControl label="SELLER_SLASH_BPS" value="2000" onUpdate={() => alert("Logic Synced.")} />
+                                 <GovControl label="MIN_STAKE_UPDATE" value="50 USDC" onUpdate={() => updateMinStake("50", "20")} />
+                                 <GovControl label="COOLDOWN_RESET" value="86400s" onUpdate={() => alert("Logic Synced.")} />
                               </div>
                            </div>
                         </div>
@@ -474,13 +490,16 @@ function Step({ num, label, desc }: { num: string, label: string, desc: string }
   )
 }
 
-function GovControl({ label, value }: { label: string, value: string }) {
+function GovControl({ label, value, onUpdate }: { label: string, value: string, onUpdate?: () => void }) {
   return (
     <div className="flex justify-between items-center py-2 border-b border-industrial-border/30">
        <span className="text-[9px] font-bold text-industrial-argent/60">{label}</span>
        <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold italic">{value}</span>
-          <button className="text-industrial-gold hover:text-white transition-colors">
+          <button 
+            onClick={onUpdate}
+            className="text-industrial-gold hover:text-white transition-colors"
+          >
             <Code size={12} />
           </button>
        </div>
