@@ -28,7 +28,7 @@ function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
@@ -340,7 +340,7 @@ function App() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="max-w-4xl mx-auto w-full pb-12 space-y-8"
+                      className="max-w-6xl mx-auto w-full pb-12 space-y-8"
                     >
                       <div className="industrial-panel p-8 border-l-4 border-l-industrial-gold">
                         <div className="flex items-center gap-4 mb-6">
@@ -348,82 +348,99 @@ function App() {
                            <h2 className="text-2xl font-bold italic argent-glow uppercase">Governor's_Command_Portal</h2>
                         </div>
                         <p className="text-xs text-industrial-argent/60 uppercase leading-relaxed mb-8">
-                          Authorized node detected. You are viewing the administrative plane of the Arc Agent Economy. Decisions made here are immutable and affect all connected agents.
+                          Authorized node detected. Administrative plane active. You hold sovereign authority over the Arc Agent Economy. 
                         </p>
                         
-                        <div className="grid md:grid-cols-2 gap-8">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                           {/* 1. DISPUTE COMMAND */}
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
                               <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Dispute_Resolution</h3>
                               <div className="space-y-4">
                                  <div className="flex flex-col gap-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Active Task ID</span>
-                                    <input 
-                                      id="targetTaskId"
-                                      type="number" 
-                                      placeholder="0" 
-                                      className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none focus:border-industrial-gold"
-                                    />
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Target Task ID</span>
+                                    <input id="govTaskId" type="number" placeholder="0" className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
                                  </div>
-                                 <div className="p-3 border border-industrial-border/30 bg-industrial-base rounded-sm flex flex-col gap-3">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[9px] font-bold tracking-tighter uppercase">Dispute_Handler</span>
-                                      <span className="text-[8px] text-industrial-gold font-bold">READY</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                       <button 
-                                         onClick={() => {
-                                           const id = (document.getElementById('targetTaskId') as HTMLInputElement)?.value;
-                                           if(id) resolveDispute(Number(id), 0);
-                                         }}
-                                         className="flex-1 text-[8px] py-1.5 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600 transition-all"
-                                       >
-                                         REFUND BUYER
-                                       </button>
-                                       <button 
-                                         onClick={() => {
-                                           const id = (document.getElementById('targetTaskId') as HTMLInputElement)?.value;
-                                           if(id) resolveDispute(Number(id), 1);
-                                         }}
-                                         className="flex-1 text-[8px] py-1.5 bg-industrial-argent text-industrial-base font-bold uppercase hover:bg-white transition-all"
-                                       >
-                                         PAY SELLER
-                                       </button>
-                                    </div>
+                                 <div className="flex flex-col gap-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Buyer Refund % (Optional)</span>
+                                    <input id="govBuyerBps" type="number" placeholder="0" className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
+                                 </div>
+                                 <div className="grid grid-cols-1 gap-2 pt-2">
+                                    <button onClick={() => {
+                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
+                                      if(id) resolveDispute(Number(id), 0);
+                                    }} className="text-[8px] py-2 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600">REFUND BUYER (Full)</button>
+                                    <button onClick={() => {
+                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
+                                      if(id) resolveDispute(Number(id), 1);
+                                    }} className="text-[8px] py-2 bg-industrial-argent text-industrial-base font-bold uppercase hover:bg-white">PAY SELLER (Full)</button>
+                                    <button onClick={() => {
+                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
+                                      const bps = (document.getElementById('govBuyerBps') as HTMLInputElement)?.value;
+                                      if(id && bps) resolveDispute(Number(id), 2, Number(bps));
+                                    }} className="text-[8px] py-2 border border-industrial-gold text-industrial-gold font-bold uppercase hover:bg-industrial-gold/10">EXECUTE SPLIT</button>
                                  </div>
                               </div>
                            </div>
                            
+                           {/* 2. REGISTRY PARAMETERS */}
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
-                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Protocol_Parameters</h3>
+                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Registry_Executive</h3>
                               <div className="space-y-4">
-                                 <div className="flex flex-col gap-4">
-                                    <div className="space-y-2">
-                                       <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">New Seller Stake (USDC)</span>
-                                       <div className="flex gap-2">
-                                          <input 
-                                            id="newSellerStake"
-                                            type="text" 
-                                            placeholder="50.0" 
-                                            className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none focus:border-industrial-gold"
-                                          />
-                                          <button 
-                                            onClick={() => {
-                                              const stake = (document.getElementById('newSellerStake') as HTMLInputElement)?.value;
-                                              if(stake) updateMinStake(stake, "30");
-                                            }}
-                                            className="px-3 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase"
-                                          >
-                                            UPDATE
-                                          </button>
-                                       </div>
+                                 <div className="space-y-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Update Stakes (Seller/Verifier)</span>
+                                    <div className="flex gap-2">
+                                       <input id="regSeller" type="text" placeholder="50" className="w-1/2 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
+                                       <input id="regVerif" type="text" placeholder="30" className="w-1/2 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
                                     </div>
-                                    <div className="h-px bg-industrial-border/30" />
-                                    <div className="space-y-2 opacity-50 cursor-not-allowed">
-                                       <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest italic">Slash_Penalty_Sync (20%)</span>
-                                       <div className="flex gap-2">
-                                          <input disabled type="text" placeholder="2000 BPS" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent/20 outline-none" />
-                                          <button disabled className="px-3 bg-industrial-border/20 text-industrial-argent/20 font-bold text-[8px] uppercase">LOCKED</button>
-                                       </div>
+                                    <button onClick={() => {
+                                      const s = (document.getElementById('regSeller') as HTMLInputElement)?.value;
+                                      const v = (document.getElementById('regVerif') as HTMLInputElement)?.value;
+                                      if(s && v) updateMinStake(s, v);
+                                    }} className="w-full py-2 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET MIN STAKES</button>
+                                 </div>
+                                 <div className="space-y-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Withdraw Cooldown (Seconds)</span>
+                                    <div className="flex gap-2">
+                                       <input id="regCooldown" type="number" placeholder="86400" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
+                                       <button onClick={() => {
+                                         const c = (document.getElementById('regCooldown') as HTMLInputElement)?.value;
+                                         if(c) setWithdrawCooldown(Number(c));
+                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* 3. ESCROW & ROLES */}
+                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
+                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Settlement_&_Roles</h3>
+                              <div className="space-y-4">
+                                 <div className="space-y-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Seller Slash Penalty (BPS)</span>
+                                    <div className="flex gap-2">
+                                       <input id="escSlash" type="number" placeholder="2000" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
+                                       <button onClick={() => {
+                                         const b = (document.getElementById('escSlash') as HTMLInputElement)?.value;
+                                         if(b) setSellerSlashBps(Number(b));
+                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
+                                    </div>
+                                 </div>
+                                 <div className="space-y-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Assign Power (Grant Role)</span>
+                                    <input id="roleTarget" type="text" placeholder="0x..." className="w-full bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none mb-2" />
+                                    <div className="grid grid-cols-3 gap-1">
+                                       <button onClick={() => {
+                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                         if(a) grantRole(a, 'ADMIN');
+                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">ADMIN</button>
+                                       <button onClick={() => {
+                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                         if(a) grantRole(a, 'GOV');
+                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">GOV</button>
+                                       <button onClick={() => {
+                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                         if(a) grantRole(a, 'SLASHER');
+                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">SLASHER</button>
                                     </div>
                                  </div>
                               </div>

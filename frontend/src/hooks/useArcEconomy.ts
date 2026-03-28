@@ -96,12 +96,12 @@ export function useArcEconomy() {
     }
   };
 
-  const resolveDispute = async (taskId: number, ruling: number) => {
+  const resolveDispute = async (taskId: number, ruling: number, buyerBps: number = 0) => {
     if (!provider || !account || !isGovernor) return;
     try {
       const signer = await provider.getSigner();
       const escrow = new ethers.Contract(ESCROW_ADDR, ["function resolveDispute(uint256 taskId, uint8 ruling, uint16 buyerBps) external"], signer);
-      const tx = await escrow.resolveDispute(taskId, ruling, 0); // 0 for simplified ruling
+      const tx = await escrow.resolveDispute(taskId, ruling, buyerBps);
       await tx.wait();
       alert(`Dispute for Task #${taskId} resolved!`);
     } catch (err: any) {
@@ -122,6 +122,57 @@ export function useArcEconomy() {
       console.error("Update failed", err);
       alert(`Error: ${err.message}`);
     }
+  };
+
+  const setWithdrawCooldown = async (seconds: number) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const registry = new ethers.Contract(REGISTRY_ADDR, ["function setWithdrawCooldown(uint64 _cooldown) external"], signer);
+      const tx = await registry.setWithdrawCooldown(seconds);
+      await tx.wait();
+      alert("Withdraw cooldown updated!");
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const setSellerSlashBps = async (bps: number) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["function setSellerSlashBps(uint16 _bps) external"], signer);
+      const tx = await escrow.setSellerSlashBps(bps);
+      await tx.wait();
+      alert("Seller slash penalty updated!");
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const setMinDerivedPrice = async (price: string) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["function setMinDerivedPrice(uint256 _min) external"], signer);
+      const tx = await escrow.setMinDerivedPrice(ethers.parseUnits(price, 18));
+      await tx.wait();
+      alert("Minimum task price updated!");
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const grantRole = async (target: string, roleType: 'ADMIN' | 'GOV' | 'SLASHER') => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const roles = {
+        'ADMIN': ethers.ZeroHash,
+        'GOV': "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1",
+        'SLASHER': ethers.keccak256(ethers.toUtf8Bytes("SLASHER_ROLE"))
+      };
+      const contract = roleType === 'GOV' ? ESCROW_ADDR : REGISTRY_ADDR;
+      const abi = ["function grantRole(bytes32 role, address account) external"];
+      const instance = new ethers.Contract(contract, abi, signer);
+      const tx = await instance.grantRole(roles[roleType], target);
+      await tx.wait();
+      alert(`${roleType} role granted to ${target}`);
+    } catch (err: any) { alert(`Error: ${err.message}`); }
   };
 
   useEffect(() => {
@@ -233,5 +284,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole };
 }
