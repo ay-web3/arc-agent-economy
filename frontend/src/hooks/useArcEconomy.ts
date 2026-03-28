@@ -35,13 +35,18 @@ export function useArcEconomy() {
       try {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await browserProvider.send("eth_requestAccounts", []);
-        setAccount(accounts[0]);
+        const connectedAddress = accounts[0];
+        setAccount(connectedAddress);
         setProvider(browserProvider);
         
-        // Check if governor
-        const GOVERNANCE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("GOVERNANCE_ROLE"));
+        // Hard-coded role hash for GOVERNANCE_ROLE
+        const GOV_ROLE_HASH = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
         const escrow = new ethers.Contract(ESCROW_ADDR, ["function hasRole(bytes32 role, address account) public view returns (bool)"], browserProvider);
-        const hasRole = await escrow.hasRole(GOVERNANCE_ROLE, accounts[0]);
+        
+        console.log(`Checking governance for: ${connectedAddress}`);
+        const hasRole = await escrow.hasRole(GOV_ROLE_HASH, connectedAddress);
+        console.log(`Has Governance Role: ${hasRole}`);
+        
         setIsGovernor(hasRole);
       } catch (err) {
         console.error("Connection failed", err);
