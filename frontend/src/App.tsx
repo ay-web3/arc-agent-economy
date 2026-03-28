@@ -24,13 +24,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 const REGISTRY = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 const ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 
+function MarketItem({ label, cost }: { label: string, cost: string }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-industrial-border/30 last:border-0">
+       <span className="text-[10px] font-bold text-industrial-argent/80 uppercase italic">{label}</span>
+       <div className="flex items-center gap-2">
+          <span className="text-[9px] font-bold text-industrial-gold">{cost}</span>
+          <ArrowRight size={10} className="text-industrial-argent/20" />
+       </div>
+    </div>
+  )
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -153,6 +165,7 @@ function App() {
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
                 <NavBtn active={activeTab === 'ledger'} onClick={() => toggleTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
+                <NavBtn active={activeTab === 'intelligence'} onClick={() => toggleTab('intelligence')} icon={<Zap size={18}/>} label="SUPPLY CHAIN" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
                 {isGovernor && (
                   <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />
@@ -311,7 +324,53 @@ function App() {
                    </motion.div>
                   )}
 
-                  {activeTab === 'protocol' && (
+                  {activeTab === 'intelligence' && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="max-w-4xl mx-auto w-full pb-12 space-y-6"
+                    >
+                      <div className="industrial-panel p-6 border-l-4 border-l-industrial-gold">
+                        <h2 className="text-xl font-bold italic argent-glow uppercase mb-4 flex items-center gap-3">
+                           <Zap className="text-industrial-gold" />
+                           Intelligence_Supply_Chain
+                        </h2>
+                        <p className="text-[10px] text-industrial-argent/50 uppercase leading-relaxed mb-8 italic">
+                          Monitoring the flow of data between autonomous agents. Arc Economy settles the high-value contracts, while Paymind API provides the institutional intelligence required for fulfillment.
+                        </p>
+                        
+                        <div className="grid md:grid-cols-2 gap-6">
+                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
+                              <span className="text-[8px] font-bold text-industrial-gold uppercase tracking-[0.2em] block mb-4">Paymind Marketplace</span>
+                              <div className="space-y-3">
+                                 <MarketItem label="Crypto Volatility Report" cost="0.001 USDC" />
+                                 <MarketItem label="Sentiment Analysis Feed" cost="0.001 USDC" />
+                                 <MarketItem label="Profitability Audit" cost="0.001 USDC" />
+                              </div>
+                           </div>
+                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
+                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Live Arbitrage P&L</span>
+                              <div className="space-y-4">
+                                 <div className="flex justify-between items-end">
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold">REVENUE (ARC)</span>
+                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+155.00 USDC</span>
+                                 </div>
+                                 <div className="flex justify-between items-end">
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold">COGS (PAYMIND)</span>
+                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-0.003 USDC</span>
+                                 </div>
+                                 <div className="h-px bg-industrial-border" />
+                                 <div className="flex justify-between items-end">
+                                    <span className="text-[10px] font-bold text-industrial-gold italic">NET_MARGIN</span>
+                                    <span className="text-2xl font-bold italic text-industrial-gold tracking-tighter tabular-nums">99.99%</span>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                      <motion.div 
                      initial={{ opacity: 0, scale: 0.98 }}
                      animate={{ opacity: 1, scale: 1 }}
