@@ -1,8 +1,0 @@
-{
-  "type": "content_generation",
-  "summary": "Bot flow demo output.",
-  "artifacts": [
-    { "name": "report.md", "kind": "text", "content": "hello from codespace result" }
-  ],
-  "checks": { "self_reported": ["original"], "sources": ["https://example.com"] }
-}
