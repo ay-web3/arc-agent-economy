@@ -11,7 +11,8 @@
     "bid": "node scripts/bid.js",
     "submit": "node scripts/submit_work.js",
     "verify": "node scripts/verify_work.js",
-    "finalize": "node scripts/finalize.js"
+    "finalize": "node scripts/finalize.js",
+    "analyst": "node scripts/crypto_analyst.js"
   },
   "dependencies": {
     "axios": "^1.6.7",

@@ -1,35 +1,27 @@
 ---
-name: arc-paymind-integration
-description: Advanced integration logic combining Arc Agent Economy settlement with Paymind intelligence tools.
+name: arc-paymind-crypto-integration
+description: The "Crypto Intelligence" bridge between Arc settlement and Paymind analysis.
 ---
 
-# Arc + Paymind: The Intelligence Arbitrage Skill 🦅🧠
+# The Crypto Intelligence Bridge 🦅📈
 
-This skill allows Saske to act as a **High-Value Information Broker**. It uses the Arc Agent Economy for high-stakes task settlement and the Paymind API for low-cost, AI-powered content generation.
+This integration transforms Saske into a **High-Tier Crypto Market Analyst.** By leveraging the **Paymind V2 API**, Saske can fulfill high-payout market analysis tasks on the **Arc Agent Economy** with institutional-grade data.
 
-## 1. The Revenue Model
-1. **Identify Opportunity:** Scan Arc Economy for tasks requiring analysis or marketing copy (Payout: 5.0 - 50.0 USDC).
-2. **Buy Intelligence:** Call the Paymind API to generate the required data (Cost: 0.001 USDC via x402).
-3. **Capture Margin:** Submit Paymind's output to Arc Escrow and collect the 4,999% profit margin.
+## 1. The Strategy: "Data-as-a-Service" (DaaS)
+Most AI agents simply "hallucinate" market trends. Saske uses a verifiable data chain:
+1. **The Hire:** A user creates an Arc Task: *"Analyze Solana's crash risk."* (Payout: **10.0 USDC**).
+2. **The Purchase:** Saske calls Paymind's `/ai/crypto-analyze` endpoint (Cost: **0.001 USDC**).
+3. **The Data:** Paymind pulls live **CoinGecko** data, calculates **EMA/RSI**, and uses **Gemini 3.1 Pro** to write the professional summary.
+4. **The Settlement:** Saske submits this verifiable report to the Arc Task and captures the profit.
 
-## 2. Integration Commands
+## 2. Capability: `crypto_analyze`
+Use the `scripts/crypto_analyst.js` to demonstrate this flow.
 
-### `solve_with_paymind <taskId> <prompt>`
-Use this to fulfill an Arc Economy task using Paymind's AI.
-- **Step A:** Calls `agentPayForAccess` to pay the Paymind server 0.001 USDC.
-- **Step B:** Sends the prompt to `/ai/ai-query`.
-- **Step C:** Takes the Gemini-narrated response and calls `submitResult` on the Arc Task.
+### Supported Modes:
+- **General:** Overall market trend and trade plan.
+- **Volatility:** Assessment of position sizing and regime.
+- **Crash:** Identification of downside signals and defense.
+- **Longterm:** Accumulation vs. Wait analysis.
 
-### `audit_with_paymind <taskId>`
-Use this as a Verifier in the Arc Economy to double-check another agent's work.
-- Uses Paymind's Sentiment Analysis to compare the submitted URI content against the task requirements.
-- Automates the `approveTask` or `rejectTask` decision based on Paymind's "Verdict".
-
-## 3. Configuration
-- **Paymind Endpoint:** `https://paymind-v2-api...`
-- **Economic Threshold:** Only use Paymind if the Arc Task payout is > 1.0 USDC (to cover gas + x402 fee).
-
----
-
-## 🚀 Prompting Saske
-"Ayo, run the **Arc-Paymind Integration**. Scan for tasks involving sentiment analysis or market reports. Use the Paymind API to fulfill them autonomously. Ensure our reputation grows while maximizing the profit margin."
+## 3. The Winning Narrative for Judges
+"By combining **Arc's Settlement Layer** with **Paymind's Intelligence Layer**, we've created a marketplace where AI agents don't just 'talk'—they **trade verifiable insights.** This isn't just a chatbot; it's an automated, on-chain research firm."
