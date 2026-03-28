@@ -96,6 +96,12 @@ export function useArcEconomy() {
     }
   };
 
+  const disconnectWallet = () => {
+    setAccount(null);
+    setIsGovernor(false);
+    setProvider(null);
+  };
+
   const resolveDispute = async (taskId: number, ruling: number, buyerBps: number = 0) => {
     if (!provider || !account || !isGovernor) return;
     try {
@@ -337,5 +343,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash };
 }

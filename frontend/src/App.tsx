@@ -28,7 +28,7 @@ function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
@@ -196,12 +196,21 @@ function App() {
                       <span className="text-[9px] font-bold text-industrial-gold italic tracking-widest uppercase">MONGODB_CLOUD</span>
                    </div>
                    <div className="flex flex-col items-end gap-1">
-                     <button 
-                       onClick={connectWallet}
-                       className="flex items-center gap-2 bg-industrial-argent text-industrial-base px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-white transition-all uppercase italic"
-                     >
-                       {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
-                     </button>
+                     {account ? (
+                       <button 
+                         onClick={disconnectWallet}
+                         className="flex items-center gap-2 bg-industrial-danger text-white px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-red-600 transition-all uppercase italic"
+                       >
+                         {`${account.slice(0, 6)}...${account.slice(-4)}`} [DISCONNECT]
+                       </button>
+                     ) : (
+                       <button 
+                         onClick={connectWallet}
+                         className="flex items-center gap-2 bg-industrial-argent text-industrial-base px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-white transition-all uppercase italic"
+                       >
+                         Connect Wallet
+                       </button>
+                     )}
                      {!account && (
                        <span className="text-[7px] text-industrial-gold font-bold tracking-widest uppercase italic animate-pulse">
                          [ADMIN_ONLY_ACCESS]
