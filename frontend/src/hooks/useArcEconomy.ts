@@ -26,9 +26,33 @@ export function useArcEconomy() {
   const [stats, setStats] = useState({ totalTasks: 0, tvl: "0" });
   const [events, setEvents] = useState<any[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
+  const [account, setAccount] = useState<string | null>(null);
+  const [isGovernor, setIsGovernor] = useState(false);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      try {
+        const browserProvider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await browserProvider.send("eth_requestAccounts", []);
+        setAccount(accounts[0]);
+        setProvider(browserProvider);
+        
+        // Check if governor
+        const GOVERNANCE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("GOVERNANCE_ROLE"));
+        const escrow = new ethers.Contract(ESCROW_ADDR, ["function hasRole(bytes32 role, address account) public view returns (bool)"], browserProvider);
+        const hasRole = await escrow.hasRole(GOVERNANCE_ROLE, accounts[0]);
+        setIsGovernor(hasRole);
+      } catch (err) {
+        console.error("Connection failed", err);
+      }
+    } else {
+      alert("Please install MetaMask or another Web3 wallet.");
+    }
+  };
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
     const escrow = new ethers.Contract(ESCROW_ADDR, ESCROW_ABI, provider);
 
     const addEvent = (msg: string) => {
@@ -135,5 +159,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider };
 }

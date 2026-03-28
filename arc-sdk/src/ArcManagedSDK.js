@@ -20,6 +20,8 @@ export class ArcManagedSDK {
                 this.orchestratorUrl = config.orchestratorUrl;
             if (config.agentId)
                 this.agentId = config.agentId;
+            if (config.secretPath)
+                this.secretPath = config.secretPath;
         }
         this.loadSecret();
     }

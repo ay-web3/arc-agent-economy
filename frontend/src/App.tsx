@@ -26,11 +26,11 @@ const ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
 
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'protocol') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -154,6 +154,9 @@ function App() {
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
                 <NavBtn active={activeTab === 'ledger'} onClick={() => toggleTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
+                {isGovernor && (
+                  <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />
+                )}
               </div>
 
               <div className="p-6 border-t border-industrial-border flex flex-col gap-1">
@@ -188,10 +191,16 @@ function App() {
                 </div>
                 
                 <div className="flex items-center gap-4">
-                   <div className="flex items-center gap-2 px-3 py-1 bg-industrial-border/20 border border-industrial-border rounded-sm shrink-0">
+                   <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-industrial-border/20 border border-industrial-border rounded-sm shrink-0">
                       <Database className="w-3 h-3 text-industrial-gold" />
                       <span className="text-[9px] font-bold text-industrial-gold italic tracking-widest uppercase">MONGODB_CLOUD</span>
                    </div>
+                   <button 
+                     onClick={connectWallet}
+                     className="flex items-center gap-2 bg-industrial-argent text-industrial-base px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-white transition-all uppercase italic"
+                   >
+                     {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
+                   </button>
                 </div>
               </header>
 
@@ -325,6 +334,47 @@ function App() {
                       </div>
                    </motion.div>
                   )}
+
+                  {activeTab === 'governance' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="max-w-4xl mx-auto w-full pb-12 space-y-8"
+                    >
+                      <div className="industrial-panel p-8 border-l-4 border-l-industrial-gold">
+                        <div className="flex items-center gap-4 mb-6">
+                           <Gavel className="text-industrial-gold" size={32} />
+                           <h2 className="text-2xl font-bold italic argent-glow uppercase">Governor's_Command_Portal</h2>
+                        </div>
+                        <p className="text-xs text-industrial-argent/60 uppercase leading-relaxed mb-8">
+                          Authorized node detected. You are viewing the administrative plane of the Arc Agent Economy. Decisions made here are immutable and affect all connected agents.
+                        </p>
+                        
+                        <div className="grid md:grid-cols-2 gap-8">
+                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
+                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Dispute_Resolution</h3>
+                              <div className="space-y-4">
+                                 <div className="p-3 border border-industrial-border/30 bg-industrial-base rounded-sm flex justify-between items-center">
+                                    <span className="text-[9px] font-bold">TASK_#1 (BIDDING_STALE)</span>
+                                    <button className="text-[8px] px-2 py-1 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600 transition-all">RECLAIM</button>
+                                 </div>
+                                 <div className="text-[8px] text-industrial-argent/20 italic text-center py-4">No active disputes awaiting ruling...</div>
+                              </div>
+                           </div>
+                           
+                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
+                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Protocol_Parameters</h3>
+                              <div className="space-y-4">
+                                 <GovControl label="SELLER_SLASH_BPS" value="2000" />
+                                 <GovControl label="WITHDRAW_COOLDOWN" value="86400s" />
+                                 <GovControl label="MIN_SELLER_STAKE" value="50 USDC" />
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </div>
 
@@ -419,6 +469,20 @@ function Step({ num, label, desc }: { num: string, label: string, desc: string }
        <div>
           <h4 className="text-[10px] font-bold tracking-widest uppercase mb-1">{label}</h4>
           <p className="text-[9px] text-industrial-argent/30 uppercase leading-relaxed">{desc}</p>
+       </div>
+    </div>
+  )
+}
+
+function GovControl({ label, value }: { label: string, value: string }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-industrial-border/30">
+       <span className="text-[9px] font-bold text-industrial-argent/60">{label}</span>
+       <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold italic">{value}</span>
+          <button className="text-industrial-gold hover:text-white transition-colors">
+            <Code size={12} />
+          </button>
        </div>
     </div>
   )
