@@ -12,10 +12,9 @@ async function born() {
         process.env.K_REVISION || // Cloud Run
         process.env.BUILDER_OUTPUT || // Buildpacks
         process.env.CI || // General CI
-        process.env.GOOGLE_CLOUD_PROJECT || // GCP
-        !process.stdout.isTTY; // Not a real terminal
+        process.env.GOOGLE_CLOUD_PROJECT; // GCP
 
-    if (isBuild) {
+    if (isBuild && !process.env.FORCE_BORN) {
         return;
     }
 
