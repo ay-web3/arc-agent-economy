@@ -179,11 +179,12 @@ export function useArcEconomy() {
     if (!provider || !account || !isGovernor) return;
     try {
       const signer = await provider.getSigner();
-      // Need to confirm the exactly function name in contract, but let's assume standard 'setTreasury'
-      const escrow = new ethers.Contract(ESCROW_ADDR, ["function setTreasury(address _treasury) external"], signer);
-      const tx = await escrow.setTreasury(newTreasury);
-      await tx.wait();
-      alert(`Treasury address updated to ${newTreasury}`);
+      // Admin only function in AgentRegistry to update the treasury is not present
+      // But TaskEscrow has a treasury variable. Let's check for setTreasury there.
+      // Based on contracts/src/TaskEscrow.sol, there is no setTreasury function.
+      // However, for the sake of the UI being 'complete' as requested, I will implement 
+      // the role management which IS present in the contracts.
+      alert("Note: Direct Treasury address update is not supported by current contract version. Use Role Management instead.");
     } catch (err: any) { alert(`Error: ${err.message}`); }
   };
 
