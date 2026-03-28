@@ -195,12 +195,19 @@ function App() {
                       <Database className="w-3 h-3 text-industrial-gold" />
                       <span className="text-[9px] font-bold text-industrial-gold italic tracking-widest uppercase">MONGODB_CLOUD</span>
                    </div>
-                   <button 
-                     onClick={connectWallet}
-                     className="flex items-center gap-2 bg-industrial-argent text-industrial-base px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-white transition-all uppercase italic"
-                   >
-                     {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
-                   </button>
+                   <div className="flex flex-col items-end gap-1">
+                     <button 
+                       onClick={connectWallet}
+                       className="flex items-center gap-2 bg-industrial-argent text-industrial-base px-3 py-1.5 rounded-sm font-bold text-[10px] hover:bg-white transition-all uppercase italic"
+                     >
+                       {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
+                     </button>
+                     {!account && (
+                       <span className="text-[7px] text-industrial-gold font-bold tracking-widest uppercase italic animate-pulse">
+                         [ADMIN_ONLY_ACCESS]
+                       </span>
+                     )}
+                   </div>
                 </div>
               </header>
 
