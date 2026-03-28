@@ -68,12 +68,25 @@ export function useArcEconomy() {
         
         // Hard-coded role hash for GOVERNANCE_ROLE
         const GOV_ROLE_HASH = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
+        const ADMIN_ADDRESS = "0x401faf90c2b08c88914b630bfbcaf4b10ce1965d";
+        
         const escrow = new ethers.Contract(ESCROW_ADDR, ["function hasRole(bytes32 role, address account) public view returns (bool)"], browserProvider);
         
         console.log(`Checking governance for: ${connectedAddress}`);
-        const hasRole = await escrow.hasRole(GOV_ROLE_HASH, connectedAddress);
+        let hasRole = false;
+        try {
+          hasRole = await escrow.hasRole(GOV_ROLE_HASH, connectedAddress);
+        } catch (e) {
+          console.error("Contract role check failed, falling back to address check");
+        }
+
+        // Fallback for the known master admin
+        if (connectedAddress.toLowerCase() === ADMIN_ADDRESS.toLowerCase()) {
+          console.log("Master Admin address detected manually.");
+          hasRole = true;
+        }
+
         console.log(`Has Governance Role: ${hasRole}`);
-        
         setIsGovernor(hasRole);
       } catch (err) {
         console.error("Connection failed", err);
