@@ -206,6 +206,28 @@ export function useArcEconomy() {
     } catch (err: any) { alert(`Error: ${err.message}`); }
   };
 
+  const setDifficultyAlpha = async (alpha: number) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["function setDifficultyAlpha(uint16 _alphaBps) external"], signer);
+      const tx = await escrow.setDifficultyAlpha(alpha);
+      await tx.wait();
+      alert("Difficulty Alpha updated!");
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const manualSlash = async (agent: string, amount: string, recipient: string) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const registry = new ethers.Contract(REGISTRY_ADDR, ["function slash(address agent, uint256 amount, address recipient) external"], signer);
+      const tx = await registry.slash(agent, ethers.parseUnits(amount, 18), recipient);
+      await tx.wait();
+      alert(`Agent ${agent} slashed for ${amount} USDC`);
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
   useEffect(() => {
     const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
     // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
@@ -315,5 +337,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, setTreasury, revokeRole };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash };
 }

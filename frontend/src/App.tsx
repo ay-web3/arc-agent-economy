@@ -28,7 +28,7 @@ function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, setTreasury, revokeRole } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
@@ -426,12 +426,24 @@ function App() {
                                     </div>
                                  </div>
                                  <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Protocol Treasury (Revenue)</span>
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Manual_Slasher (Emergency)</span>
+                                    <input id="slashAgent" type="text" placeholder="Agent 0x..." className="w-full bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none mb-1" />
                                     <div className="flex gap-2">
-                                       <input id="escTreasury" type="text" placeholder="0x..." className="flex-1 bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none" />
+                                       <input id="slashAmt" type="text" placeholder="Amt" className="w-1/3 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
                                        <button onClick={() => {
-                                         const t = (document.getElementById('escTreasury') as HTMLInputElement)?.value;
-                                         if(t) setTreasury(t);
+                                         const a = (document.getElementById('slashAgent') as HTMLInputElement)?.value;
+                                         const amt = (document.getElementById('slashAmt') as HTMLInputElement)?.value;
+                                         if(a && amt) manualSlash(a, amt, account!);
+                                       }} className="flex-1 py-2 bg-industrial-danger text-white font-bold text-[8px] uppercase">EXECUTE SLASH</button>
+                                    </div>
+                                 </div>
+                                 <div className="space-y-2 pt-2 border-t border-industrial-border/30">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest italic">Difficulty_Alpha_Sync</span>
+                                    <div className="flex gap-2">
+                                       <input id="diffAlpha" type="number" placeholder="10000" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
+                                       <button onClick={() => {
+                                         const b = (document.getElementById('diffAlpha') as HTMLInputElement)?.value;
+                                         if(b) setDifficultyAlpha(Number(b));
                                        }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
                                     </div>
                                  </div>
