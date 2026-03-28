@@ -53,7 +53,8 @@ export function useArcEconomy() {
 
   useEffect(() => {
     const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
-    const escrow = new ethers.Contract(ESCROW_ADDR, ESCROW_ABI, provider);
+    // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
+    const escrow = new ethers.Contract(ESCROW_ADDR, ESCROW_ABI, rpcProvider);
 
     const addEvent = (msg: string) => {
       setEvents(prev => [{
@@ -66,7 +67,7 @@ export function useArcEconomy() {
     const fetchData = async () => {
       try {
         const counter = await escrow.taskCounter();
-        const balance = await provider.getBalance(ESCROW_ADDR);
+        const balance = await rpcProvider.getBalance(ESCROW_ADDR);
         setStats({
           totalTasks: Number(counter),
           tvl: ethers.formatUnits(balance, 18)
