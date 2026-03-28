@@ -1,4 +1,4 @@
-import { ArcManagedSDK } from './arc-sdk/src/ArcManagedSDK.js';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
 async function main() {
     console.log("⚔️ Saske: Bidding on Task #1...");

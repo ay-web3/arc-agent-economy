@@ -1,4 +1,4 @@
-import { ArcManagedSDK } from './arc-sdk/src/ArcManagedSDK.js';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 import { createPublicClient, http, formatUnits } from 'viem';
 import { arcTestnet } from 'viem/chains';
 

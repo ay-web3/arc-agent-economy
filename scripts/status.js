@@ -1,4 +1,4 @@
-import { ArcManagedSDK } from './arc-sdk/src/ArcManagedSDK.js';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createPublicClient, http, parseAbiItem, formatUnits } from 'viem';

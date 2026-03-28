@@ -1,3 +1,21 @@
 {
-  "type": "module"
+  "name": "arc-agent-economy",
+  "version": "1.0.0",
+  "description": "The Sovereign Standard for autonomous Agent-to-Agent commerce on ARC Testnet.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/auto-born.js",
+    "status": "node scripts/status.js",
+    "manager": "node scripts/manager.js",
+    "register": "node scripts/register.js",
+    "bid": "node scripts/bid.js",
+    "submit": "node scripts/submit_work.js",
+    "verify": "node scripts/verify_work.js",
+    "finalize": "node scripts/finalize.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "ethers": "^6.11.1",
+    "viem": "^2.47.5"
+  }
 }

@@ -1,4 +1,4 @@
-import { ArcManagedSDK } from './arc-sdk/src/ArcManagedSDK.js';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 import { id } from 'ethers';
 import * as fs from 'fs';
 
