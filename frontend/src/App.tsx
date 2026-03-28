@@ -355,36 +355,77 @@ function App() {
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
                               <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Dispute_Resolution</h3>
                               <div className="space-y-4">
+                                 <div className="flex flex-col gap-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Active Task ID</span>
+                                    <input 
+                                      id="targetTaskId"
+                                      type="number" 
+                                      placeholder="0" 
+                                      className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none focus:border-industrial-gold"
+                                    />
+                                 </div>
                                  <div className="p-3 border border-industrial-border/30 bg-industrial-base rounded-sm flex flex-col gap-3">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[9px] font-bold tracking-tighter">DISPUTE_HANDLER_READY</span>
-                                      <span className="text-[8px] text-industrial-gold font-bold">V1_ULTRA</span>
+                                      <span className="text-[9px] font-bold tracking-tighter uppercase">Dispute_Handler</span>
+                                      <span className="text-[8px] text-industrial-gold font-bold">READY</span>
                                     </div>
                                     <div className="flex gap-2">
                                        <button 
-                                         onClick={() => resolveDispute(1, 0)} // Placeholder Task #1, Refund Buyer
+                                         onClick={() => {
+                                           const id = (document.getElementById('targetTaskId') as HTMLInputElement)?.value;
+                                           if(id) resolveDispute(Number(id), 0);
+                                         }}
                                          className="flex-1 text-[8px] py-1.5 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600 transition-all"
                                        >
                                          REFUND BUYER
                                        </button>
                                        <button 
-                                         onClick={() => resolveDispute(1, 1)} // Placeholder Task #1, Pay Seller
+                                         onClick={() => {
+                                           const id = (document.getElementById('targetTaskId') as HTMLInputElement)?.value;
+                                           if(id) resolveDispute(Number(id), 1);
+                                         }}
                                          className="flex-1 text-[8px] py-1.5 bg-industrial-argent text-industrial-base font-bold uppercase hover:bg-white transition-all"
                                        >
                                          PAY SELLER
                                        </button>
                                     </div>
                                  </div>
-                                 <div className="text-[8px] text-industrial-argent/20 italic text-center py-4 uppercase tracking-widest">Awaiting active task flags...</div>
                               </div>
                            </div>
                            
                            <div className="bg-industrial-border/5 p-6 border border-industrial-border">
                               <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Protocol_Parameters</h3>
                               <div className="space-y-4">
-                                 <GovControl label="SELLER_SLASH_BPS" value="2000" onUpdate={() => alert("Logic Synced.")} />
-                                 <GovControl label="MIN_STAKE_UPDATE" value="50 USDC" onUpdate={() => updateMinStake("50", "20")} />
-                                 <GovControl label="COOLDOWN_RESET" value="86400s" onUpdate={() => alert("Logic Synced.")} />
+                                 <div className="flex flex-col gap-4">
+                                    <div className="space-y-2">
+                                       <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">New Seller Stake (USDC)</span>
+                                       <div className="flex gap-2">
+                                          <input 
+                                            id="newSellerStake"
+                                            type="text" 
+                                            placeholder="50.0" 
+                                            className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none focus:border-industrial-gold"
+                                          />
+                                          <button 
+                                            onClick={() => {
+                                              const stake = (document.getElementById('newSellerStake') as HTMLInputElement)?.value;
+                                              if(stake) updateMinStake(stake, "30");
+                                            }}
+                                            className="px-3 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase"
+                                          >
+                                            UPDATE
+                                          </button>
+                                       </div>
+                                    </div>
+                                    <div className="h-px bg-industrial-border/30" />
+                                    <div className="space-y-2 opacity-50 cursor-not-allowed">
+                                       <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest italic">Slash_Penalty_Sync (20%)</span>
+                                       <div className="flex gap-2">
+                                          <input disabled type="text" placeholder="2000 BPS" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent/20 outline-none" />
+                                          <button disabled className="px-3 bg-industrial-border/20 text-industrial-argent/20 font-bold text-[8px] uppercase">LOCKED</button>
+                                       </div>
+                                    </div>
+                                 </div>
                               </div>
                            </div>
                         </div>
