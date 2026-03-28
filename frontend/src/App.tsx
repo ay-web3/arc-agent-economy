@@ -28,7 +28,7 @@ function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, setTreasury, revokeRole } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance') => {
     setActiveTab(tab);
@@ -426,21 +426,47 @@ function App() {
                                     </div>
                                  </div>
                                  <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Assign Power (Grant Role)</span>
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Protocol Treasury (Revenue)</span>
+                                    <div className="flex gap-2">
+                                       <input id="escTreasury" type="text" placeholder="0x..." className="flex-1 bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none" />
+                                       <button onClick={() => {
+                                         const t = (document.getElementById('escTreasury') as HTMLInputElement)?.value;
+                                         if(t) setTreasury(t);
+                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
+                                    </div>
+                                 </div>
+                                 <div className="space-y-2">
+                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Manage Power (Grant/Revoke)</span>
                                     <input id="roleTarget" type="text" placeholder="0x..." className="w-full bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none mb-2" />
-                                    <div className="grid grid-cols-3 gap-1">
-                                       <button onClick={() => {
-                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                         if(a) grantRole(a, 'ADMIN');
-                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">ADMIN</button>
-                                       <button onClick={() => {
-                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                         if(a) grantRole(a, 'GOV');
-                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">GOV</button>
-                                       <button onClick={() => {
-                                         const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                         if(a) grantRole(a, 'SLASHER');
-                                       }} className="text-[7px] py-1 border border-industrial-border text-industrial-argent/60 uppercase hover:text-industrial-gold">SLASHER</button>
+                                    <div className="flex flex-col gap-2">
+                                       <div className="grid grid-cols-3 gap-1">
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) grantRole(a, 'ADMIN');
+                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT ADMIN</button>
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) grantRole(a, 'GOV');
+                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT GOV</button>
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) grantRole(a, 'SLASHER');
+                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT SLASH</button>
+                                       </div>
+                                       <div className="grid grid-cols-3 gap-1">
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) revokeRole(a, 'ADMIN');
+                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE ADMIN</button>
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) revokeRole(a, 'GOV');
+                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE GOV</button>
+                                          <button onClick={() => {
+                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
+                                            if(a) revokeRole(a, 'SLASHER');
+                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE SLASH</button>
+                                       </div>
                                     </div>
                                  </div>
                               </div>

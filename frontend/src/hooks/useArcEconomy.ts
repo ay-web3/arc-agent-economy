@@ -175,6 +175,36 @@ export function useArcEconomy() {
     } catch (err: any) { alert(`Error: ${err.message}`); }
   };
 
+  const setTreasury = async (newTreasury: string) => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      // Need to confirm the exactly function name in contract, but let's assume standard 'setTreasury'
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["function setTreasury(address _treasury) external"], signer);
+      const tx = await escrow.setTreasury(newTreasury);
+      await tx.wait();
+      alert(`Treasury address updated to ${newTreasury}`);
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
+  const revokeRole = async (target: string, roleType: 'ADMIN' | 'GOV' | 'SLASHER') => {
+    if (!provider || !account || !isGovernor) return;
+    try {
+      const signer = await provider.getSigner();
+      const roles = {
+        'ADMIN': ethers.ZeroHash,
+        'GOV': "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1",
+        'SLASHER': ethers.keccak256(ethers.toUtf8Bytes("SLASHER_ROLE"))
+      };
+      const contract = roleType === 'GOV' ? ESCROW_ADDR : REGISTRY_ADDR;
+      const abi = ["function revokeRole(bytes32 role, address account) external"];
+      const instance = new ethers.Contract(contract, abi, signer);
+      const tx = await instance.revokeRole(roles[roleType], target);
+      await tx.wait();
+      alert(`${roleType} role revoked from ${target}`);
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
   useEffect(() => {
     const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
     // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
@@ -284,5 +314,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, setTreasury, revokeRole };
 }
