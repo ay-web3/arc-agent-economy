@@ -34,6 +34,33 @@ export function useArcEconomy() {
     if (window.ethereum) {
       try {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
+        
+        // Ensure we are on the correct network
+        const network = await browserProvider.getNetwork();
+        const ARC_CHAIN_ID = 5042002n;
+        
+        if (network.chainId !== ARC_CHAIN_ID) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x4cef52' }], // 5042002 in hex
+            });
+          } catch (switchError: any) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x4cef52',
+                  chainName: 'Arc Testnet',
+                  nativeCurrency: { name: 'Arc', symbol: 'ARC', decimals: 18 },
+                  rpcUrls: [RPC_URL],
+                  blockExplorerUrls: ['https://testnet.arcscan.app/']
+                }]
+              });
+            }
+          }
+        }
+
         const accounts = await browserProvider.send("eth_requestAccounts", []);
         const connectedAddress = accounts[0];
         setAccount(connectedAddress);
