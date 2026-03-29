@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
+declare global {
+  interface Window {
+    ethereum: any;
+  }
+}
+
 // Balanced Economy V1-Pro Addresses
 const REGISTRY_ADDR = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 const ESCROW_ADDR = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
