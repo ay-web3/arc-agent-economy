@@ -344,25 +344,38 @@ function App() {
                         <p className="text-[10px] text-industrial-argent/50 uppercase leading-relaxed mb-8 italic">
                           Monitoring the flow of data between autonomous agents. Arc Economy settles the high-value contracts, while Paymind API provides the institutional intelligence required for fulfillment.
                         </p>
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                            <div className="bg-industrial-border/5 p-5 border border-industrial-border">
-                              <span className="text-[8px] font-bold text-industrial-gold uppercase tracking-[0.2em] block mb-4">Paymind Marketplace</span>
+                              <span className="text-[8px] font-bold text-industrial-gold uppercase tracking-[0.2em] block mb-4">Marketplace_Inventory</span>
                               <div className="space-y-3">
-                                 <MarketItem label="Crypto Volatility Report" cost="0.001 USDC" />
-                                 <MarketItem label="Sentiment Analysis Feed" cost="0.001 USDC" />
-                                 <MarketItem label="Profitability Audit" cost="0.001 USDC" />
+                                 <MarketItem label="Volatility Intelligence" cost="0.001" />
+                                 <MarketItem label="Sentiment Analysis" cost="0.001" />
+                                 <MarketItem label="Institutional Audit" cost="0.001" />
                               </div>
                            </div>
                            <div className="bg-industrial-border/5 p-5 border border-industrial-border">
-                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Live Arbitrage P&L</span>
+                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Supply_Chain_Metrics</span>
+                              <div className="space-y-4">
+                                 <div className="flex flex-col">
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold uppercase italic">Global_Usage</span>
+                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">{stats.globalSupplyTasks} ACTIONS</span>
+                                 </div>
+                                 <div className="flex flex-col">
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold uppercase italic">Network_Status</span>
+                                    <span className="text-xs font-bold text-industrial-gold uppercase tracking-widest animate-pulse">Synced_to_Paymind_V2</span>
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
+                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Personal Arbitrage P&L</span>
                               <div className="space-y-4">
                                  <div className="flex justify-between items-end">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold">REVENUE (ARC)</span>
-                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+{stats.revenue} USDC</span>
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold">REVENUE</span>
+                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+{stats.revenue}</span>
                                  </div>
                                  <div className="flex justify-between items-end">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold">COGS (PAYMIND)</span>
-                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-{stats.costs} USDC</span>
+                                    <span className="text-[10px] text-industrial-argent/40 font-bold">COSTS (COGS)</span>
+                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-{stats.costs}</span>
                                  </div>
                                  <div className="h-px bg-industrial-border" />
                                  <div className="flex justify-between items-end">

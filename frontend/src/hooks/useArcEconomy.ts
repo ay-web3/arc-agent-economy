@@ -258,8 +258,9 @@ export function useArcEconomy() {
         const counter = await escrow.taskCounter();
         const balance = await rpcProvider.getBalance(ESCROW_ADDR);
         
-        let totalRevenue = 0n;
-        let tasksCalculated = 0;
+        let personalRevenue = 0n;
+        let personalSupplyChainTasks = 0;
+        let globalSupplyChainTasks = 0;
 
         // Initial fetch of recent tasks
         const total = Number(counter);
@@ -284,11 +285,16 @@ export function useArcEconomy() {
             if (t.buyer !== ethers.ZeroAddress) {
               const state = Number(t.state);
               const label = stateLabels[state] || "Discovered";
+              const isPaymindPowered = t.resultURI.toLowerCase().includes("paymind");
+
+              if (isPaymindPowered) {
+                globalSupplyChainTasks++;
+              }
               
-              // Calculate revenue for connected account
-              if (account && t.seller.toLowerCase() === account.toLowerCase() && state === 6) {
-                totalRevenue += BigInt(t.price);
-                tasksCalculated++;
+              // Calculate revenue for connected account ONLY if they used the Paymind Supply Chain
+              if (account && t.seller.toLowerCase() === account.toLowerCase() && state === 6 && isPaymindPowered) {
+                personalRevenue += BigInt(t.price);
+                personalSupplyChainTasks++;
               }
 
               if (i > total - 10) { // Only show top 10 in ledger
@@ -305,8 +311,9 @@ export function useArcEconomy() {
         setStats({
           totalTasks: Number(counter),
           tvl: ethers.formatUnits(balance, 18),
-          revenue: ethers.formatUnits(totalRevenue, 18),
-          costs: (tasksCalculated * 0.001).toFixed(3) // 0.001 USDC per Paymind call
+          revenue: ethers.formatUnits(personalRevenue, 18),
+          costs: (personalSupplyChainTasks * 0.001).toFixed(3), // 0.001 USDC per Paymind call
+          globalSupplyTasks: globalSupplyChainTasks
         });
         setHistoricalEvents(fetchedHistorical);
       } catch (err) {
