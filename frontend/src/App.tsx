@@ -358,16 +358,18 @@ function App() {
                               <div className="space-y-4">
                                  <div className="flex justify-between items-end">
                                     <span className="text-[10px] text-industrial-argent/40 font-bold">REVENUE (ARC)</span>
-                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+155.00 USDC</span>
+                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+{stats.revenue} USDC</span>
                                  </div>
                                  <div className="flex justify-between items-end">
                                     <span className="text-[10px] text-industrial-argent/40 font-bold">COGS (PAYMIND)</span>
-                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-0.003 USDC</span>
+                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-{stats.costs} USDC</span>
                                  </div>
                                  <div className="h-px bg-industrial-border" />
                                  <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-bold text-industrial-gold italic">NET_MARGIN</span>
-                                    <span className="text-2xl font-bold italic text-industrial-gold tracking-tighter tabular-nums">99.99%</span>
+                                    <span className="text-[10px] font-bold text-industrial-gold italic">NET_PROFIT</span>
+                                    <span className="text-2xl font-bold italic text-industrial-gold tracking-tighter tabular-nums">
+                                      {(parseFloat(stats.revenue) - parseFloat(stats.costs)).toFixed(3)} USDC
+                                    </span>
                                  </div>
                               </div>
                            </div>

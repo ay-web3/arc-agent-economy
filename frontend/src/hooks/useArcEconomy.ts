@@ -29,7 +29,7 @@ const ESCROW_ABI = [
 ];
 
 export function useArcEconomy() {
-  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0" });
+  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0" });
   const [events, setEvents] = useState<any[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
   const [account, setAccount] = useState<string | null>(null);
@@ -257,14 +257,13 @@ export function useArcEconomy() {
       try {
         const counter = await escrow.taskCounter();
         const balance = await rpcProvider.getBalance(ESCROW_ADDR);
-        setStats({
-          totalTasks: Number(counter),
-          tvl: ethers.formatUnits(balance, 18)
-        });
+        
+        let totalRevenue = 0n;
+        let tasksCalculated = 0;
 
         // Initial fetch of recent tasks
         const total = Number(counter);
-        const start = Math.max(1, total - 10);
+        const start = Math.max(1, total - 50); // Scan more for stats
         const fetchedHistorical: any[] = [];
         
         const stateLabels: {[key: number]: string} = {
@@ -285,14 +284,30 @@ export function useArcEconomy() {
             if (t.buyer !== ethers.ZeroAddress) {
               const state = Number(t.state);
               const label = stateLabels[state] || "Discovered";
-              fetchedHistorical.push({
-                id: `hist-${i}`,
-                message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
-                timestamp: "BLOCKCHAIN"
-              });
+              
+              // Calculate revenue for connected account
+              if (account && t.seller.toLowerCase() === account.toLowerCase() && state === 6) {
+                totalRevenue += BigInt(t.price);
+                tasksCalculated++;
+              }
+
+              if (i > total - 10) { // Only show top 10 in ledger
+                fetchedHistorical.push({
+                  id: `hist-${i}`,
+                  message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
+                  timestamp: "BLOCKCHAIN"
+                });
+              }
             }
           } catch (e) {}
         }
+
+        setStats({
+          totalTasks: Number(counter),
+          tvl: ethers.formatUnits(balance, 18),
+          revenue: ethers.formatUnits(totalRevenue, 18),
+          costs: (tasksCalculated * 0.001).toFixed(3) // 0.001 USDC per Paymind call
+        });
         setHistoricalEvents(fetchedHistorical);
       } catch (err) {
         console.error("Error fetching blockchain data:", err);
