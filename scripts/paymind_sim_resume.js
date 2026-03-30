@@ -13,7 +13,7 @@ async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)
 async function main() {
     const sdk = new ArcManagedSDK();
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
-    const taskId = 28;
+    const taskId = 29;
     console.log(`🦅 Saske: Resuming LIVE PayMind V2 'Intelligence Arbitrage' for Task #${taskId}...`);
 
     try {
