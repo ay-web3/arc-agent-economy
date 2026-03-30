@@ -82,7 +82,12 @@ async function main() {
 
         // 4. SUBMIT PAYMIND INTELLIGENCE
         console.log(`\n[Step 4] Calling PayMind V2 Intelligence Supply Chain...`);
-        console.log(">> Arbitrage: Buying AI Intelligence for 0.001 USDC...");
+        console.log(">> Arbitrage: Initiating x402 Micro-Payment of 0.001 USDC...");
+        
+        // Simulation of x402 payment
+        await sleep(2000);
+        console.log(">> [x402] Payment Successful! Accessing Gemini 3.1 Pro Data...");
+        await sleep(3000);
         
         const paymindResultURI = "https://paymind.io/audit/" + taskId + "/btc-volatility-v2";
         
