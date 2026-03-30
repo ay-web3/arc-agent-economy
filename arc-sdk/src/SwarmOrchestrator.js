@@ -34,9 +34,9 @@ export class SwarmOrchestrator {
                 break;
             case "createOpenTask":
                 contract = this.escrowAddress;
-                signature = "createOpenTask(uint64,uint64,bytes32,address[],uint8)";
-                abiParams = [params.jobDeadline, params.bidDeadline, params.taskHash, params.verifiers, params.quorumM];
-                amount = params.amount;
+                signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)";
+                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM];
+                amount = params.value || params.amount || "0";
                 break;
             case "placeBid":
                 contract = this.escrowAddress;
@@ -72,6 +72,12 @@ export class SwarmOrchestrator {
                 contract = this.registryAddress;
                 signature = "requestWithdraw(uint256)";
                 abiParams = [(parseFloat(params.amount) * 10 ** 18).toString()];
+                break;
+            case "topUpStake":
+                contract = this.registryAddress;
+                signature = "topUpStake()";
+                abiParams = [];
+                amount = params.amount;
                 break;
             case "completeWithdraw":
                 contract = this.registryAddress;
