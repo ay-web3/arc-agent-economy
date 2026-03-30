@@ -128,7 +128,11 @@ export class ArcManagedSDK {
     }
     // --- BUYER ACTIONS ---
     async createOpenTask(params) {
-        return this.requestAction("execute/createOpenTask", params);
+        const payload = {
+            ...params,
+            amount: params.amount || params.value
+        };
+        return this.requestAction("execute/createOpenTask", payload);
     }
     async selectBid(taskId, bidIndex) {
         return this.requestAction("execute/selectBid", { taskId, bidIndex });
@@ -153,7 +157,12 @@ export class ArcManagedSDK {
         return this.requestAction("execute/placeBid", params);
     }
     async submitResult(params) {
-        return this.requestAction("execute/submitResult", params);
+        const payload = {
+            taskId: params.taskId,
+            hash: params.hash || params.resultHash,
+            uri: params.uri || params.resultURI
+        };
+        return this.requestAction("execute/submitResult", payload);
     }
     // --- VERIFIER ACTIONS ---
     async approveTask(taskId) {

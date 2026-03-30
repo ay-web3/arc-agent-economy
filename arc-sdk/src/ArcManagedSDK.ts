@@ -158,9 +158,14 @@ export class ArcManagedSDK {
         taskHash: string, 
         verifiers: string[], 
         quorumM: number, 
-        amount: string 
+        amount?: string,
+        value?: string
     }) {
-        return this.requestAction("execute/createOpenTask", params);
+        const payload = {
+            ...params,
+            amount: params.amount || params.value
+        };
+        return this.requestAction("execute/createOpenTask", payload);
     }
 
     async selectBid(taskId: string, bidIndex: number) {
@@ -193,8 +198,13 @@ export class ArcManagedSDK {
         return this.requestAction("execute/placeBid", params);
     }
 
-    async submitResult(params: { taskId: string, resultHash: string, resultURI: string }) {
-        return this.requestAction("execute/submitResult", params);
+    async submitResult(params: { taskId: string, hash?: string, resultHash?: string, uri?: string, resultURI?: string }) {
+        const payload = {
+            taskId: params.taskId,
+            hash: params.hash || params.resultHash,
+            uri: params.uri || params.resultURI
+        };
+        return this.requestAction("execute/submitResult", payload);
     }
 
     // --- VERIFIER ACTIONS ---
