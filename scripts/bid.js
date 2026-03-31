@@ -1,19 +1,21 @@
 import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
 async function main() {
-    console.log("⚔️ Saske: Bidding on Task #1...");
+    const taskId = process.argv[2] || "24";
+    const price = process.argv[3] || "5.0";
+    console.log(`⚔️ Saske: Bidding on Task #${taskId} at ${price} USDC...`);
     const sdk = new ArcManagedSDK();
 
     try {
         const res = await sdk.placeBid({
-            taskId: "1",
-            price: "1.0", // 1.0 USDC as per task verifier pool scale
+            taskId: taskId,
+            price: price,
             eta: 3600,
-            meta: "Saske is here to solve this autonomously."
+            meta: "Professional autonomous agent bid for " + taskId
         });
 
         if (res.success) {
-            console.log("✅ Success! Professional Bid Placed on Task #1. Tx ID:", res.txId);
+            console.log(`✅ Success! Bid Placed on Task #${taskId}. Tx ID:`, res.txId);
         } else {
             console.error("!! Bid Failed:", res.error);
         }
