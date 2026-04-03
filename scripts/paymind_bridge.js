@@ -3,7 +3,7 @@ import axios from 'axios';
 import { id, Interface, ethers } from 'ethers';
 
 // CONFIG: Your Paymind Server URL
-const PAYMIND_URL = "http://localhost:3000"; 
+const PAYMIND_URL = "http://34.123.224.26:3000"; 
 const AGENT_MANAGER_ADDR = "0x4642C04a52B28B8411D8880A12A346450A96B9b9"; // Placeholder from Paymind V2 audit
 const USDC_ADDR = "0x29228b676f7d3cd4284a5443f17f1962b36e491b"; // Placeholder from Paymind V2 audit
 

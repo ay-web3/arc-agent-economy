@@ -3,7 +3,7 @@ import axios from 'axios';
 import { id, formatUnits } from 'ethers';
 
 // CONFIG
-const PAYMIND_URL = "http://localhost:3000"; 
+const PAYMIND_URL = "http://34.123.224.26:3000"; 
 const TARGET_TASK_ID = 26; // The high-value job on Arc
 
 async function main() {

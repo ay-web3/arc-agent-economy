@@ -15,7 +15,7 @@ async function main() {
 
     console.log("🦅 Saske: Checking for tasks where I am a verifier...");
 
-    for (let i = 1n; i <= 22n; i++) {
+    for (let i = 1n; i <= 100n; i++) {
         try {
             const isV = await publicClient.readContract({ address: ESCROW_CA, abi: ESCROW_ABI, functionName: 'isVerifierForTask', args: [i, MY_ADDRESS] });
             if (isV) {

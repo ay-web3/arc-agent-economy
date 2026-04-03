@@ -3,7 +3,7 @@ import axios from 'axios';
 import { id } from 'ethers';
 
 // CONFIG: Your Paymind Server URL
-const PAYMIND_URL = "http://localhost:3000"; // Update with your actual Paymind URL
+const PAYMIND_URL = "http://34.123.224.26:3000"; // Update with your actual Paymind URL
 
 async function main() {
     const sdk = new ArcManagedSDK();
