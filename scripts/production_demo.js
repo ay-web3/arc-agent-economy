@@ -110,7 +110,7 @@ async function main() {
         const submitRes = await sdk.submitResult({
             taskId: taskId.toString(),
             resultHash: resultHash,
-            resultURI: `https://testnet.arcscan.app/report/${taskId}/${resultHash.slice(0,10)}`
+            resultURI: `https://paymind.io/report/${taskId}/${resultHash.slice(0,10)}`
         });
         if (!submitRes.success) throw new Error("Submission failed: " + submitRes.error);
         

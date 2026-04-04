@@ -1,15 +1,20 @@
 import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
 async function main() {
-    console.log("🦅 Saske: Verifying Work for Task #5...");
+    const taskId = process.argv[2];
+    if (!taskId) {
+        console.error("Usage: node scripts/verify_work.js <taskId>");
+        process.exit(1);
+    }
+    console.log(`🦅 Saske: Verifying Work for Task #${taskId}...`);
     const sdk = new ArcManagedSDK();
 
     try {
-        const res = await sdk.approveTask("5");
+        const res = await sdk.approveTask(taskId);
 
         if (res.success) {
-            console.log("✅ SUCCESS! Task #5 approved as Verifier.");
-            console.log(">> Status: QUORUM_APPROVED. Cooling-off (1 hour) started.");
+            console.log(`✅ SUCCESS! Task #${taskId} approved as Verifier.`);
+            console.log(">> Status: QUORUM_APPROVED. Cooling-off started.");
         } else {
             console.error("!! Approval failed:", res.error);
         }

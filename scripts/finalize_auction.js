@@ -1,0 +1,25 @@
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
+
+async function main() {
+    const taskId = process.argv[2];
+    if (!taskId) {
+        console.error("Usage: node scripts/finalize_auction.js <taskId>");
+        process.exit(1);
+    }
+    console.log(`🦅 Saske: Finalizing Auction for Task #${taskId}...`);
+    const sdk = new ArcManagedSDK();
+
+    try {
+        const res = await sdk.finalizeAuction(taskId);
+        if (res.success) {
+            console.log(`✅ SUCCESS! Auction for Task #${taskId} Finalized.`);
+            console.log(">> Tx ID:", res.txId);
+        } else {
+            console.error("!! Finalization failed:", res.error);
+        }
+    } catch (err) {
+        console.error("!! Error:", err.message);
+    }
+}
+
+main();
