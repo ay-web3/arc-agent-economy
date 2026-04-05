@@ -29,7 +29,7 @@ const ESCROW_ABI = [
 ];
 
 export function useArcEconomy() {
-  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0" });
+  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0", globalSupplyTasks: 0 });
   const [events, setEvents] = useState<any[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
   const [account, setAccount] = useState<string | null>(null);
@@ -322,47 +322,64 @@ export function useArcEconomy() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 15000);
+    const interval = setInterval(fetchData, 4000); // Increased frequency to 4s for 'live' feel
 
     // --- Live Event Listeners (Synced with V1-Balanced) ---
 
-    escrow.on("TaskOpen", (id, total) => {
-      addEvent(`Task #${id} opened for bidding (${ethers.formatUnits(total, 18)} USDC)`);
-    });
+    const handleTaskOpen = (id: any, total: any) => {
+      addEvent(`[NEW] Task #${id} opened for bidding (${ethers.formatUnits(total, 18)} USDC)`);
+      fetchData(); // Trigger immediate refresh
+    };
 
-    escrow.on("BidPlaced", (id, bidder, price) => {
+    const handleBidPlaced = (id: any, bidder: any, price: any) => {
       addEvent(`Agent ${bidder.slice(0, 6)}... bid ${ethers.formatUnits(price, 18)} USDC on Task #${id}`);
-    });
+      fetchData();
+    };
 
-    escrow.on("BidSelected", (id, seller) => {
+    const handleBidSelected = (id: any, seller: any) => {
       addEvent(`Worker ${seller.slice(0, 6)}... selected for Task #${id}`);
-    });
+      fetchData();
+    };
 
-    escrow.on("ResultSubmitted", (id, seller) => {
+    const handleResultSubmitted = (id: any, seller: any) => {
       addEvent(`Task #${id}: Work submitted by ${seller.slice(0, 6)}... awaiting verification.`);
-    });
+      fetchData();
+    };
 
-    escrow.on("QuorumReached", (id) => {
+    const handleQuorumReached = (id: any) => {
       addEvent(`Task #${id}: Quorum reached. Work APPROVED by verifiers.`);
-    });
+      fetchData();
+    };
 
-    escrow.on("TaskRejected", (id) => {
+    const handleTaskRejected = (id: any) => {
       addEvent(`Task #${id}: Quorum reached. Work REJECTED by verifiers.`);
-    });
+      fetchData();
+    };
 
-    escrow.on("TaskFinalized", (id) => {
+    const handleTaskFinalized = (id: any) => {
       addEvent(`Task #${id} finalized. Payment settled.`);
-    });
+      fetchData();
+    };
 
-    escrow.on("DisputeOpened", (id, opener) => {
+    const handleDisputeOpened = (id: any, opener: any) => {
       addEvent(`⚠️ Task #${id}: DISPUTE OPENED by ${opener.slice(0, 6)}...`);
-    });
+      fetchData();
+    };
+
+    escrow.on("TaskOpen", handleTaskOpen);
+    escrow.on("BidPlaced", handleBidPlaced);
+    escrow.on("BidSelected", handleBidSelected);
+    escrow.on("ResultSubmitted", handleResultSubmitted);
+    escrow.on("QuorumReached", handleQuorumReached);
+    escrow.on("TaskRejected", handleTaskRejected);
+    escrow.on("TaskFinalized", handleTaskFinalized);
+    escrow.on("DisputeOpened", handleDisputeOpened);
 
     return () => {
       clearInterval(interval);
       escrow.removeAllListeners();
     };
-  }, []);
+  }, [account]); // Re-run when account changes to ensure stats are accurate
 
   // Combine live events with historical task states
   const combinedEvents = [...events, ...historicalEvents].sort((a, b) => {
