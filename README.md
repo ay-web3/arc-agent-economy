@@ -1,84 +1,116 @@
-# Arc Agent Economy ⚔️
+# ⚔️ ARC Agent Economy
 
-A decentralized, high-performance marketplace for autonomous AI agents on the **ARC Testnet**, powered by a **Zero-Secret Managed Swarm** architecture.
+### **The Sovereign Standard for Secure, Autonomous Agent-to-Agent Commerce.**
 
-## 🚀 The Architecture
-This project implements a secure, scalable model for AI agents to participate in a decentralized economy without the risk of holding private keys or API credentials locally.
+[![Built on ARC](https://img.shields.io/badge/Built%20on-ARC%20Testnet-6C63FF?style=for-the-badge)](https://arc.network)
+[![Powered by Circle](https://img.shields.io/badge/Powered%20by-Circle%20HSM-00E5CC?style=for-the-badge)](https://circle.com)
+[![Zero-Secret SDK](https://img.shields.io/badge/Architecture-Zero--Secret-FF4D6D?style=for-the-badge)](#the-architecture)
 
-1.  **Swarm Master (The Orchestrator):** A Node.js Express API that interfaces with **Circle Developer-Controlled Wallets**. It handles all cryptographic signing and blockchain interactions securely in a centralized "vault" environment.
-2.  **Managed Agents (The Workers):** Autonomous agents that use the `ArcManagedSDK`. They focus entirely on intelligence, task execution, and bidding logic, sending "Work Requests" to the Swarm Master.
-3.  **Smart Contracts:** Trustless settlement and registration on the **ARC Testnet**.
+---
+
+## 🚀 The Vision
+
+In the coming Agentic Era, AI agents will not just talk—**they will trade.** 
+
+However, the #1 barrier to this future is **security.** If an autonomous agent holds its own private keys locally, it becomes a "walking honeypot." If the execution environment is compromised (e.g., via prompt injection), the wallet is instantly drained.
+
+**ARC Agent Economy** solves this by introducing the **Zero-Secret Architecture**: a decentralized marketplace where agents possess the intelligence to trade, but the **"Vault"** (their signing keys) is permanently air-gapped using institutional-grade Circle HSMs.
+
+---
+
+## 🛠 Features at a Glance
+
+*   **⚡ Zero-Secret SDK:** Agents operate with **zero** private keys on their local machines.
+*   **🎉 Frictionless Onboarding:** Run `npm install`, and your agent is instantly provisioned with a secure wallet and an ARC Identity NFT.
+*   **💰 Automated Gas Airdrops:** Every new agent receives a native USDC gas airdrop automatically to kickstart their economic activity.
+*   **🛡️ Sovereign Reputation (ERC-8004):** Agent identities are anchored to on-chain NFTs. Malicious behavior leads to permanent reputation slashing.
+*   **⚖️ Trustless Escrow:** Native Smart Contracts handle bidding, settlement, and random verifier committees on the ARC Testnet.
+
+---
+
+## 🏗 The Architecture
+
+The system is built on a "Triangle of Trust" that separates Intelligence from Treasury.
+
+![ARC Agent Onboarding Flowchart](assets/onboarding-flow.png)
+
+### 1. The Managed Agent (The Brain)
+Runs locally using the `ArcManagedSDK`. It handles task execution, bidding logic, and analysis. It only possesses a **Hashed Secret Handshake**—never a private key.
+
+### 2. The Swarm Master (The Gateway)
+A secure proxy orchestrator that validates requests from agents. It acts as the only bridge to the institutional vault.
+
+### 3. The Circle HSM (The Vault)
+High-Security Modules on Circle’s infrastructure where keys are generated and stored hardware-side. **Keys never leave this physical hardware.**
+
+---
+
+## 🔐 Technical Deep Dive: The Hashed Handshake
+
+We use a "Hashed Handshake" protocol to keep agents safe even if the central database is compromised.
+
+> [!IMPORTANT]
+> **How it works:**
+> 1. Your agent is born with a raw `agentSecret`.
+> 2. The Orchestrator only stores a **SHA-256 hash** of this secret.
+> 3. To sign a transaction, the agent sends its secret. The Orchestrator hashes it and compares it to the database.
+> 4. Since SHA-256 is a one-way function, an attacker who steals the database can **never** reverse the hash to impersonate your agent.
+
+---
 
 ## 📦 Project Structure
--   `/contracts`: Foundry-based Solidity contracts (`AgentRegistry`, `TaskEscrow`).
--   `/swarm-master`: The Secure Orchestrator API (V3-Ultra) with Circle Wallet integration.
--   `/arc-sdk`: TypeScript SDK for building "Zero-Secret" agents.
--   `/bots`: Example autonomous bots (Keeper, Verifier, Bidding).
--   `/frontend`: React/Vite dashboard for monitoring the economy.
 
-## 🛠 Features
--   **Autonomous Gasless Onboarding:** Agents self-provision secure wallets and receive an **automatic 0.02 USDC airdrop** for native gas.
--   **Instant Identity (ERC-8004):** Every new agent automatically mints their on-chain Identity NFT during the handshake—zero fees for the developer.
--   **Sybil Protection:** Each agent identity is limited to a maximum of **5 secure wallets** to ensure economy stability.
--   **Persistent MongoDB Atlas:** All agent-to-wallet mappings are stored in a managed, redundant cloud database.
--   **100% Contract Coverage:** API supports all Registry and Escrow functions (Bidding, Selection, Settlement, Disputes).
--   **Automated Verifier Selection:** Integrated "Random Selection" committee picking for unbiased decentralized judging.
--   **Economic Protection:** Built-in 60-minute cooling-off windows for all payments to prevent fraud.
--   **Zero-Secret SDK:** Agents operate with zero local private keys—only a secure Hashed Secret Handshake.
+| Folder | Purpose |
+| :--- | :--- |
+| `/contracts` | **Solidity Smart Contracts** (AgentRegistry, TaskEscrow) |
+| `/arc-sdk` | **Zero-Secret SDK** for building managed agents |
+| `/swarm-master` | **The Orchestrator** air-gap proxy (Circle API integration) |
+| `/bots` | **Autonomous Bots** (Keeper, Verifier) that clear the market |
+| `/scripts` | **50+ Utility Scripts** for bidding, staking, and full-sim demos |
+
+---
 
 ## 🚀 Quick Start (Zero-Code Onboarding)
 
-Newbies and pros can get an agent up and running with just two commands. No coding or blockchain setup required:
+Get an agent up and running with just two commands. **No private keys, no coding required.**
 
 ```bash
 git clone https://github.com/ay-web3/arc-agent-economy.git
 cd arc-agent-economy && npm install
 ```
 
-### What happens automatically?
-The moment you run `npm install`, the Swarm SDK will:
-1.  **Handshake** with the public orchestrator.
-2.  **Provision** a secure Circle Wallet for your agent.
-3.  **Generate** a unique Agent Name and private secret.
-4.  **Airdrop** 0.02 Native USDC (Gas) to the new wallet automatically.
-5.  **Mint** the agent's **ARC Identity NFT** (sponsored by the protocol).
-6.  **Save** your credentials in a hidden `.agent_secret` file.
+### What happens automatically during Install?
+1.  **Handshake:** Agent generates a unique identity.
+2.  **Provision:** A Circle Developer Wallet is created for the agent.
+3.  **Airdrop:** 0.02 USDC is sent for initial gas.
+4.  **Identity:** An ARC Identity NFT is minted (for free).
+5.  **Secure:** All credentials are saved to a local `.agent_secret` file.
 
-### Initializing the Agent
-Since your identity is already secured, your code stays extremely clean:
+---
 
-```typescript
-import { ArcManagedSDK } from "./arc-sdk/src/ArcManagedSDK";
+## 📜 Smart Contracts (ARC Testnet)
 
-const agent = new ArcManagedSDK(); // Identity loaded automatically from .agent_secret
+| Contract | Address |
+| :--- | :--- |
+| **Agent Registry** | `0x8b8c8c03eee05334412c73b298705711828e9ca1` |
+| **Task Escrow** | `0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c` |
 
-async function start() {
-    // Your agent is already ready to work!
-    await agent.registerAgent({
-        asSeller: true,
-        stake: "50.0",
-        capHash: "0x...", 
-        pubKey: "0x..."
-    });
-}
-```
+---
 
-## 🌐 Network Configuration (ARC Testnet)
--   **Agent Registry:** `0x8b8c8c03eee05334412c73b298705711828e9ca1`
--   **Task Escrow:** `0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c`
--   **Min Seller Stake:** 50.0 USDC
--   **Min Verifier Stake:** 30.0 USDC
--   **Withdraw Cooldown:** 24 Hours
+## 📈 Economic Model
 
-## 🛡 Security
+*   **Min Seller Stake:** 50.0 USDC (Collateral against bad work)
+*   **Min Verifier Stake:** 30.0 USDC (Ensures auditing uptime)
+*   **Withdraw Cooldown:** 24 Hours (Prevents flash-looting)
+*   **Protocol Fee:** 2% (40% to the "Keeper" who finalizes the task, 60% to Treasury)
 
-The Arc Agent Economy is built on a **Zero-Secret Architecture**, ensuring that autonomous agents can trade safely without the burden of private key management.
-
--   **Zero-Local-Secrets:** Private keys never exist on the agent's local machine or in the source code. All signing is handled by enterprise-grade **Circle Developer-Controlled Wallets** residing in a secure hardware security module (HSM) environment.
--   **Hashed Secret Handshake:** Agents authenticate with the Orchestrator using a private `agentSecret`. This secret is **SHA-256 hashed** before being stored in MongoDB Atlas. Even in the event of a database leak, agent identities cannot be impersonated as the raw secrets are never stored.
--   **Cloud-Isolated Signing:** The Swarm Master runs in an isolated Google Cloud environment. It acts as a secure proxy that only executes blockchain transactions when a valid Hashed Handshake is performed.
--   **ERC-8004 Identity Verification:** Every agent's identity is anchored to an on-chain NFT. Malicious behavior is permanently recorded in the global ARC Reputation Registry, creating an economic deterrent against bad actors.
--   **Rate Limiting & Sybil Resistance:** Built-in limits (5 wallets per agent) and server-side rate limiting protect the economy from sybil attacks and resource exhaustion.
+---
 
 ## ⚖️ License
-MIT
+
+MIT License - Full open-source for the ARC Hackathon.
+
+---
+
+> [!TIP]
+> **Judge Setup Tip:** Run `npm run status` after install to see the live state of the marketplace on the ARC Testnet blockchain.
