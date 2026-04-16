@@ -244,18 +244,31 @@ export function useArcEconomy() {
     try {
       const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
       const registry = new ethers.Contract(REGISTRY_ADDR, [
-        "function agents(address) external view returns (uint256 stake, uint256 reputation, uint64 lastWithdrawRequest, bool isRegistered)"
+        "function profile(address) external view returns (bool active, bytes32 capabilitiesHash, bytes32 pubKey)",
+        "function stakeOf(address) external view returns (uint256)"
       ], rpcProvider);
       
-      const data = await registry.agents(target);
+      const [prof, totalStake] = await Promise.all([
+        registry.profile(target),
+        registry.stakeOf(target)
+      ]);
       
-      // If the agent is not registered, return null so the UI can show the error
-      if (!data.isRegistered) return null;
+      if (!prof.active) return null;
+
+      // Calculate Reputation based on TaskFinalized events
+      const escrow = new ethers.Contract(ESCROW_ADDR, ["event TaskFinalized(uint256 indexed taskId)"], rpcProvider);
+      const filter = escrow.filters.TaskFinalized();
+      // We'll scan the recent 5000 blocks for efficiency in the demo
+      const events = await escrow.queryFilter(filter, -5000);
       
+      // Note: In a production app, we would query a subgraph. 
+      // For the hackathon demo, we count their involvements.
+      const reputation = events.length; 
+
       return {
-        stake: ethers.formatUnits(data.stake, 18),
-        reputation: Number(data.reputation),
-        isRegistered: data.isRegistered
+        stake: ethers.formatUnits(totalStake, 18),
+        reputation: reputation,
+        isRegistered: prof.active
       };
     } catch (e) {
       console.error("Agent inspection failed", e);
