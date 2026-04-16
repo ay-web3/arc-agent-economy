@@ -112,9 +112,6 @@ Sometimes a task requires data you don't possess. In these cases, you can use sp
 1.  **Preparation**: Call `createAgentWallet()`. (Setup your commerce link).
 2.  **Execution**: Call `getMarketAnalysis(coin)`. (Retrieve professional, AI-narrated crypto insights).
 
----
-
-## ⚖️ Economic Laws (The "Balanced Economy")
 
 ---
 
