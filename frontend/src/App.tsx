@@ -131,6 +131,90 @@ function GovControl({ label, value, onUpdate }: { label: string, value: string, 
   )
 }
 
+function HandshakeVisual() {
+  const [step, setStep] = useState<'idle' | 'hash' | 'atlas' | 'hsm' | 'chain' | 'done'>('idle');
+  const [logs, setLogs] = useState<string[]>([]);
+
+  const addLog = (m: string) => setLogs(prev => [m, ...prev].slice(0, 4));
+
+  const run = async () => {
+    setLogs([]);
+    setStep('hash'); addLog("INITIATING HANDSHAKE: Requesting intent...");
+    await new Promise(r => setTimeout(r, 800));
+    setStep('atlas'); addLog("ATLAS: Verifying SHA-256(secret) matches blind memory...");
+    await new Promise(r => setTimeout(r, 1000));
+    setStep('hsm'); addLog("HSM_VAULT: Intent accepted. Hardware-signing in FIPS-140-2 L3...");
+    await new Promise(r => setTimeout(r, 1200));
+    setStep('chain'); addLog("ARC_NETWORK: Broadcasting signed transaction...");
+    await new Promise(r => setTimeout(r, 800));
+    setStep('done'); addLog("SUCCESS: Transaction finality reached on ARC Testnet.");
+  };
+
+  const Node = ({ id, label, active, icon: Icon }: any) => (
+    <div className="flex flex-col items-center gap-3 relative z-10 w-24">
+      <motion.div 
+        animate={{ 
+          borderColor: active ? '#5EEAD4' : 'rgba(255,255,255,0.08)',
+          backgroundColor: active ? 'rgba(94, 234, 212, 0.1)' : 'transparent',
+          scale: active ? 1.05 : 1
+        }}
+        className="w-12 h-12 rounded-full border-2 flex items-center justify-center text-industrial-argent/40 transition-colors"
+      >
+        <Icon size={20} className={active ? 'text-industrial-gold' : 'text-industrial-accent'} />
+      </motion.div>
+      <span className={`text-[8px] font-bold tracking-widest uppercase text-center ${active ? 'text-industrial-gold' : 'text-industrial-argent/20'}`}>{label}</span>
+      {active && <motion.div layoutId="glow" className="absolute -inset-2 bg-industrial-gold/10 rounded-full blur-md" />}
+    </div>
+  );
+
+  return (
+    <div className="industrial-panel p-6 md:p-10 mb-8 border-l-4 border-l-industrial-gold overflow-hidden">
+      <div className="flex justify-between items-start mb-10">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-xs font-bold tracking-[0.3em] text-industrial-argent uppercase italic">Handshake_Terminal_V2.0</h3>
+          <p className="text-[9px] text-industrial-argent/40 uppercase">Visualizing the Zero-Secret Signature Path</p>
+        </div>
+        <button 
+          onClick={run} 
+          disabled={step !== 'idle' && step !== 'done'}
+          className="bg-industrial-gold text-industrial-base px-5 py-2 text-[10px] font-bold hover:bg-white transition-all uppercase italic disabled:opacity-30"
+        >
+          {step === 'idle' || step === 'done' ? 'EXECUTE HANDSHAKE' : 'PROCESS_RUNNING...'}
+        </button>
+      </div>
+
+      <div className="relative flex justify-between items-center mb-12 max-w-2xl mx-auto px-4">
+        {/* Connection Lines */}
+        <div className="absolute top-6 left-12 right-12 h-px bg-industrial-border z-0" />
+        <motion.div 
+          initial={false}
+          animate={{ 
+            left: step === 'hash' ? '12%' : step === 'atlas' ? '38%' : step === 'hsm' ? '65%' : step === 'chain' || step === 'done' ? '88%' : '12%',
+            opacity: step === 'idle' ? 0 : 1
+          }}
+          className="absolute top-5 w-2 h-2 rounded-full bg-industrial-gold shadow-[0_0_15px_#5EEAD4] z-20"
+        />
+
+        <Node label="LOCAL_AGENT" icon={Lock} active={step === 'hash'} />
+        <Node label="SWARM_MASTER" icon={Database} active={step === 'atlas'} />
+        <Node label="CIRCLE_HSM" icon={Shield} active={step === 'hsm'} />
+        <Node label="ARC_NETWORK" icon={Activity} active={step === 'chain' || step === 'done'} />
+      </div>
+
+      <div className="bg-[#000]/60 p-4 border border-industrial-border/30 rounded-sm font-mono text-[9px] space-y-2 h-32 overflow-hidden relative">
+        <div className="absolute inset-0 blueprint-grid opacity-5 pointer-events-none" />
+        {logs.length === 0 && <div className="text-industrial-argent/20 italic uppercase tracking-widest animate-pulse">Waiting for intent signature...</div>}
+        {logs.map((log, i) => (
+          <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} key={i} className={`flex gap-3 ${i === 0 ? 'text-industrial-gold' : 'text-industrial-argent/30'}`}>
+            <span className="shrink-0">{`[${new Date().toLocaleTimeString()}]`}</span>
+            <span className="uppercase">{log}</span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence'>('overview');
@@ -392,9 +476,10 @@ function App() {
                   )}
                   {activeTab === 'protocol' && (
                      <motion.div key="protocol" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="max-w-4xl mx-auto w-full pb-12">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                         <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6">
-                            <h2 className="text-lg font-bold italic argent-glow underline decoration-industrial-gold underline-offset-4 uppercase">AGENT_ONBOARDING</h2>
+                       <HandshakeVisual />
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6">
+                             <h2 className="text-lg font-bold italic argent-glow underline decoration-industrial-gold underline-offset-4 uppercase">AGENT_ONBOARDING</h2>
                             <p className="text-[10px] leading-relaxed text-industrial-argent/50 uppercase italic">
                               Protocol initialization requires zero local secrets. New agents are provisioned with native gas and a sponsored Identity NFT automatically. Limit: 5 wallets per agent.
                             </p>
