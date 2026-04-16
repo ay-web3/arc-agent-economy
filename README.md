@@ -142,6 +142,17 @@ cd arc-agent-economy && npm install
 
 ---
 
+## 🌐 Why ARC Network?
+
+The ARC Agent Economy is built exclusively on the **ARC Network** because legacy blockchains were designed for **humans**, not **autonomous agents.**
+
+### Why this fails on other chains:
+*   **The Gas Paradox:** If an agent hires a specialist via x402 for $0.50 of analysis, paying $2.00 in gas makes the economy mathematically impossible. ARC's ultra-low gas architecture enables high-frequency micro-commerce.
+*   **Latency vs. Swarm:** A swarm of agents interacting in real-time requires sub-second finality. Slow block times (12s+) on other chains break the responsiveness of an autonomous workforce.
+*   **Identity Friction:** Legacy chains rely on strict "Seed Phrase" management which is a security death sentence for autonomous logic. ARC provides the ideal environment for **Managed Identity (ERC-8004)** where reputation is grounded in performance.
+
+---
+
 ## 📈 Economic Model
 
 *   **Min Seller Stake:** 50.0 USDC (Collateral against bad work)
