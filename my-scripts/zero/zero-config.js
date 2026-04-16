@@ -16,8 +16,13 @@ import { ethers } from 'ethers';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
+import { ArcManagedSDK } from '../../arc-sdk/src/ArcManagedSDK.js';
+
 // ── Orchestrator URL ──────────────────────────
 export const ORCHESTRATOR = 'https://arc-agent-economy-156980607075.europe-west1.run.app';
+
+// Initialize SDK instance
+const sdk = new ArcManagedSDK({ orchestratorUrl: ORCHESTRATOR });
 
 // ── RPC (read-only chain access) ──────────────
 export const RPC_URL = 'https://rpc.testnet.arc.network';
@@ -59,8 +64,12 @@ export function loadIdentity(cwd = process.cwd()) {
   }
 }
 
-// ── Call the Orchestrator (write actions) ─────
+// ── SDK Wrappers (for script use) ──────────────
+
 export async function orchestrate(endpoint, params = {}, identity = null) {
+  // We use the SDK's internal requestAction method (if we were refactoring fully)
+  // But for compatibility with existing scripts, we'll keep the direct call 
+  // or use the SDK's exposed methods.
   const id = identity ?? loadIdentity();
   try {
     const res = await axios.post(`${ORCHESTRATOR}/${endpoint}`, {
@@ -70,57 +79,24 @@ export async function orchestrate(endpoint, params = {}, identity = null) {
     });
     return res.data;
   } catch (err) {
-    const status = err.response?.status;
-    const msg    = err.response?.data?.error ?? err.message;
-    if (status === 503 || !err.response) {
-      console.error('\n⚠️  Orchestrator is offline.');
-      console.error('   Scripts are ready — run them once the Orchestrator is back.');
-    } else if (status === 429) {
-      console.error('\n⚠️  Rate limited by Orchestrator. Wait a moment and retry.');
-    } else {
-      console.error(`\n❌ Orchestrator error [${status}]: ${msg}`);
-    }
+    console.error(`\n❌ Orchestrator error: ${err.response?.data?.error ?? err.message}`);
     throw err;
   }
 }
-
-// ── Paymind commerce helpers ──────────────────
 
 /**
  * Creates an AgentWallet via AgentWalletManagerV2
- * This is required for the /analysis x402 endpoint to work.
  */
 export async function ensureAgentWallet(identity) {
-  const orchRes = await orchestrateGet(`/registry/profile/${identity.address}`);
-  if (orchRes && orchRes.agentWalletAddress && orchRes.agentWalletAddress !== ethers.ZeroAddress) {
-    return orchRes.agentWalletAddress;
-  }
-
-  console.log('   Creating AgentWallet on-chain...');
-  const res = await orchestrate('execute/commerce/createWallet', {
-    dailyLimit: ethers.parseEther('1').toString()
-  }, identity);
-  
-  return res.agentWalletAddress;
+  console.log('   Ensuring AgentWallet exists via SDK...');
+  return sdk.createAgentWallet();
 }
 
 /**
- * Calls Paymind's Gemini-powered AI analysis.
- * This automatically triggers an x402 payment from the agent's wallet.
+ * Calls Paymind's Gemini-powered AI analysis via SDK.
  */
 export async function getPaymindAnalysis(identity, coin = 'bitcoin') {
-  console.log(`   Requesting AI Analysis via Paymind POST /analysis for ${coin}...`);
-  try {
-    const res = await axios.post(`${ORCHESTRATOR}/analysis`, {
-      userAddress: identity.address,
-      coin: coin,
-      tf: '1h'
-    });
-    return res.data;
-  } catch (err) {
-    console.error('❌ Paymind Analysis failed:', err.response?.data?.error ?? err.message);
-    throw err;
-  }
+  return sdk.getMarketAnalysis(coin);
 }
 
 // ── Read from Orchestrator (GET) ──────────────
@@ -129,12 +105,7 @@ export async function orchestrateGet(path) {
     const res = await axios.get(`${ORCHESTRATOR}${path}`);
     return res.data;
   } catch (err) {
-    const status = err.response?.status;
-    if (status === 503 || !err.response) {
-      console.error('\n⚠️  Orchestrator is offline — falling back to direct RPC...');
-      return null; // caller handles fallback
-    }
-    throw err;
+    return null;
   }
 }
 
