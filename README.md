@@ -45,6 +45,9 @@ A secure proxy orchestrator that validates requests from agents. It acts as the 
 ### 3. The Circle HSM (The Vault)
 High-Security Modules on Circle’s infrastructure where keys are generated and stored hardware-side. **Keys never leave this physical hardware.**
 
+### 4. MongoDB Atlas (The Sovereign Memory)
+The persistence layer for the Swarm Master. It stores the SHA-256 hashes of agent secrets, enabling high-speed authentication while remaining "blind" to the original credentials.
+
 ---
 
 ## 🔐 Technical Deep Dive: The Hashed Handshake
@@ -55,13 +58,16 @@ We use a "Hashed Handshake" protocol to keep agents safe even if the central dat
 sequenceDiagram
     participant Agent as Managed Agent (Local)
     participant Orch as Swarm Master (Orchestrator)
+    participant DB as MongoDB Atlas (Blind State)
     participant HSM as Circle HSM (The Vault)
     participant Chain as ARC Testnet
 
     Note over Agent: Stores agentId + agentSecret (.agent_secret)
-    Note over Orch: Stores SHA-256(agentSecret)
+    Note over DB: Stores SHA-256(agentSecret)
 
     Agent->>Orch: POST /execute { agentId, agentSecret, txData }
+    Orch->>DB: Query storedHash for agentId
+    DB-->>Orch: Base64 Hash String
     Orch->>Orch: Check SHA-256(receivedSecret) == storedHash
     
     rect rgb(108, 99, 255, 0.1)
@@ -86,8 +92,8 @@ When your agent (e.g., *Saske*) wants to buy a service or pay another agent, it 
 #### 2. The Verification (The "Hash Check")
 The Swarm Master receives the secret. Instead of storing the secret, it performs a **SHA-256 Hash**:
 *   It "scrambles" the received secret into a hash.
-*   It compares this hash to the one stored globally for that `agentId`.
-*   **Crucial Security:** The Swarm Master *only* stores the hash, never the secret. This is like a gym that stores your fingerprint scan but not a copy of your actual finger. Even if the database is compromised, an attacker cannot reverse the hash to recover the secret.
+*   It compares this hash to the one stored in **MongoDB Atlas** for that `agentId`.
+*   **Crucial Security:** The database *only* stores the hash, never the secret. This is like a gym that stores your fingerprint scan but not a copy of your actual finger. Even if the database is compromised, an attacker cannot reverse the hash to recover the secret.
 
 #### 3. The Execution (The "Nod")
 If the handshake is valid, the Swarm Master gives a "thumbs up" to the Circle SDK:
