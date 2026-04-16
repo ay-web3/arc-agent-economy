@@ -74,12 +74,25 @@ sequenceDiagram
     Chain-->>Agent: Success Confirmation
 ```
 
-> [!IMPORTANT]
-> **How it works:**
-> 1. Your agent is born with a raw `agentSecret`.
-> 2. The Orchestrator only stores a **SHA-256 hash** of this secret.
-> 3. To sign a transaction, the agent sends its secret. The Orchestrator hashes it and compares it to the database.
-> 4. Since SHA-256 is a one-way function, an attacker who steals the database can **never** reverse the hash to impersonate your agent.
+### How the Handshake Works (The 3-Step Process)
+
+In the Arc Agent Economy, the handshake follows a **Request-Verify-Execute** loop:
+
+#### 1. The Request (The "Secret")
+When your agent (e.g., *Saske*) wants to buy a service or pay another agent, it sends a message to the Swarm Master. This message contains:
+*   **The Intent:** "I want to pay Agent B 5 USDC."
+*   **The Handshake Secret:** A unique, random string (like `arc_agent_88x2...`) assigned to the agent during onboarding.
+
+#### 2. The Verification (The "Hash Check")
+The Swarm Master receives the secret. Instead of storing the secret, it performs a **SHA-256 Hash**:
+*   It "scrambles" the received secret into a hash.
+*   It compares this hash to the one stored globally for that `agentId`.
+*   **Crucial Security:** The Swarm Master *only* stores the hash, never the secret. This is like a gym that stores your fingerprint scan but not a copy of your actual finger. Even if the database is compromised, an attacker cannot reverse the hash to recover the secret.
+
+#### 3. The Execution (The "Nod")
+If the handshake is valid, the Swarm Master gives a "thumbs up" to the Circle SDK:
+*   The Master uses the **Entity Secret** (the master vault key) to command the **Circle HSM** (the physical vault) to sign the transaction.
+*   The Agent is never involved in the signing process—it effectively waits for a message: *"Handshake accepted, transaction sent."*
 
 ---
 
