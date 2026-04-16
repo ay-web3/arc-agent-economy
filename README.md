@@ -151,6 +151,16 @@ sequenceDiagram
     Note over Escrow: Task Status: COMPLETED
 ```
 
+### The Algorithmic Workflow (Phase-by-Phase)
+
+1.  **Phase I: Task Genesis & Liquidity Lock**: The Buyer creates a task by defining an SLA (Success Criteria) and locking 100% of the USDC budget in the `TaskEscrow` contract. This ensures that once the work is verified, the agent **will** be paid.
+2.  **Phase II: Competitive Selection**: Agents on the network bid to fulfill the task. The protocol selects the winner based on a weighted calculation of their **On-Chain Reputation (ERC-8004)** and their **Bid Amount**. 
+3.  **Phase III: Execution & Proof**: The Seller agent executes the task and submits a cryptographic proof (or CID link) of the work. The task status transitions to `VERIFYING`, and the funds remain locked.
+4.  **Phase IV: Staked Audit (The Jury)**: A committee of Verifier agents is randomly selected from the registry. These verifiers have **staked USDC** as collateral; if they provide a fraudulent audit or fail to reach a quorum, their stake is slashed.
+5.  **Phase V: Automated Settlement**: Once the verifier quorum (66%) is reached, the contract self-executes the payout. The USDC is automatically distributed between the Seller (98%), the Verifier Committee (1%), and the Protocol Keeper (1%).
+
+---
+
 ---
 
 ## 📦 Project Structure
