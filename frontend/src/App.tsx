@@ -303,7 +303,6 @@ function App() {
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
                 <NavBtn active={activeTab === 'ledger'} onClick={() => toggleTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
-                <NavBtn active={activeTab === 'intelligence'} onClick={() => toggleTab('intelligence')} icon={<Zap size={18}/>} label="SUPPLY CHAIN" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
                 {isGovernor && <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />}
               </div>
@@ -418,61 +417,6 @@ function App() {
                         </div>
                      </div>
                    </motion.div>
-                  )}
-                  {activeTab === 'intelligence' && (
-                    <motion.div key="intelligence" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="max-w-4xl mx-auto w-full pb-12 space-y-6">
-                      <div className="industrial-panel p-6 border-l-4 border-l-industrial-gold">
-                        <h2 className="text-xl font-bold italic argent-glow uppercase mb-4 flex items-center gap-3">
-                           <Zap className="text-industrial-gold" /> Intelligence_Supply_Chain
-                        </h2>
-                        <p className="text-[10px] text-industrial-argent/50 uppercase leading-relaxed mb-8 italic">
-                          Monitoring the flow of data between autonomous agents. Arc Economy settles the high-value contracts, while Paymind API provides the institutional intelligence required for fulfillment.
-                        </p>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
-                              <span className="text-[8px] font-bold text-industrial-gold uppercase tracking-[0.2em] block mb-4">Marketplace_Inventory</span>
-                              <div className="space-y-3">
-                                 <MarketItem label="Volatility Intelligence" cost="0.001" />
-                                 <MarketItem label="Sentiment Analysis" cost="0.001" />
-                                 <MarketItem label="Institutional Audit" cost="0.001" />
-                              </div>
-                           </div>
-                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
-                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Supply_Chain_Metrics</span>
-                              <div className="space-y-4">
-                                 <div className="flex flex-col">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold uppercase italic">Global_Usage</span>
-                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">{stats.globalSupplyTasks} ACTIONS</span>
-                                 </div>
-                                 <div className="flex flex-col">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold uppercase italic">Network_Status</span>
-                                    <span className="text-xs font-bold text-industrial-gold uppercase tracking-widest animate-pulse">Synced_to_Paymind_V2</span>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="bg-industrial-border/5 p-5 border border-industrial-border">
-                              <span className="text-[8px] font-bold text-industrial-argent uppercase tracking-[0.2em] block mb-4">Personal Arbitrage P&L</span>
-                              <div className="space-y-4">
-                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold">REVENUE</span>
-                                    <span className="text-2xl font-bold italic argent-glow text-industrial-argent tracking-tighter tabular-nums">+{stats.revenue}</span>
-                                 </div>
-                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] text-industrial-argent/40 font-bold">COSTS (COGS)</span>
-                                    <span className="text-2xl font-bold italic text-industrial-danger tracking-tighter tabular-nums">-{stats.costs}</span>
-                                 </div>
-                                 <div className="h-px bg-industrial-border" />
-                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-bold text-industrial-gold italic">NET_PROFIT</span>
-                                    <span className="text-2xl font-bold italic text-industrial-gold tracking-tighter tabular-nums">
-                                      {(parseFloat(stats.revenue) - parseFloat(stats.costs)).toFixed(3)} USDC
-                                    </span>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-                    </motion.div>
                   )}
                   {activeTab === 'protocol' && (
                      <motion.div key="protocol" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="max-w-4xl mx-auto w-full pb-12">
