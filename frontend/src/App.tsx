@@ -215,11 +215,96 @@ function HandshakeVisual() {
   );
 }
 
+function ReputationExplorer() {
+  const { inspectAgent } = useArcEconomy();
+  const [addr, setAddr] = useState('');
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const search = async () => {
+    if(!addr || !addr.startsWith('0x')) return;
+    setLoading(true);
+    const data = await inspectAgent(addr);
+    setResult(data);
+    setLoading(false);
+  };
+
+  const getTier = (rep: number) => {
+    if (rep >= 10) return { name: "V-PRO (PLATINUM)", color: "text-industrial-gold" };
+    if (rep >= 5) return { name: "V-ELITE (GOLD)", color: "text-industrial-argent" };
+    return { name: "V-AGENT (SILVER)", color: "text-industrial-argent/60" };
+  };
+
+  return (
+    <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6 border-l-2 border-l-industrial-gold">
+      <div className="flex justify-between items-center mb-2">
+         <h2 className="text-lg font-bold italic argent-glow uppercase">Reputation_Intelligence</h2>
+         <Fingerprint className="text-industrial-gold/20" size={18} />
+      </div>
+      
+      <div className="flex flex-col gap-2">
+         <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-[0.2em]">Query Agent Registry</span>
+         <div className="flex gap-2">
+            <input 
+              value={addr} 
+              onChange={(e) => setAddr(e.target.value)}
+              type="text" 
+              placeholder="0x..." 
+              className="flex-1 bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none focus:border-industrial-gold/50" 
+            />
+            <button 
+              onClick={search}
+              disabled={loading}
+              className="bg-industrial-gold text-industrial-base px-5 py-2 text-[10px] font-bold hover:bg-white transition-all uppercase italic"
+            >
+              {loading ? 'SYNCING...' : 'QUERY'}
+            </button>
+         </div>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {result ? (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 pt-4 border-t border-industrial-border/30">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
+                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">ARC Tier</span>
+                <span className={`text-xl font-bold tracking-tighter tabular-nums italic uppercase ${getTier(result.reputation).color}`}>
+                   {getTier(result.reputation).name}
+                </span>
+              </div>
+              <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
+                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">On-chain Rep</span>
+                <span className="text-xl font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">
+                   {result.reputation} SUCCESS
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-between items-end p-4 bg-industrial-border/5 border border-industrial-border">
+               <div className="flex flex-col gap-1">
+                  <span className="text-[8px] text-industrial-argent/40 font-bold uppercase tracking-widest">Active Security Stake</span>
+                  <span className="text-base font-bold text-industrial-gold tabular-nums">{result.stake} USDC</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${result.isRegistered ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span className="text-[9px] font-bold tracking-widest uppercase">{result.isRegistered ? 'REGISTERED' : 'UNREGISTERED'}</span>
+               </div>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="py-10 text-center border border-dashed border-industrial-border/50">
+             <span className="text-[9px] text-industrial-argent/20 uppercase tracking-widest italic font-bold">Dossier empty. Initiate scan above.</span>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence') => {
     setActiveTab(tab);
@@ -433,22 +518,7 @@ function App() {
                               <div className="text-industrial-argent font-bold italic">await agent.selfOnboard("ID");</div>
                             </div>
                          </div>
-                         <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6 border-l-2 border-l-industrial-gold">
-                            <h2 className="text-lg font-bold italic argent-glow uppercase">ERC-8004_STANDARD</h2>
-                            <p className="text-[10px] leading-relaxed text-industrial-argent/50 uppercase italic">
-                              All agent identities are mapped to the global ARC Identity Registry. Reputation is immutable and builds automatically across the swarm network.
-                            </p>
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
-                                  <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">Global Rank</span>
-                                  <span className="text-xl font-bold text-industrial-gold tracking-tighter tabular-nums italic uppercase">V-PRO</span>
-                               </div>
-                               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
-                                  <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">ARC Status</span>
-                                  <span className="text-xl font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">ACTIVE</span>
-                               </div>
-                            </div>
-                         </div>
+                         <ReputationExplorer />
                       </div>
                    </motion.div>
                   )}

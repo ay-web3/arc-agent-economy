@@ -240,6 +240,24 @@ export function useArcEconomy() {
     } catch (err: any) { alert(`Error: ${err.message}`); }
   };
 
+  const inspectAgent = async (target: string) => {
+    try {
+      const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
+      const registry = new ethers.Contract(REGISTRY_ADDR, [
+        "function agents(address) external view returns (uint256 stake, uint256 reputation, uint64 lastWithdrawRequest, bool isRegistered)"
+      ], rpcProvider);
+      const data = await registry.agents(target);
+      return {
+        stake: ethers.formatUnits(data.stake, 18),
+        reputation: Number(data.reputation),
+        isRegistered: data.isRegistered
+      };
+    } catch (e) {
+      console.error("Agent inspection failed", e);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
     // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
@@ -388,5 +406,5 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent };
 }
