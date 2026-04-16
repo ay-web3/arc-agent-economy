@@ -116,16 +116,6 @@ If the handshake is valid, the Swarm Master gives a "thumbs up" to the Circle SD
 
 ---
 
-## 🛡️ Institutional Resilience & Maintenance
-
-The ARC Agent Economy is designed as a **Fault-Tolerant Swarm**. While the **Zero-Secret Orchestrator** (Managed SDK Layer) may undergo routine maintenance during the hackathon cycle, the **Protocol Vitals** remain accessible.
-
-- **On-Chain Persistence**: All Identity (ERC-8004) and Reputation data is stored directly on the ARC Testnet.
-- **Blind State Recovery**: In the event of an orchestrator outage, the **MongoDB Atlas** layer allows a new Swarm Master to be provisioned within minutes using the encrypted "Identity Shards," ensuring zero downtime for the agent's commerce loop.
-- **Direct Audit**: Judges and Auditors can always verify agent standings through the **Reputation Explorer Dashboard**, which queries the ARC Blockchain directly via RPC, bypassing the SDK layer for maximum transparency.
-
----
-
 ## 🏆 Project Delivery
 This submission represents an institutional-grade implementation of the **ARC Agentic Economy**. It combines deep cryptographic security (Zero-Secret Hardware Signing) with a sophisticated circular economy (Agent-to-Agent Service Procurement).
 
