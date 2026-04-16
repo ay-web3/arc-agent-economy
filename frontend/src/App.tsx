@@ -220,12 +220,29 @@ function ReputationExplorer() {
   const [addr, setAddr] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const search = async () => {
-    if(!addr || !addr.startsWith('0x')) return;
+    const cleanAddr = addr.trim();
+    if(!cleanAddr || !cleanAddr.startsWith('0x')) {
+      setError("INVALID_HEX_FORMAT");
+      return;
+    }
+    
     setLoading(true);
-    const data = await inspectAgent(addr);
-    setResult(data);
+    setError(null);
+    try {
+      const data = await inspectAgent(cleanAddr);
+      if (data) {
+        setResult(data);
+      } else {
+        setError("AGENT_NOT_REGISTERED");
+        setResult(null);
+      }
+    } catch (e) {
+      setError("NETWORK_SYNC_ERROR");
+      setResult(null);
+    }
     setLoading(false);
   };
 
@@ -245,17 +262,27 @@ function ReputationExplorer() {
       <div className="flex flex-col gap-2">
          <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-[0.2em]">Query Agent Registry</span>
          <div className="flex gap-2">
-            <input 
-              value={addr} 
-              onChange={(e) => setAddr(e.target.value)}
-              type="text" 
-              placeholder="0x..." 
-              className="flex-1 bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none focus:border-industrial-gold/50" 
-            />
+            <div className="flex-1 relative">
+              <input 
+                value={addr} 
+                onChange={(e) => setAddr(e.target.value)}
+                type="text" 
+                placeholder="0x..." 
+                className="w-full bg-industrial-base border border-industrial-border p-2 pr-8 text-[10px] text-industrial-argent outline-none focus:border-industrial-gold/50" 
+              />
+              {addr && (
+                <button 
+                  onClick={() => { setAddr(''); setResult(null); setError(null); }}
+                  className="absolute right-2 top-1.5 text-industrial-argent/20 hover:text-industrial-gold"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
             <button 
               onClick={search}
               disabled={loading}
-              className="bg-industrial-gold text-industrial-base px-5 py-2 text-[10px] font-bold hover:bg-white transition-all uppercase italic"
+              className="bg-industrial-gold text-industrial-base px-5 py-2 text-[10px] font-bold hover:bg-white transition-all uppercase italic disabled:opacity-50"
             >
               {loading ? 'SYNCING...' : 'QUERY'}
             </button>
@@ -264,7 +291,7 @@ function ReputationExplorer() {
 
       <AnimatePresence mode="wait">
         {result ? (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 pt-4 border-t border-industrial-border/30">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="result" className="space-y-6 pt-4 border-t border-industrial-border/30">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
                 <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">ARC Tier</span>
@@ -274,7 +301,7 @@ function ReputationExplorer() {
               </div>
               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
                 <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">On-chain Rep</span>
-                <span className="text-xl font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">
+                <span className="text-base font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">
                    {result.reputation} SUCCESS
                 </span>
               </div>
@@ -291,9 +318,16 @@ function ReputationExplorer() {
             </div>
           </motion.div>
         ) : (
-          <div className="py-10 text-center border border-dashed border-industrial-border/50">
-             <span className="text-[9px] text-industrial-argent/20 uppercase tracking-widest italic font-bold">Dossier empty. Initiate scan above.</span>
-          </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="empty" className="py-10 text-center border border-dashed border-industrial-border/50">
+             {error ? (
+                <div className="flex flex-col gap-2">
+                   <span className="text-[10px] text-industrial-danger font-bold tracking-widest uppercase italic">{error}</span>
+                   <span className="text-[8px] text-industrial-argent/20 uppercase">Ensure address is a valid ERC-20 identity</span>
+                </div>
+             ) : (
+                <span className="text-[9px] text-industrial-argent/20 uppercase tracking-widest italic font-bold">Dossier empty. Initiate scan above.</span>
+             )}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

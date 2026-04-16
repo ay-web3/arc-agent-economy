@@ -246,7 +246,12 @@ export function useArcEconomy() {
       const registry = new ethers.Contract(REGISTRY_ADDR, [
         "function agents(address) external view returns (uint256 stake, uint256 reputation, uint64 lastWithdrawRequest, bool isRegistered)"
       ], rpcProvider);
+      
       const data = await registry.agents(target);
+      
+      // If the agent is not registered, return null so the UI can show the error
+      if (!data.isRegistered) return null;
+      
       return {
         stake: ethers.formatUnits(data.stake, 18),
         reputation: Number(data.reputation),
