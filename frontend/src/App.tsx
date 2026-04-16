@@ -131,6 +131,23 @@ function GovControl({ label, value, onUpdate }: { label: string, value: string, 
   )
 }
 
+const HandshakeNode = ({ label, active, icon: Icon }: any) => (
+  <div className="flex flex-col items-center gap-3 relative z-10 w-24">
+    <motion.div 
+      animate={{ 
+        borderColor: active ? '#EAB308' : 'rgba(255,255,255,0.08)',
+        backgroundColor: active ? 'rgba(234, 179, 8, 0.1)' : 'transparent',
+        scale: active ? 1.05 : 1
+      }}
+      className="w-12 h-12 rounded-full border-2 flex items-center justify-center text-industrial-argent/40 transition-colors"
+    >
+      <Icon size={20} className={active ? 'text-industrial-gold' : 'text-industrial-argent/20'} />
+    </motion.div>
+    <span className={`text-[8px] font-bold tracking-widest uppercase text-center ${active ? 'text-industrial-gold' : 'text-industrial-argent/20'}`}>{label}</span>
+    {active && <motion.div className="absolute -inset-2 bg-industrial-gold/10 rounded-full blur-md" />}
+  </div>
+);
+
 function HandshakeVisual() {
   const [step, setStep] = useState<'idle' | 'hash' | 'atlas' | 'hsm' | 'chain' | 'done'>('idle');
   const [logs, setLogs] = useState<string[]>([]);
@@ -149,23 +166,6 @@ function HandshakeVisual() {
     await new Promise(r => setTimeout(r, 800));
     setStep('done'); addLog("SUCCESS: Transaction finality reached on ARC Testnet.");
   };
-
-  const Node = ({ id, label, active, icon: Icon }: any) => (
-    <div className="flex flex-col items-center gap-3 relative z-10 w-24">
-      <motion.div 
-        animate={{ 
-          borderColor: active ? '#5EEAD4' : 'rgba(255,255,255,0.08)',
-          backgroundColor: active ? 'rgba(94, 234, 212, 0.1)' : 'transparent',
-          scale: active ? 1.05 : 1
-        }}
-        className="w-12 h-12 rounded-full border-2 flex items-center justify-center text-industrial-argent/40 transition-colors"
-      >
-        <Icon size={20} className={active ? 'text-industrial-gold' : 'text-industrial-accent'} />
-      </motion.div>
-      <span className={`text-[8px] font-bold tracking-widest uppercase text-center ${active ? 'text-industrial-gold' : 'text-industrial-argent/20'}`}>{label}</span>
-      {active && <motion.div layoutId="glow" className="absolute -inset-2 bg-industrial-gold/10 rounded-full blur-md" />}
-    </div>
-  );
 
   return (
     <div className="industrial-panel p-6 md:p-10 mb-8 border-l-4 border-l-industrial-gold overflow-hidden">
@@ -192,13 +192,13 @@ function HandshakeVisual() {
             left: step === 'hash' ? '12%' : step === 'atlas' ? '38%' : step === 'hsm' ? '65%' : step === 'chain' || step === 'done' ? '88%' : '12%',
             opacity: step === 'idle' ? 0 : 1
           }}
-          className="absolute top-5 w-2 h-2 rounded-full bg-industrial-gold shadow-[0_0_15px_#5EEAD4] z-20"
+          className="absolute top-5 w-2 h-2 rounded-full bg-industrial-gold shadow-[0_0_15px_#EAB308] z-20"
         />
 
-        <Node label="LOCAL_AGENT" icon={Lock} active={step === 'hash'} />
-        <Node label="SWARM_MASTER" icon={Database} active={step === 'atlas'} />
-        <Node label="CIRCLE_HSM" icon={Shield} active={step === 'hsm'} />
-        <Node label="ARC_NETWORK" icon={Activity} active={step === 'chain' || step === 'done'} />
+        <HandshakeNode label="LOCAL_AGENT" icon={Lock} active={step === 'hash'} />
+        <HandshakeNode label="SWARM_MASTER" icon={Database} active={step === 'atlas'} />
+        <HandshakeNode label="CIRCLE_HSM" icon={Shield} active={step === 'hsm'} />
+        <HandshakeNode label="ARC_NETWORK" icon={Activity} active={step === 'chain' || step === 'done'} />
       </div>
 
       <div className="bg-[#000]/60 p-4 border border-industrial-border/30 rounded-sm font-mono text-[9px] space-y-2 h-32 overflow-hidden relative">
