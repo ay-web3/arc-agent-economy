@@ -9,7 +9,9 @@ declare global {
 
 // Balanced Economy V1-Pro Addresses
 const REGISTRY_ADDR = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
-const ESCROW_ADDR = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
+const ESCROW_ADDR   = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
+const IDENTITY_PROTOCOL_ADDR   = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; // ERC-8004 official
+const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; // ERC-8004 official
 const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [
@@ -243,32 +245,60 @@ export function useArcEconomy() {
   const inspectAgent = async (target: string) => {
     try {
       const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
-      const registry = new ethers.Contract(REGISTRY_ADDR, [
+      
+      // 1. Check Protocol Identity (ERC-8004 NFT)
+      const identityContract = new ethers.Contract(IDENTITY_PROTOCOL_ADDR, [
+        "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+        "function tokenURI(uint256 tokenId) external view returns (string)",
+        "function ownerOf(uint256 tokenId) external view returns (address)"
+      ], rpcProvider);
+
+      // Find the most recent Identity NFT sent to this address
+      const filter = identityContract.filters.Transfer(null, target);
+      const logs = await identityContract.queryFilter(filter, -20000); // Scan deeper for protocol history
+      
+      let agentId = null;
+      let tokenURI = null;
+
+      if (logs.length > 0) {
+        // @ts-ignore
+        agentId = logs[logs.length - 1].args.tokenId;
+        tokenURI = await identityContract.tokenURI(agentId);
+      }
+
+      // 2. Local Economic Security Audit
+      const localRegistry = new ethers.Contract(REGISTRY_ADDR, [
         "function profile(address) external view returns (bool active, bytes32 capabilitiesHash, bytes32 pubKey)",
         "function stakeOf(address) external view returns (uint256)"
       ], rpcProvider);
       
-      const [prof, totalStake] = await Promise.all([
-        registry.profile(target),
-        registry.stakeOf(target)
+      const [localProf, totalStake] = await Promise.all([
+        localRegistry.profile(target),
+        localRegistry.stakeOf(target)
       ]);
-      
-      if (!prof.active) return null;
 
-      // Calculate Reputation based on TaskFinalized events
-      const escrow = new ethers.Contract(ESCROW_ADDR, ["event TaskFinalized(uint256 indexed taskId)"], rpcProvider);
-      const filter = escrow.filters.TaskFinalized();
-      // We'll scan the recent 5000 blocks for efficiency in the demo
-      const events = await escrow.queryFilter(filter, -5000);
+      // 3. Official Reputation Scan
+      const reputationContract = new ethers.Contract(REPUTATION_PROTOCOL_ADDR, [
+        "event FeedbackGiven(uint256 indexed agentId, int128 score, uint8 feedbackType, string tag)"
+      ], rpcProvider);
       
-      // Note: In a production app, we would query a subgraph. 
-      // For the hackathon demo, we count their involvements.
-      const reputation = events.length; 
+      let protocolRep = 0;
+      if (agentId) {
+        const repFilter = reputationContract.filters.FeedbackGiven(agentId);
+        const repLogs = await reputationContract.queryFilter(repFilter, -20000);
+        protocolRep = repLogs.length; // Simplified for demo: count of feedback
+      }
+
+      // Must have either an official identity OR a local registration to be visible
+      if (!agentId && !localProf.active) return null;
 
       return {
+        agentId: agentId ? agentId.toString() : "LEGACY_MDL",
+        tokenURI: tokenURI,
         stake: ethers.formatUnits(totalStake, 18),
-        reputation: reputation,
-        isRegistered: prof.active
+        reputation: protocolRep || (localProf.active ? 1 : 0),
+        isRegistered: agentId ? true : localProf.active,
+        isProtocolStandard: !!agentId
       };
     } catch (e) {
       console.error("Agent inspection failed", e);

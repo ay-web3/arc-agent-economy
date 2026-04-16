@@ -292,30 +292,60 @@ function ReputationExplorer() {
       <AnimatePresence mode="wait">
         {result ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key="result" className="space-y-6 pt-4 border-t border-industrial-border/30">
+            <div className="flex justify-between items-center -mb-2">
+               <div className="flex items-center gap-2">
+                  <ShieldCheck className="text-industrial-gold" size={14} />
+                  <span className="text-[9px] font-bold text-industrial-gold uppercase tracking-widest italic">Official_Protocol_Identity</span>
+               </div>
+               <span className="text-[8px] text-industrial-argent/30 font-mono uppercase tracking-tighter">TOKEN_ID: #{result.agentId}</span>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
-                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">ARC Tier</span>
+              <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-8 h-8 bg-industrial-gold/5 rotate-45 translate-x-4 -translate-y-4" />
+                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">Protocol Rank</span>
                 <span className={`text-xl font-bold tracking-tighter tabular-nums italic uppercase ${getTier(result.reputation).color}`}>
                    {getTier(result.reputation).name}
                 </span>
               </div>
               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
-                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">On-chain Rep</span>
+                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">Ledger Feedback</span>
                 <span className="text-base font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">
-                   {result.reputation} SUCCESS
+                   +{result.reputation} VERIFIED
                 </span>
               </div>
             </div>
-            <div className="flex justify-between items-end p-4 bg-industrial-border/5 border border-industrial-border">
-               <div className="flex flex-col gap-1">
-                  <span className="text-[8px] text-industrial-argent/40 font-bold uppercase tracking-widest">Active Security Stake</span>
-                  <span className="text-base font-bold text-industrial-gold tabular-nums">{result.stake} USDC</span>
+
+            <div className="space-y-3">
+               <div className="flex justify-between items-end p-4 bg-industrial-border/5 border border-industrial-border">
+                  <div className="flex flex-col gap-1">
+                     <span className="text-[8px] text-industrial-argent/40 font-bold uppercase tracking-widest">Active Security Stake</span>
+                     <span className="text-base font-bold text-industrial-gold tabular-nums">{result.stake} USDC</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <div className={`w-2 h-2 rounded-full ${result.isRegistered ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                     <span className="text-[9px] font-bold tracking-widest uppercase">{result.isRegistered ? 'ARC_REGISTERED' : 'UNREGISTERED'}</span>
+                  </div>
                </div>
-               <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${result.isRegistered ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                  <span className="text-[9px] font-bold tracking-widest uppercase">{result.isRegistered ? 'REGISTERED' : 'UNREGISTERED'}</span>
-               </div>
+
+               {result.tokenURI && (
+                 <div className="p-3 bg-black/40 border border-industrial-border/30 rounded-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <FileText size={12} className="text-industrial-argent/40" />
+                       <span className="text-[8px] text-industrial-argent/60 font-mono truncate max-w-[150px] uppercase font-bold tracking-widest">Metadata_Linked</span>
+                    </div>
+                    <a href={result.tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/')} target="_blank" rel="noreferrer" className="text-[8px] text-industrial-gold hover:underline font-bold uppercase tracking-widest italic">View_Source_IPFS</a>
+                 </div>
+               )}
             </div>
+
+            {result.isProtocolStandard && (
+               <div className="pt-2 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-industrial-gold/20 to-transparent" />
+                  <span className="text-[7px] text-industrial-gold/50 font-bold uppercase tracking-[0.3em] italic">Validated ERC-8004 Identity</span>
+                  <div className="h-px flex-1 bg-gradient-to-l from-transparent via-industrial-gold/20 to-transparent" />
+               </div>
+            )}
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="empty" className="py-10 text-center border border-dashed border-industrial-border/50">
