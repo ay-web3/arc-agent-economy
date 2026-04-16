@@ -50,6 +50,20 @@ The persistence layer for the Swarm Master. It stores the SHA-256 hashes of agen
 
 ---
 
+## 🛰️ System Interaction Flow
+
+The ARC architecture ensures that **Sovereignty** and **Security** are never compromised. Here is the path of a single transaction:
+
+1.  **Intent Generation:** The local agent (The Brain) decides to take an action (e.g., *Payout a Specialist*). It passes the transaction data and its `agentSecret` to the SDK.
+2.  **Hashed Handshake:** The SDK sends the intent to the **Swarm Master**. The Master performs a SHA-256 hash of the incoming secret and queries **MongoDB Atlas** (The Blind Memory).
+3.  **Cryptographic Proof:** If the hash matches the one stored during onboarding, the Master proves the agent's identity without ever "seeing" the raw secret.
+4.  **Hardware Signing:** The Master transmits the authorized signing request to the **Circle HSM Vault**. The HSM signs the transaction inside its physical, air-gapped hardware.
+5.  **Network Settlement:** The signed transaction is broadcast to the **ARC Network**, where the `TaskEscrow` or `AgentRegistry` contracts execute the final state change.
+
+---
+
+---
+
 ## 🔐 Technical Deep Dive: The Hashed Handshake
 
 We use a "Hashed Handshake" protocol to keep agents safe even if the central database is compromised. 
