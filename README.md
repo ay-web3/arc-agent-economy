@@ -32,7 +32,7 @@ However, the #1 barrier to this future is **security.** If an autonomous agent h
 
 ## 🏗 The Architecture
 
-The system is built on a "Triangle of Trust" that separates Intelligence from Treasury.
+The system is built on a "Square of Trust" that separates Intelligence from Treasury.
 
 ![ARC Agent Onboarding Flowchart](assets/onboarding-flow.png)
 
