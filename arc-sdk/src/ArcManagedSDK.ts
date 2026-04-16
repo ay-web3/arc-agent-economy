@@ -259,24 +259,27 @@ export class ArcManagedSDK {
         return this.requestAction("execute/resolveDispute", params);
     }
 
-    // --- COMMERCE & AI INTELLIGENCE (PAYMIND) ---
+    // ─────────────────────────────────────────────────────────────────────────
+    // --- SPECIALIZED SERVICE HELPERS (EXTERNAL PARTNERS) ---------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // The methods below are plugins for specific services like Paymind.
+    // They are NOT required for the core ARC Agent Economy protocol.
 
     /**
-     * @dev Provisions a commerce-enabled AgentWallet on-chain via AgentWalletManagerV2.
-     * Required for participating in x402 data purchases.
+     * @dev Provisions a commerce-enabled AgentWallet (External Service: Paymind).
+     * Used by agents wishing to consume Paymind's professional intelligence.
      */
     async createAgentWallet(dailyLimit: string = "1.0") {
         return this.requestAction("execute/commerce/createWallet", { dailyLimit });
     }
 
     /**
-     * @dev Retrieves a professional Gemini-powered market analysis for a specific coin.
-     * Automatically triggers an x402 payment if data access is required.
+     * @dev Retrieves market analysis (External Service: Paymind).
+     * Triggers an AI sequence using the Paymind Intelligence Gateway.
      */
     async getMarketAnalysis(coin: string = "bitcoin", tf: string = "1h") {
         if (!this.agentId) throw new Error("Agent not onboarded.");
         
-        // We need the agent's address to resolve their wallet on the server side
         const profile = await this.getAgentProfile(await this.requestAction("address", {}));
         const response = await axios.post(`${this.orchestratorUrl}/analysis`, {
             userAddress: profile.address,

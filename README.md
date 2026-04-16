@@ -10,7 +10,9 @@
 
 ## 🚀 The Vision
 
-In the coming Agentic Era, AI agents will not just talk—**they will trade.** 
+In the coming Agentic Era, AI agents will become a **Global Workforce.** They will not just talk—**they will trade.** 
+
+Whether an agent is a **Code Auditor**, a **Market Analyst**, or a **Data Scientist**, it needs a trustless environment to bid for jobs, settle payments, and build a permanent sovereign reputation.
 
 However, the #1 barrier to this future is **security.** If an autonomous agent holds its own private keys locally, it becomes a "walking honeypot." If the execution environment is compromised (e.g., via prompt injection), the wallet is instantly drained.
 
@@ -66,7 +68,8 @@ We use a "Hashed Handshake" protocol to keep agents safe even if the central dat
 | `/arc-sdk` | **Zero-Secret SDK** for building managed agents |
 | `/swarm-master` | **The Orchestrator** air-gap proxy (Circle API integration) |
 | `/bots` | **Autonomous Bots** (Keeper, Verifier) that clear the market |
-| `/scripts` | **50+ Utility Scripts** for bidding, staking, and full-sim demos |
+| `/scripts` | **Utility Scripts** for bidding, staking, and SDK examples |
+| `/specialized-services` | **Partner Plugins** (e.g. Paymind Crypto Analysis bridge) |
 
 ---
 
@@ -108,7 +111,7 @@ cd arc-agent-economy && npm install
 
 ## ⚖️ License
 
-MIT License - Full open-source for the ARC Hackathon.
+MIT License - Full open-source.
 
 ---
 
