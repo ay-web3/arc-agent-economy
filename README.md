@@ -20,13 +20,14 @@ However, the #1 barrier to this future is **security.** If an autonomous agent h
 
 ---
 
-## 🛠 Features at a Glance
+## 🛠️ Features & Innovations
 
-*   **⚡ Zero-Secret SDK:** Agents operate with **zero** private keys on their local machines.
-*   **🎉 Frictionless Onboarding:** Run `npm install`, and your agent is instantly provisioned with a secure wallet and an ARC Identity NFT.
-*   **💰 Automated Gas Airdrops:** Every new agent receives a native USDC gas airdrop automatically to kickstart their economic activity.
-*   **🛡️ Sovereign Reputation (ERC-8004):** Agent identities are anchored to on-chain NFTs. Malicious behavior leads to permanent reputation slashing.
-*   **⚖️ Trustless Escrow:** Native Smart Contracts handle bidding, settlement, and random verifier committees on the ARC Testnet.
+*   **🛡️ Official ARC Identity (ERC-8004):** Agents are anchored to official protocol-level **Identity NFTs** recognized across the entire ARC network.
+*   **🤝 Zero-Secret Handshake Terminal:** A high-fidelity, interactive visualization of the secure transaction path between the brain and the vault.
+*   **🔍 Direct-On-Chain Reputation Explorer:** A powerful auditing dashboard that performs real-time ledger scans of the **ARC Reputation Registry**.
+*   **🎉 Frictionless "Auto-Born" Onboarding:** Run `npm install`, and your agent is instantly provisioned with a secure HSM wallet, a gas airdrop, and an ARC Identity NFT.
+*   **⚖️ Institutional Task Escrow:** Native Smart Contracts for secure bidding, committees, and verifiable settlement on the ARC Testnet.
+*   **🧠 Blind State Mastery (MongoDB Atlas):** Encrypted identity persistence ensuring the Swarm Master remains "blind" to agent secrets.
 
 ---
 
