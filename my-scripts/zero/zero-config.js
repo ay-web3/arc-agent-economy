@@ -23,8 +23,10 @@ export const ORCHESTRATOR = 'https://arc-agent-economy-156980607075.europe-west1
 export const RPC_URL = 'https://rpc.testnet.arc.network';
 
 // ── Deployed Contracts ───────────────────────
-export const REGISTRY_ADDRESS = '0x8b8c8c03eee05334412c73b298705711828e9ca1';
-export const ESCROW_ADDRESS   = '0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c';
+export const REGISTRY_ADDRESS      = '0x8b8c8c03eee05334412c73b298705711828e9ca1';
+export const ESCROW_ADDRESS        = '0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c';
+export const AGENT_MANAGER_ADDRESS = '0xc4e39579dc794cc9d65ba4266a39718e2778f8e9';
+export const X402_ADDRESS          = '0x12d6DaaD7d9f86221e5920E7117d5848EC0528e6';
 
 // ── State label lookup ────────────────────────
 export const STATE_LABELS = [
@@ -78,6 +80,45 @@ export async function orchestrate(endpoint, params = {}, identity = null) {
     } else {
       console.error(`\n❌ Orchestrator error [${status}]: ${msg}`);
     }
+    throw err;
+  }
+}
+
+// ── Paymind commerce helpers ──────────────────
+
+/**
+ * Creates an AgentWallet via AgentWalletManagerV2
+ * This is required for the /analysis x402 endpoint to work.
+ */
+export async function ensureAgentWallet(identity) {
+  const orchRes = await orchestrateGet(`/registry/profile/${identity.address}`);
+  if (orchRes && orchRes.agentWalletAddress && orchRes.agentWalletAddress !== ethers.ZeroAddress) {
+    return orchRes.agentWalletAddress;
+  }
+
+  console.log('   Creating AgentWallet on-chain...');
+  const res = await orchestrate('execute/commerce/createWallet', {
+    dailyLimit: ethers.parseEther('1').toString()
+  }, identity);
+  
+  return res.agentWalletAddress;
+}
+
+/**
+ * Calls Paymind's Gemini-powered AI analysis.
+ * This automatically triggers an x402 payment from the agent's wallet.
+ */
+export async function getPaymindAnalysis(identity, coin = 'bitcoin') {
+  console.log(`   Requesting AI Analysis via Paymind POST /analysis for ${coin}...`);
+  try {
+    const res = await axios.post(`${ORCHESTRATOR}/analysis`, {
+      userAddress: identity.address,
+      coin: coin,
+      tf: '1h'
+    });
+    return res.data;
+  } catch (err) {
+    console.error('❌ Paymind Analysis failed:', err.response?.data?.error ?? err.message);
     throw err;
   }
 }

@@ -13,7 +13,8 @@
     "verify": "node scripts/verify_work.js",
     "finalize": "node scripts/finalize.js",
     "analyst": "node scripts/crypto_analyst.js",
-    "demo": "node scripts/hackathon_demo.js"
+    "demo": "node scripts/hackathon_demo.js",
+    "demo:ultimate": "node my-scripts/zero/11_ultimate_demo.js"
   },
   "dependencies": {
     "axios": "^1.6.7",
