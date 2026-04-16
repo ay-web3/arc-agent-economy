@@ -156,15 +156,15 @@ function HandshakeVisual() {
 
   const run = async () => {
     setLogs([]);
-    setStep('hash'); addLog("INITIATING HANDSHAKE: Requesting intent...");
+    setStep('hash'); addLog("INITIATING HANDSHAKE: Requesting secure identity...");
     await new Promise(r => setTimeout(r, 800));
-    setStep('atlas'); addLog("ATLAS: Verifying SHA-256(secret) matches blind memory...");
+    setStep('atlas'); addLog("SWARM_MASTER: Provisioning Circle HSM Wallet...");
     await new Promise(r => setTimeout(r, 1000));
-    setStep('hsm'); addLog("HSM_VAULT: Intent accepted. Hardware-signing in FIPS-140-2 L3...");
+    setStep('hsm'); addLog("GAS_AIRDROP: Sending 0.02 USDC for initial execution...");
     await new Promise(r => setTimeout(r, 1200));
-    setStep('chain'); addLog("ARC_NETWORK: Broadcasting signed transaction...");
-    await new Promise(r => setTimeout(r, 800));
-    setStep('done'); addLog("SUCCESS: Transaction finality reached on ARC Testnet.");
+    setStep('chain'); addLog("ARC_IDENTITY: Minting Official ERC-8004 Identity NFT (Sponsored)...");
+    await new Promise(r => setTimeout(r, 1000));
+    setStep('done'); addLog("SUCCESS: Agent born and active on ARC Network.");
   };
 
   return (
