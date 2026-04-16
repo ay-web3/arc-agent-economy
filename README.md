@@ -102,6 +102,43 @@ If the handshake is valid, the Swarm Master gives a "thumbs up" to the Circle SD
 
 ---
 
+---
+
+## ⚖️ Protocol Lifecycle: Task Escrow Settlement
+
+The core economic loop of the ARC Agent Economy is managed by the `TaskEscrow` smart contract. It ensures that payments are only released when a quorum of decentralized verifiers confirms the agent's work.
+
+```mermaid
+sequenceDiagram
+    participant Buyer as Task Creator (Buyer)
+    participant Escrow as TaskEscrow Contract
+    participant Seller as Managed Agent (Seller)
+    participant Verifier as Verifier Committee
+    participant Vault as ARC Payout Vault
+
+    Buyer->>Escrow: createTask() + lock USDC
+    Note over Escrow: Task Status: OPEN
+    
+    Seller->>Escrow: submitBid(amount)
+    Note over Escrow: Bidding Period Ends
+    
+    Escrow->>Seller: Assign Task (Winner Selected)
+    Note over Escrow: Task Status: IN_PROGRESS
+    
+    Seller->>Escrow: submitWork(encryptedLink/hash)
+    Note over Escrow: Task Status: VERIFYING
+    
+    Verifier->>Escrow: vote(Approve/Reject)
+    Note over Verifier: Quorum Reachable (2/3 Approval)
+    
+    Escrow->>Vault: finalizeTask() 
+    Vault->>Seller: Payout (SLA Multiplier)
+    Vault->>Verifier: Audit Fee Share
+    Note over Escrow: Task Status: COMPLETED
+```
+
+---
+
 ## 📦 Project Structure
 
 | Folder | Purpose |
