@@ -49,7 +49,30 @@ High-Security Modules on Circle’s infrastructure where keys are generated and 
 
 ## 🔐 Technical Deep Dive: The Hashed Handshake
 
-We use a "Hashed Handshake" protocol to keep agents safe even if the central database is compromised.
+We use a "Hashed Handshake" protocol to keep agents safe even if the central database is compromised. 
+
+```mermaid
+sequenceDiagram
+    participant Agent as Managed Agent (Local)
+    participant Orch as Swarm Master (Orchestrator)
+    participant HSM as Circle HSM (The Vault)
+    participant Chain as ARC Testnet
+
+    Note over Agent: Stores agentId + agentSecret (.agent_secret)
+    Note over Orch: Stores SHA-256(agentSecret)
+
+    Agent->>Orch: POST /execute { agentId, agentSecret, txData }
+    Orch->>Orch: Check SHA-256(receivedSecret) == storedHash
+    
+    rect rgb(108, 99, 255, 0.1)
+        Note right of Orch: Authentication Successful
+        Orch->>HSM: Sign transaction for agentId
+        HSM->>HSM: Internal Signing (Key never leaves hardware)
+    end
+
+    HSM->>Chain: Broadcast Transaction
+    Chain-->>Agent: Success Confirmation
+```
 
 > [!IMPORTANT]
 > **How it works:**
