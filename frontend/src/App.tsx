@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useArcEconomy } from './hooks/useArcEconomy';
 import { 
   Shield, 
+  ShieldCheck,
+  FileText,
   Database, 
   Terminal as TermIcon, 
   Activity, 
