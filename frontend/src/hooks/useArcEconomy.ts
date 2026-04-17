@@ -246,31 +246,7 @@ export function useArcEconomy() {
     try {
       const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
       
-      // 1. Check Protocol Identity (ERC-8004 NFT)
-      const identityContract = new ethers.Contract(IDENTITY_PROTOCOL_ADDR, [
-        "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-        "function tokenURI(uint256 tokenId) external view returns (string)",
-        "function ownerOf(uint256 tokenId) external view returns (address)"
-      ], rpcProvider);
-
-      // Find the most recent Identity NFT sent to this address
-      const filter = identityContract.filters.Transfer(null, target);
-      const logs = await identityContract.queryFilter(filter, -100000); // DEEP SCAN (approx 24h history)
-      
-      let agentId = null;
-      let tokenURI = null;
-
-      if (logs.length > 0) {
-        // @ts-ignore
-        agentId = logs[logs.length - 1].args.tokenId;
-        try {
-          tokenURI = await identityContract.tokenURI(agentId);
-        } catch (e) {
-          console.warn("Could not fetch TokenURI", e);
-        }
-      }
-
-      // 2. Local Economic Security Audit
+      // 1. STATE-FIRST DISCOVERY (No block limits)
       const localRegistry = new ethers.Contract(REGISTRY_ADDR, [
         "function profile(address) external view returns (bool active, bytes32 capabilitiesHash, bytes32 pubKey)",
         "function stakeOf(address) external view returns (uint256)"
@@ -281,21 +257,45 @@ export function useArcEconomy() {
         localRegistry.stakeOf(target)
       ]);
       const totalStake = ethers.formatUnits(totalStakeWei, 18);
+      const hasStake = parseFloat(totalStake) > 0;
 
-      // 3. Official Reputation Scan
-      const reputationContract = new ethers.Contract(REPUTATION_PROTOCOL_ADDR, [
-        "event FeedbackGiven(uint256 indexed agentId, int128 score, uint8 feedbackType, string tag)"
+      // 2. Protocol Identity Scan (Capped at 10,000 to prevent RPC 500)
+      const identityContract = new ethers.Contract(IDENTITY_PROTOCOL_ADDR, [
+        "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+        "function tokenURI(uint256 tokenId) external view returns (string)"
       ], rpcProvider);
+
+      let agentId = null;
+      let tokenURI = null;
       
-      let protocolRep = 0;
-      if (agentId) {
-        const repFilter = reputationContract.filters.FeedbackGiven(agentId);
-        const repLogs = await reputationContract.queryFilter(repFilter, -100000);
-        protocolRep = repLogs.length; 
+      try {
+        const filter = identityContract.filters.Transfer(null, target);
+        const logs = await identityContract.queryFilter(filter, -10000); 
+        if (logs.length > 0) {
+          // @ts-ignore
+          agentId = logs[logs.length - 1].args.tokenId;
+          tokenURI = await identityContract.tokenURI(agentId);
+        }
+      } catch (e) {
+        console.warn("NFT Log scan failed (likely out of 10k range), falling back to state discovery.");
       }
 
-      // VIZ_FALLBACK: Show agent if they have an Identity OR a Local Active Status OR a non-zero Stake
-      const hasStake = parseFloat(totalStake) > 0;
+      // 3. Official Reputation Scan (Capped at 10,000)
+      let protocolRep = 0;
+      if (agentId) {
+        try {
+          const reputationContract = new ethers.Contract(REPUTATION_PROTOCOL_ADDR, [
+            "event FeedbackGiven(uint256 indexed agentId, int128 score, uint8 feedbackType, string tag)"
+          ], rpcProvider);
+          const repFilter = reputationContract.filters.FeedbackGiven(agentId);
+          const repLogs = await reputationContract.queryFilter(repFilter, -10000);
+          protocolRep = repLogs.length; 
+        } catch (e) {
+            console.warn("Reputation scan failed.");
+        }
+      }
+
+      // FINAL VISIBILITY CHECK
       if (!agentId && !localProf.active && !hasStake) return null;
 
       return {
