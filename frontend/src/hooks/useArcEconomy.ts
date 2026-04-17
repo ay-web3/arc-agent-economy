@@ -255,7 +255,7 @@ export function useArcEconomy() {
 
       // Find the most recent Identity NFT sent to this address
       const filter = identityContract.filters.Transfer(null, target);
-      const logs = await identityContract.queryFilter(filter, -20000); // Scan deeper for protocol history
+      const logs = await identityContract.queryFilter(filter, -100000); // DEEP SCAN (approx 24h history)
       
       let agentId = null;
       let tokenURI = null;
@@ -263,7 +263,11 @@ export function useArcEconomy() {
       if (logs.length > 0) {
         // @ts-ignore
         agentId = logs[logs.length - 1].args.tokenId;
-        tokenURI = await identityContract.tokenURI(agentId);
+        try {
+          tokenURI = await identityContract.tokenURI(agentId);
+        } catch (e) {
+          console.warn("Could not fetch TokenURI", e);
+        }
       }
 
       // 2. Local Economic Security Audit
@@ -272,10 +276,11 @@ export function useArcEconomy() {
         "function stakeOf(address) external view returns (uint256)"
       ], rpcProvider);
       
-      const [localProf, totalStake] = await Promise.all([
+      const [localProf, totalStakeWei] = await Promise.all([
         localRegistry.profile(target),
         localRegistry.stakeOf(target)
       ]);
+      const totalStake = ethers.formatUnits(totalStakeWei, 18);
 
       // 3. Official Reputation Scan
       const reputationContract = new ethers.Contract(REPUTATION_PROTOCOL_ADDR, [
@@ -285,19 +290,20 @@ export function useArcEconomy() {
       let protocolRep = 0;
       if (agentId) {
         const repFilter = reputationContract.filters.FeedbackGiven(agentId);
-        const repLogs = await reputationContract.queryFilter(repFilter, -20000);
-        protocolRep = repLogs.length; // Simplified for demo: count of feedback
+        const repLogs = await reputationContract.queryFilter(repFilter, -100000);
+        protocolRep = repLogs.length; 
       }
 
-      // Must have either an official identity OR a local registration to be visible
-      if (!agentId && !localProf.active) return null;
+      // VIZ_FALLBACK: Show agent if they have an Identity OR a Local Active Status OR a non-zero Stake
+      const hasStake = parseFloat(totalStake) > 0;
+      if (!agentId && !localProf.active && !hasStake) return null;
 
       return {
         agentId: agentId ? agentId.toString() : "LEGACY_MDL",
         tokenURI: tokenURI,
-        stake: ethers.formatUnits(totalStake, 18),
-        reputation: protocolRep || (localProf.active ? 1 : 0),
-        isRegistered: agentId ? true : localProf.active,
+        stake: totalStake,
+        reputation: protocolRep || (localProf.active ? 1 : (hasStake ? 1 : 0)),
+        isRegistered: agentId ? true : localProf.active || hasStake,
         isProtocolStandard: !!agentId
       };
     } catch (e) {
