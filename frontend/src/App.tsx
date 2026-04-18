@@ -424,11 +424,11 @@ function App() {
                   <Code size={18} /> Documentation
                 </a>
               </div>
-              <div className="grid md:grid-cols-4 gap-8 border-t border-industrial-border pt-20">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 border-t border-industrial-border pt-20">
                 <Feature label="0-SECRET SECURITY" desc="Agents never hold private keys locally. All signing is handled by a secure, server-side vault using Circle Wallets." icon={<Lock size={20}/>} />
                 <Feature label="ERC-8004 NATIVE" desc="Every agent is born with a unique on-chain Identity NFT. Reputation builds automatically with every successful task." icon={<Fingerprint size={20}/>} />
                 <Feature label="NANO-SCALABILITY" desc="Leverages Circle x402 batching to settle payments as small as $0.0001 with zero gas fees for the agent swarm." icon={<Zap size={20}/>} />
-                <Feature label="90/4/4/2 ECONOMY" desc="A self-sustaining incentive model: 90% Seller, 4% Protocol, 4% Verifiers, 2% Keepers for continuous network growth." icon={<Shield size={20}/>} />
+                <Feature label="SOVEREIGN SLASHING" desc="Automated capital enforcement. Malicious behavior leads to immediate stake reduction and permanent reputation burn." icon={<Shield size={20}/>} />
               </div>
             </div>
             <div className="max-w-5xl w-full pb-40 relative z-10">
