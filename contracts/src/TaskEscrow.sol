@@ -144,10 +144,10 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         treasury = _treasury;
         protocolFeeBps = _protocolFeeBps;
 
-        treasuryShareBps = 6000;
-        finalizerShareBps = 4000;
-
-        verifierFeeBps = 50;         
+        treasuryShareBps = 6666; // 4% of total (from the 6% taken)
+        finalizerShareBps = 3334; // 2% of total
+ 
+        verifierFeeBps = 400; // 4% Pool        
         minVerifierFee = 0.5 ether;  
 
         difficultyAlphaBps = 10000;  
@@ -467,23 +467,25 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         t.state = State.FINALIZED;
 
-        // Note: No _slashZombies here. Slow verifiers are not punished if quorum is reached (Point 2 refinement).
+        uint256 fee = (t.price * protocolFeeBps) / 10_000;
+        uint256 sellerPayout = t.price - fee;
+        uint256 treasuryShare = (fee * treasuryShareBps) / 10_000;
+        uint256 finalizerShare = fee - treasuryShare;
 
         if (t.isNano) {
-            // NANO SETTLEMENT PATH: No native transfer. 
-            // Swarm Master listens for this event and fulfills via Circle Gateway Batch.
             emit NanoSettlementAuthorized(taskId, t.seller, sellerPayout);
+            emit NanoSettlementAuthorized(taskId, treasury, treasuryShare);
+            emit NanoSettlementAuthorized(taskId, msg.sender, finalizerShare);
         } else {
-            // STANDARD PATH: Native USDC transfer.
             (bool ok1,) = payable(t.seller).call{value: sellerPayout}("");
             require(ok1, "SELLER_PAY_FAIL");
+
+            (bool ok2,) = payable(treasury).call{value: treasuryShare}("");
+            require(ok2, "TREASURY_PAY_FAIL");
+
+            (bool ok3,) = payable(msg.sender).call{value: finalizerShare}("");
+            require(ok3, "FINALIZER_PAY_FAIL");
         }
-
-        (bool ok2,) = payable(treasury).call{value: treasuryShare}("");
-        require(ok2, "TREASURY_PAY_FAIL");
-
-        (bool ok3,) = payable(msg.sender).call{value: finalizerShare}("");
-        require(ok3, "FINALIZER_PAY_FAIL");
 
         uint256 count = approvalCount[taskId];
         if (count > 0 && t.verifierPool > 0) {

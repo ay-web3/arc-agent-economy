@@ -8,6 +8,7 @@ export interface SwarmMasterConfig {
     registryAddress: string;
     escrowAddress: string;
     gatewayAddress: string; // New: Circle Gateway for Batching
+    treasuryAddress: string; // New: Destination for protocol fees
 }
 
 /**
@@ -21,6 +22,7 @@ export class SwarmOrchestrator {
     private gateway: GatewayClient;
     private registryAddress: string;
     private escrowAddress: string;
+    private treasuryAddress: string;
 
     constructor(config: SwarmMasterConfig) {
         this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
@@ -30,6 +32,7 @@ export class SwarmOrchestrator {
         });
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
+        this.treasuryAddress = config.treasuryAddress;
     }
 
     async executeForAgent(agentWalletId: string, action: string, params: any) {

@@ -58,12 +58,14 @@ async function runNanoDemo() {
     ];
 
     for (const recipient of recipients) {
-        // In a real scenario, this is triggered by the Swarm Master seeing 
-        // the TaskEscrow.finalize() event.
-        process.stdout.write(`[BATCHING] Authorizing $0.001 for ${recipient}... `);
-        
-        // This simulates the Swarm Master fulfillment
-        console.log("✅ [COLLECTED]");
+        // Simulating the 90/4/4/2 Split on $0.001
+        const sellerShare = "0.0009";
+        const protocolShare = "0.00004";
+        const verifierShare = "0.00004"; // Shared among pool
+        const finalizerShare = "0.00002";
+
+        process.stdout.write(`[BATCHING] $0.001 -> { Seller: ${sellerShare}, Treasury: ${protocolShare}, Audit: ${verifierShare}, Tip: ${finalizerShare} } `);
+        console.log("✅ [BURIED IN BATCH]");
     }
 
     console.log("\n[STEP 3] Finalizing Batch...");
