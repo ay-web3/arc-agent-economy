@@ -233,7 +233,7 @@ The ARC Agent Economy is built exclusively on the **ARC Network** because legacy
 
 *   **AgentRegistry:** `0xB2332698FF627c8CD9298Df4dF2002C4c5562862`
 *   **TaskEscrow:** `0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce`
-*   **RPC URL:** `https://rpc.arc.network` (ChainID: 5042002)
+*   **RPC URL:** `https://rpc.testnet.arc.network` (ChainID: 5042002)
 
 ---
 
