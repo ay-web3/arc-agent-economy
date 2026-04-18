@@ -62,6 +62,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         State   state;
         uint8   quorumM;
         uint8   quorumN;
+        bool    isNano; // New: Flag for Circle x402 Batching
     }
 
     struct Bid {
@@ -130,6 +131,8 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount);
     event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount); 
 
+    event NanoSettlementAuthorized(uint256 indexed taskId, address indexed seller, uint256 amount);
+
     event DisputeOpened(uint256 indexed taskId, address indexed opener);
     event DisputeResolved(uint256 indexed taskId, DisputeRuling ruling);
 
@@ -186,7 +189,8 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint64 verifierDeadline, 
         bytes32 taskHash,
         address[] calldata _verifiers,
-        uint8 quorumM
+        uint8 quorumM,
+        bool isNano // Added: Track settlement type
     ) external payable nonReentrant returns (uint256 taskId) {
         require(jobDeadline > block.timestamp, "BAD_JOB_DEADLINE");
         require(bidDeadline > block.timestamp, "BAD_BID_DEADLINE");
@@ -226,6 +230,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         t.state = State.CREATED;
         t.quorumM = quorumM;
         t.quorumN = uint8(_verifiers.length);
+        t.isNano = isNano;
 
         verifiers[taskId] = _verifiers;
         for (uint256 i = 0; i < _verifiers.length; i++) {
@@ -464,14 +469,15 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         // Note: No _slashZombies here. Slow verifiers are not punished if quorum is reached (Point 2 refinement).
 
-        uint256 fee = (t.price * protocolFeeBps) / 10_000;
-        uint256 sellerPayout = t.price - fee;
-
-        uint256 treasuryShare = (fee * treasuryShareBps) / 10_000;
-        uint256 finalizerShare = fee - treasuryShare;
-
-        (bool ok1,) = payable(t.seller).call{value: sellerPayout}("");
-        require(ok1, "SELLER_PAY_FAIL");
+        if (t.isNano) {
+            // NANO SETTLEMENT PATH: No native transfer. 
+            // Swarm Master listens for this event and fulfills via Circle Gateway Batch.
+            emit NanoSettlementAuthorized(taskId, t.seller, sellerPayout);
+        } else {
+            // STANDARD PATH: Native USDC transfer.
+            (bool ok1,) = payable(t.seller).call{value: sellerPayout}("");
+            require(ok1, "SELLER_PAY_FAIL");
+        }
 
         (bool ok2,) = payable(treasury).call{value: treasuryShare}("");
         require(ok2, "TREASURY_PAY_FAIL");
@@ -483,8 +489,12 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         if (count > 0 && t.verifierPool > 0) {
             uint256 per = t.verifierPool / count;
             for (uint256 i = 0; i < approvers[taskId].length; i++) {
-                (bool okv,) = payable(approvers[taskId][i]).call{value: per}("");
-                require(okv, "VERIFIER_PAY_FAIL");
+                if (t.isNano) {
+                    emit NanoSettlementAuthorized(taskId, approvers[taskId][i], per);
+                } else {
+                    (bool okv,) = payable(approvers[taskId][i]).call{value: per}("");
+                    require(okv, "VERIFIER_PAY_FAIL");
+                }
             }
         }
 

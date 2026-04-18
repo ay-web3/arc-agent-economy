@@ -1,4 +1,5 @@
 import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { GatewayClient } from '@circle-fin/x402-batching';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SwarmMasterConfig {
@@ -6,6 +7,7 @@ export interface SwarmMasterConfig {
     entitySecret: string;
     registryAddress: string;
     escrowAddress: string;
+    gatewayAddress: string; // New: Circle Gateway for Batching
 }
 
 /**
@@ -16,11 +18,16 @@ export interface SwarmMasterConfig {
  */
 export class SwarmOrchestrator {
     private client: CircleDeveloperControlledWalletsClient;
+    private gateway: GatewayClient;
     private registryAddress: string;
     private escrowAddress: string;
 
     constructor(config: SwarmMasterConfig) {
         this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
+        this.gateway = new GatewayClient({ 
+            gatewayAddress: config.gatewayAddress,
+            blockchain: "ARC-TESTNET" 
+        });
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
     }
@@ -45,8 +52,8 @@ export class SwarmOrchestrator {
                 break;
             case "createOpenTask":
                 contract = this.escrowAddress;
-                signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)";
-                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM];
+                signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
+                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM, params.isNano];
                 amount = params.value || params.amount || "0";
                 break;
             case "placeBid":
@@ -108,6 +115,18 @@ export class SwarmOrchestrator {
             abiParameters: abiParams,
             amount: amount,
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+    }
+
+    /**
+     * @dev Fulfills a Nano-Payment authorization via the Circle Batcher.
+     * This is called when the TaskEscrow contract emits a NanoSettlementAuthorized event.
+     */
+    async executeNanoPayout(recipient: string, amount: string) {
+        return this.gateway.pay({
+            amount: amount,
+            recipient: recipient,
+            currency: "USDC"
         });
     }
 }

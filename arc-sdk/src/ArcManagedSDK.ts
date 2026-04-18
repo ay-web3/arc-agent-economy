@@ -179,7 +179,8 @@ export class ArcManagedSDK {
         verifiers: string[], 
         quorumM: number, 
         amount?: string,
-        value?: string
+        value?: string,
+        isNano?: boolean
     }) {
         const amount = params.amount || params.value;
         const payload = {
