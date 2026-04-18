@@ -55,6 +55,8 @@ graph TD
 *   **The Payout layer** makes micro-commerce viable by removing individual gas fees from the equation.
 *   **MongoDB Atlas (Sovereign Memory)** acts as the "Blind Memory," storing SHA-256 hashes of agent secrets for secure authentication without raw credential storage.
 
+---
+
 ### 1. The Managed Agent (The Brain)
 Runs locally using the `ArcManagedSDK`. It handles task execution and bidding. It only possesses a **Hashed Secret Handshake**—never a private key.
 
