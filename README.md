@@ -53,6 +53,7 @@ graph TD
 *   **The Settlement layer** uses Circle's specialized x402 infrastructure to turn many small off-chain authorizations into one big on-chain settlement.
 *   **The State layer** remains the "Law of the Land," ensuring reputations (ERC-8004) are updated only when work is proven.
 *   **The Payout layer** makes micro-commerce viable by removing individual gas fees from the equation.
+*   **MongoDB Atlas (Sovereign Memory)** acts as the "Blind Memory," storing SHA-256 hashes of agent secrets for secure authentication without raw credential storage.
 
 ### 1. The Managed Agent (The Brain)
 Runs locally using the `ArcManagedSDK`. It handles task execution and bidding. It only possesses a **Hashed Secret Handshake**—never a private key.
@@ -76,6 +77,20 @@ For micro-tasks (e.g. $0.001), the system bypasses one-by-one on-chain settlemen
 *   **🎉 Frictionless "Auto-Born" Onboarding:** Run `npm install`, and your agent is instantly provisioned with a secure wallet, gas airdrop, and Identity NFT.
 *   **⚖️ Institutional Task Escrow:** Native Smart Contracts for secure bidding, committees, and verifiable settlement on the ARC Testnet.
 *   **🧠 Blind State Mastery (MongoDB Atlas):** Encrypted identity persistence ensuring the Swarm Master remains "blind" to agent secrets.
+
+---
+
+## 📦 Project Structure
+
+| Folder | Purpose |
+| :--- | :--- |
+| `/contracts` | **Solidity Smart Contracts** (AgentRegistry, TaskEscrow) |
+| `/arc-sdk` | **Sovereign SDK** for building zero-secret managed agents |
+| `/swarm-master` | **The Orchestrator** air-gap proxy and Gateway batcher |
+| `/bots` | **Autonomous Bots** (Keeper, Verifier) that clear the market |
+| `/scripts` | **Utility Scripts** for bidding, staking, and SDK examples |
+
+---
 
 ---
 
@@ -111,6 +126,23 @@ sequenceDiagram
 
 **The Hashed Handshake Explanation:**
 To solve the "walking honeypot" problem, the agent never sends a private key. Instead, it sends a **pre-shared secret** that is **SHA-256 hashed** locally. The Swarm Master only stores the hash (the "fingerprint"). Even if the orchestrator's database is ever compromised, the attacker only gets the hashes, which cannot be reversed to steal the agent's identities. This ensures **sovereign security** for every autonomous worker in the economy.
+
+### How the Handshake Works (The 3-Step Process)
+
+In the Arc Agent Economy, the handshake follows a **Request-Verify-Execute** loop:
+
+#### 1. The Request (The "Secret")
+When your agent (e.g., **Saske**) wants to buy a service or pay another agent, it sends a message to the Swarm Master. This message contains:
+*   **The Intent:** "I want to pay Agent B 0.001 USDC."
+*   **The Handshake Secret:** A unique, random string assigned to the agent during onboarding.
+
+#### 2. The Verification (The "Hash Check")
+The Swarm Master receives the secret. Instead of storing the secret, it performs a **SHA-256 Hash**. It compares this hash to the one stored in **MongoDB Atlas** for that agentId. If it's a match, identity is proven without "seeing" the secret.
+
+#### 3. The Execution (The "Nod")
+If the handshake is valid, the Swarm Master gives a "thumbs up" to the Circle Batcher to sign the transaction inside the physical vault.
+
+---
 
 ---
 
@@ -180,6 +212,15 @@ The ARC Agent Economy is built exclusively on the **ARC Network** because legacy
 
 *   **SDK Maturity:** The `@circle-fin/developer-controlled-wallets` SDK handles nonce management and HSM signing requests with high reliability.
 *   **Gateway Simplicity:** The x402 batching client allowed us to transition our payout logic from on-chain transfers to off-chain authorizations with minimal code changes.
+
+---
+
+## 📈 Economic Model
+
+*   **Min Seller Stake:** 50.0 USDC (Collateral against bad work)
+*   **Min Verifier Stake:** 30.0 USDC (Ensures auditing uptime)
+*   **Withdraw Cooldown:** 24 Hours (Prevents flash-looting)
+*   **Protocol Fee:** 2% (Equally shared between the Treasury and the Keeper)
 
 ---
 
