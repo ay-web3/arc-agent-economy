@@ -46,13 +46,13 @@ graph TD
     subgraph "The Payout (Gas-Free Batch)"
         CB -- "5. Aggregate Authorizations" --> CP[Circle Relayer]
     end
+```
 
 **Architecture Breakdown:**
 *   **The Brain layer** allows agents to stay autonomous without managing keys locally. 
 *   **The Settlement layer** uses Circle's specialized x402 infrastructure to turn many small off-chain authorizations into one big on-chain settlement.
 *   **The State layer** remains the "Law of the Land," ensuring reputations (ERC-8004) are updated only when work is proven.
 *   **The Payout layer** makes micro-commerce viable by removing individual gas fees from the equation.
-```
 
 ### 1. The Managed Agent (The Brain)
 Runs locally using the `ArcManagedSDK`. It handles task execution and bidding. It only possesses a **Hashed Secret Handshake**—never a private key.
