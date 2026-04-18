@@ -8,8 +8,8 @@ declare global {
 }
 
 // Balanced Economy V1-Pro Addresses
-const REGISTRY_ADDR = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
-const ESCROW_ADDR   = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
+const REGISTRY_ADDR = "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
+const ESCROW_ADDR   = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
 const IDENTITY_PROTOCOL_ADDR   = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; // ERC-8004 official
 const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; // ERC-8004 official
 const RPC_URL = "https://rpc.testnet.arc.network";
@@ -31,7 +31,7 @@ const ESCROW_ABI = [
 ];
 
 export function useArcEconomy() {
-  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0", globalSupplyTasks: 0 });
+  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
   const [events, setEvents] = useState<any[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
   const [account, setAccount] = useState<string | null>(null);
@@ -331,6 +331,7 @@ export function useArcEconomy() {
         const balance = await rpcProvider.getBalance(ESCROW_ADDR);
         
         let personalRevenue = 0n;
+        let totalVolume = 0n;
         let personalSupplyChainTasks = 0;
         let globalSupplyChainTasks = 0;
 
@@ -359,6 +360,10 @@ export function useArcEconomy() {
               const label = stateLabels[state] || "Discovered";
               const isPaymindPowered = t.resultURI.toLowerCase().includes("paymind");
 
+              if (state === 6) {
+                totalVolume += BigInt(t.price);
+              }
+
               if (isPaymindPowered) {
                 globalSupplyChainTasks++;
               }
@@ -385,7 +390,8 @@ export function useArcEconomy() {
           tvl: ethers.formatUnits(balance, 18),
           revenue: ethers.formatUnits(personalRevenue, 18),
           costs: (personalSupplyChainTasks * 0.001).toFixed(3), // 0.001 USDC per Paymind call
-          globalSupplyTasks: globalSupplyChainTasks
+          globalSupplyTasks: globalSupplyChainTasks,
+          protocolRevenue: ethers.formatUnits((totalVolume * 4n) / 100n, 18) // 4% Protocol Fee
         });
         setHistoricalEvents(fetchedHistorical);
       } catch (err) {

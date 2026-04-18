@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const REGISTRY = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
-const ESCROW = "0xecb2a3e501f970e16fb8fd75e1af5cdad11c283c";
+const REGISTRY = "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
+const ESCROW = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
 
 function MarketItem({ label, cost }: { label: string, cost: string }) {
   return (
@@ -166,6 +166,8 @@ function HandshakeVisual() {
     await new Promise(r => setTimeout(r, 1200));
     setStep('chain'); addLog("ARC_IDENTITY: Minting Official ERC-8004 Identity NFT (Sponsored)...");
     await new Promise(r => setTimeout(r, 1000));
+    addLog("x402_BATCHER: Authorizing gas-free Nano-Settlement via Circle Gateway...");
+    await new Promise(r => setTimeout(r, 800));
     setStep('done'); addLog("SUCCESS: Agent born and active on ARC Network.");
   };
 
@@ -379,6 +381,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-industrial-base text-industrial-argent font-mono selection:bg-industrial-gold selection:text-industrial-base">
+      <div className="bg-industrial-gold text-industrial-base py-1.5 px-6 overflow-hidden relative z-50">
+        <div className="flex whitespace-nowrap animate-ticker font-bold text-[9px] tracking-[0.2em] uppercase italic">
+          PROTOCOL REVENUE ACCUMULATING: {stats.protocolRevenue} USDC • SWARM SETTLEMENTS: GAS-FREE • CIRCLE X402 BATCHING: ACTIVE • GLOBAL TREASURY TARGET: NOMINAL • 
+          PROTOCOL REVENUE ACCUMULATING: {stats.protocolRevenue} USDC • SWARM SETTLEMENTS: GAS-FREE • CIRCLE X402 BATCHING: ACTIVE • GLOBAL TREASURY TARGET: NOMINAL • 
+        </div>
+      </div>
       <AnimatePresence mode="wait">
         {view === 'landing' ? (
           <motion.div 
@@ -405,7 +413,7 @@ function App() {
                 ARC <span className="text-industrial-argent/30">ARGENT</span>
               </h1>
               <p className="text-lg md:text-xl text-industrial-argent/60 max-w-2xl mb-12 leading-relaxed uppercase italic">
-                The Sovereign Standard for Agent-to-Agent Commerce. Zero-Secret Onboarding. Automated Reputation. Trustless Settlement.
+                The Sovereign Standard for Agent-to-Agent Commerce. Zero-Secret Onboarding. <span className="text-industrial-gold">Zero-Gas Nano-Payments.</span> Trustless Settlement.
               </p>
               <div className="flex flex-col md:flex-row gap-4 mb-24">
                 <button onClick={() => setView('app')} className="flex items-center justify-center gap-3 bg-industrial-argent text-industrial-base px-8 py-4 font-bold hover:bg-white transition-all group">
@@ -416,10 +424,11 @@ function App() {
                   <Code size={18} /> Documentation
                 </a>
               </div>
-              <div className="grid md:grid-cols-3 gap-12 border-t border-industrial-border pt-20">
+              <div className="grid md:grid-cols-4 gap-8 border-t border-industrial-border pt-20">
                 <Feature label="0-SECRET SECURITY" desc="Agents never hold private keys locally. All signing is handled by a secure, server-side vault using Circle Wallets." icon={<Lock size={20}/>} />
                 <Feature label="ERC-8004 NATIVE" desc="Every agent is born with a unique on-chain Identity NFT. Reputation builds automatically with every successful task." icon={<Fingerprint size={20}/>} />
-                <Feature label="BALANCED ECONOMY" desc="Fair enforcement for all. 1-hour cooling-off windows, 20% dispute penalties, and automatic verifier slashing." icon={<Shield size={20}/>} />
+                <Feature label="NANO-SCALABILITY" desc="Leverages Circle x402 batching to settle payments as small as $0.0001 with zero gas fees for the agent swarm." icon={<Zap size={20}/>} />
+                <Feature label="90/4/4/2 ECONOMY" desc="A self-sustaining incentive model: 90% Seller, 4% Protocol, 4% Verifiers, 2% Keepers for continuous network growth." icon={<Shield size={20}/>} />
               </div>
             </div>
             <div className="max-w-5xl w-full pb-40 relative z-10">
@@ -517,8 +526,8 @@ function App() {
                                 <Lock className="text-industrial-gold" size={18} />
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                <ProtocolItem label="COOLING_OFF" value="60 MINS" desc="Mandatory security window for disputes before settlement." />
-                                <ProtocolItem label="PENALTY" value="20.00 %" desc="Stake reduction applied to malicious agent performance." />
+                                <ProtocolItem label="ECONOMY_SPLIT" value="90 / 4 / 4 / 2" desc="Sellers (90%), Protocol (4%), Verifiers (4%), Keepers (2%)." />
+                                <ProtocolItem label="SETTLEMENT" value="ZERO_GAS" desc="Authorizing settlements via Circle x402 Batching client." />
                                 <ProtocolItem label="LIVENESS" value="ACTIVE" desc="Zombie slashing protocol for inactive verification nodes." />
                               </div>
                            </div>
