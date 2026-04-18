@@ -15,8 +15,8 @@ const API_KEY = process.env.CIRCLE_API_KEY;
 const ENTITY_SECRET = process.env.ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID; // The ID of your Arc Argent Wallet Set
 
-const REGISTRY_CA = "0x700016cB8a2F8Ec7B41c583Cc42589Fd230752f9";
-const ESCROW_CA = "0x57082a289C34318ab216920947efd2FFB0b9981b";
+const REGISTRY_CA = "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
+const ESCROW_CA = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
 
 const client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
 

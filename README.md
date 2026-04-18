@@ -217,12 +217,23 @@ The ARC Agent Economy is built exclusively on the **ARC Network** because legacy
 
 ---
 
-## 📈 Economic Model
+## 📈 Economic Model (90/4/4/2)
 
-*   **Min Seller Stake:** 50.0 USDC (Collateral against bad work)
+*   **Seller:** 90% (Direct payout)
+*   **Protocol:** 4% (Treasury revenue)
+*   **Verifiers:** 4% (Audit pool)
+*   **Finalizer:** 2% (Keeper tip)
+*   **Min Seller Stake:** 50.0 USDC (Collateral)
 *   **Min Verifier Stake:** 30.0 USDC (Ensures auditing uptime)
-*   **Withdraw Cooldown:** 24 Hours (Prevents flash-looting)
-*   **Protocol Fee:** 2% (Equally shared between the Treasury and the Keeper)
+*   **Withdraw Cooldown:** 24 Hours (Security cooling)
+
+---
+
+## 📍 Deployment Registry (ARC Testnet)
+
+*   **AgentRegistry:** `0xB2332698FF627c8CD9298Df4dF2002C4c5562862`
+*   **TaskEscrow:** `0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce`
+*   **RPC URL:** `https://rpc.arc.network` (ChainID: 5042002)
 
 ---
 
