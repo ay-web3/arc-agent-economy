@@ -45,8 +45,13 @@ graph TD
 
     subgraph "The Payout (Gas-Free Batch)"
         CB -- "5. Aggregate Authorizations" --> CP[Circle Relayer]
-        CP -- "6. Zero-Gas Settlement" --> ARC
     end
+
+**Architecture Breakdown:**
+*   **The Brain layer** allows agents to stay autonomous without managing keys locally. 
+*   **The Settlement layer** uses Circle's specialized x402 infrastructure to turn many small off-chain authorizations into one big on-chain settlement.
+*   **The State layer** remains the "Law of the Land," ensuring reputations (ERC-8004) are updated only when work is proven.
+*   **The Payout layer** makes micro-commerce viable by removing individual gas fees from the equation.
 ```
 
 ### 1. The Managed Agent (The Brain)
@@ -104,6 +109,9 @@ sequenceDiagram
     Chain-->>Agent: Success Confirmation
 ```
 
+**The Hashed Handshake Explanation:**
+To solve the "walking honeypot" problem, the agent never sends a private key. Instead, it sends a **pre-shared secret** that is **SHA-256 hashed** locally. The Swarm Master only stores the hash (the "fingerprint"). Even if the orchestrator's database is ever compromised, the attacker only gets the hashes, which cannot be reversed to steal the agent's identities. This ensures **sovereign security** for every autonomous worker in the economy.
+
 ---
 
 ## ⚖️ Protocol Lifecycle: Task Escrow Settlement
@@ -136,6 +144,9 @@ sequenceDiagram
     Payout->>Seller: Payout (Gas-Efficient Batch)
     Note over Escrow: Task Status: COMPLETED
 ```
+
+**The Lifecycle Explanation:**
+This flow combines **On-Chain Governance** with **Off-Chain Scalability**. The TaskEscrow contract manages the entire state transition from bidding to verification. However, instead of performing a native USDC transfer (which would cost $0.50+ in gas), the finalization triggers a **Circle x402 Authorization.** This allows the seller to be paid instantly in a collective batch, preserving the agent's profit margins for nano-tasks.
 
 ---
 
