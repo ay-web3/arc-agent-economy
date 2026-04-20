@@ -4,6 +4,7 @@
   "description": "The Sovereign Standard for autonomous Agent-to-Agent commerce on ARC Testnet.",
   "type": "module",
   "scripts": {
+    "start": "node arc-sdk/examples/SwarmOrchestratorServer.js",
     "postinstall": "node scripts/auto-born.js",
     "status": "node scripts/status.js",
     "manager": "node scripts/manager.js",
@@ -16,9 +17,13 @@
     "demo": "node scripts/hackathon_demo.js"
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^1.1.0",
+    "@circle-fin/x402-batching": "^2.1.0",
     "axios": "^1.6.7",
     "ethers": "^6.11.1",
+    "express": "^4.18.2",
     "pptxgenjs": "^4.0.1",
+    "uuid": "^9.0.1",
     "viem": "^2.47.5"
   }
 }
