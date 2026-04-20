@@ -123,18 +123,19 @@ app.post('/onboard', async (req, res) => {
 
         let txId = null;
         if (process.env.MASTER_WALLET_ID) {
-            const tokenId = await getUsdcTokenId(process.env.MASTER_WALLET_ID);
-            if (tokenId) {
+            try {
+                // Sponsor Native ARC gas (no tokenId) required for Smart Contract executions
                 const tx = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
-                    tokenId: tokenId,
                     destinationAddress: newWallet.address,
                     amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = tx.data.transaction.id;
+            } catch(e) {
+                console.error(">> Sponsorship Failed:", e.response?.data || e.message);
             }
         }
         res.json({ success: true, agentId: agentName, address: newWallet.address, sponsorshipTxId: txId });
