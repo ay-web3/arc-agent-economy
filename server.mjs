@@ -4,12 +4,20 @@ import { GatewayClient } from '@circle-fin/x402-batching';
 import { v4 as uuidv4 } from 'uuid';
 import { MongoClient } from 'mongodb';
 
+// --- GLOBAL ERROR CAPTURE (Total Transparency) ---
+process.on('uncaughtException', (err) => {
+    console.error('>> [CRITICAL] Uncaught Exception:', err.stack || err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('>> [CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const app = express();
 app.use(express.json());
 
 /**
- * @title SwarmOrchestratorAPI (Production Hub)
- * @dev ESM-forced, Persistent Mongo mapping, and Automatic USDC Gas Sponsorship.
+ * @title SwarmOrchestratorAPI (Resilient Startup Edition)
+ * @dev Non-blocking startup sequence to satisfy Cloud Run port binding requirements.
  */
 
 // --- DYNAMIC CONFIGURATION ---
@@ -25,22 +33,42 @@ const REGISTRY_CA = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002
 const ESCROW_CA = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
 
 const MONGO_URI = process.env.MONGODB_URI;
-let db = null;
-let agentCollection = null;
+
+// Quick Diagnostic Audit
+console.log(">> [BOOT] Starting Resilient Orchestrator...");
+console.log(">> [CONFIG] API_KEY:", API_KEY ? "FOUND (Masked)" : "MISSING");
+console.log(">> [CONFIG] ENTITY_SECRET:", ENTITY_SECRET ? "FOUND (Masked)" : "MISSING");
+console.log(">> [CONFIG] WALLET_SET_ID:", WALLET_SET_ID || "MISSING");
+console.log(">> [CONFIG] MONGO_URI:", MONGO_URI ? "PRESENT" : "NOT PROVIDED (In-memory fallback)");
 
 // --- INITIALIZATION ---
-const client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
-const gateway = new GatewayClient({ 
-    gatewayAddress: GATEWAY_ADDR, 
-    blockchain: "ARC-TESTNET" 
-});
+let client = null;
+let gateway = null;
 
+try {
+    if (API_KEY && ENTITY_SECRET) {
+        client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
+        gateway = new GatewayClient({ 
+            gatewayAddress: GATEWAY_ADDR, 
+            blockchain: "ARC-TESTNET" 
+        });
+        console.log(">> [INIT] Circle Clients Initialized.");
+    } else {
+        console.warn(">> [WARN] Initialized in DEGRADED MODE: Missing API_KEY or ENTITY_SECRET.");
+    }
+} catch (e) {
+    console.error(">> [ERROR] SDK Initialization Failed:", e.message);
+}
+
+let db = null;
+let agentCollection = null;
 let IN_MEMORY_DB = {};
 
 async function initDB() {
     if (MONGO_URI) {
         try {
-            const mongoClient = new MongoClient(MONGO_URI);
+            console.log(">> [PERSISTENCE] Connecting to MongoDB...");
+            const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
             await mongoClient.connect();
             db = mongoClient.db();
             agentCollection = db.collection('agent_registry');
@@ -53,10 +81,10 @@ async function initDB() {
 
 // --- SMART TOKEN DISCOVERY ---
 async function getUsdcTokenId(walletId) {
+    if (!client) return null;
     try {
         const response = await client.listBalances({ walletId });
         const balances = response.data.tokenBalances;
-        // Search for USDC by symbol or name on ARC-TESTNET
         const usdc = balances.find(b => b.token.symbol === "USDC" || b.token.name.includes("USDC"));
         return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
     } catch (e) {
@@ -93,14 +121,14 @@ app.get('/health', async (req, res) => {
         network: "ARC-TESTNET", 
         persistence: agentCollection ? "MONGODB" : "IN_MEMORY",
         sponsor: MASTER_WALLET_ID ? "ENABLED" : "OFF",
-        contracts: { registry: REGISTRY_CA, escrow: ESCROW_CA }
+        config_status: client ? "OK" : "DEGRADED"
     });
 });
 
 app.post('/onboard', async (req, res) => {
+    if (!client) return res.status(503).json({ error: "Orchestrator not configured correctly" });
     const { agentName } = req.body;
     try {
-        // 1. Create the Wallet
         const response = await client.createWallets({
             idempotencyKey: uuidv4(),
             accountType: "EOA",
@@ -112,10 +140,8 @@ app.post('/onboard', async (req, res) => {
         
         await saveWalletId(agentName, newWallet.id);
 
-        // 2. Automatic Sponsorship Seeding (0.02 USDC)
         let sponsorshipTxId = null;
         if (MASTER_WALLET_ID) {
-            console.log(`>> [SPONSOR] Seeding ${agentName} with ${SPONSOR_AMOUNT} USDC...`);
             const tokenId = await getUsdcTokenId(MASTER_WALLET_ID);
             if (tokenId) {
                 const txResponse = await client.createTransaction({
@@ -128,29 +154,19 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 sponsorshipTxId = txResponse.data.transaction.id;
-                console.log(`>> [SPONSOR] Transfer Initiated: ${sponsorshipTxId}`);
-            } else {
-                console.warn(">> [SPONSOR] Skipped: USDC Token ID not resolved.");
             }
         }
 
-        res.json({ 
-            success: true, 
-            agentId: agentName, 
-            address: newWallet.address, 
-            walletId: newWallet.id,
-            sponsorshipTxId: sponsorshipTxId
-        });
+        res.json({ success: true, agentId: agentName, address: newWallet.address, sponsorshipTxId });
     } catch (e) {
-        console.error(">> [ERROR] Onboarding failed:", e.message);
         res.status(500).json({ error: e.message });
     }
 });
 
 app.post('/execute', async (req, res) => {
+    if (!client) return res.status(503).json({ error: "Orchestrator not configured correctly" });
     const { agentId, action, params } = req.body;
     const walletId = await getWalletId(agentId);
-    
     if (!walletId) return res.status(404).json({ error: "Agent ID not onboarded" });
 
     try {
@@ -196,24 +212,11 @@ app.post('/execute', async (req, res) => {
     }
 });
 
-app.post('/payout/nano', async (req, res) => {
-    const { recipient, amount } = req.body;
-    try {
-        const response = await gateway.pay({
-            amount: amount,
-            recipient: recipient,
-            currency: "USDC"
-        });
-        res.json({ success: true, batchId: response.batchId });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 const PORT = process.env.PORT || 8080;
 
-initDB().then(() => {
-    app.listen(PORT, "0.0.0.0", () => {
-        console.log(`[ORCHESTRATOR] Advanced Hub + Sponsorship active on 0.0.0.0:${PORT}`);
-    });
+// NON-BLOCKING STARTUP: Satisfy Cloud Run Health Checks immediately
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`>> [HEALTH] Orchestrator Listener active on 0.0.0.0:${PORT}`);
+    // Start background tasks
+    initDB();
 });
