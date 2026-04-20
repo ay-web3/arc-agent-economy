@@ -1,11 +1,13 @@
 import express from 'express';
+import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { GatewayClient } from '@circle-fin/x402-batching';
+import { v4 as uuidv4 } from 'uuid';
 import { MongoClient } from 'mongodb';
 
 // --- GLOBAL DIAGNOSTICS ---
-let SDK_LOAD_ERROR = null;
 let client = null;
 let gateway = null;
-let uuidv4 = null;
+let SDK_LOAD_ERROR = null;
 
 process.on('uncaughtException', (err) => {
     console.error('>> [CRITICAL] Uncaught Exception:', err.stack || err);
@@ -18,8 +20,8 @@ const app = express();
 app.use(express.json());
 
 /**
- * @title SwarmOrchestratorAPI (Definitive Build)
- * @dev Dynamic Dual-Resolution logic to resolve ESM/CJS library conflicts.
+ * @title SwarmOrchestratorAPI (V15 - Sync Build)
+ * @dev Synchronized with SDK static imports while maintaining Cloud Run resilience.
  */
 
 // --- CONFIGURATION ---
@@ -33,54 +35,38 @@ const ESCROW_CA = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E02655
 const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
 const SPONSOR_AMOUNT = process.env.SPONSOR_AMOUNT || "0.02";
 
-// --- BOOTSTRAP: DUAL-RESOLUTION IMPORT ---
-async function bootstrap() {
-    try {
-        console.log(">> [BOOT] Initiating Dual-Resolution Stabilization...");
-        
-        // 1. Resolve Circle SDK Constructor (The Critical Fix)
-        const sdkModule = await import('@circle-fin/developer-controlled-wallets');
-        const CircleClient = sdkModule.CircleDeveloperControlledWalletsClient || sdkModule.default?.CircleDeveloperControlledWalletsClient;
-        
-        if (!CircleClient) throw new Error("CircleDeveloperControlledWalletsClient not found in module exports.");
-
-        // 2. Resolve Gateway & UUID
-        const gatewayModule = await import('@circle-fin/x402-batching');
-        const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient;
-        
-        const uuidModule = await import('uuid');
-        uuidv4 = uuidModule.v4 || uuidModule.default?.v4;
-
-        if (API_KEY && ENTITY_SECRET) {
-            client = new CircleClient(API_KEY, ENTITY_SECRET);
-            if (Gateway) {
-                gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
-            }
-            console.log(">> [SUCCESS] Swarm Engines Operational.");
-        }
-    } catch (e) {
-        console.error(">> [FATAL] Logic Restoration Failed:", e.message);
-        SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
-    }
-}
-
-// --- PERSISTENCE ---
+// --- INITIALIZATION ---
 let db = null;
 let agentCollection = null;
 let IN_MEMORY_DB = {};
 
-async function initDB() {
-    if (MONGO_URI) {
-        try {
+async function bootstrap() {
+    try {
+        console.log(">> [BOOT] Initializing Proven SDK Pattern...");
+        
+        if (API_KEY && ENTITY_SECRET) {
+            // Restore synchronous constructor pattern within the bootstrap closure
+            client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
+            gateway = new GatewayClient({ 
+                gatewayAddress: GATEWAY_ADDR, 
+                blockchain: "ARC-TESTNET" 
+            });
+            console.log(">> [SUCCESS] Swarm Engines Operational.");
+        } else {
+            console.warn(">> [WARN] Initialization bypassed: Missing Secrets.");
+        }
+
+        if (MONGO_URI) {
             console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
             const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
             await mongoClient.connect();
             db = mongoClient.db();
             agentCollection = db.collection('agent_registry');
             console.log(">> [PERSISTENCE] MongoDB Connected Successfully.");
-        } catch (e) {
-            console.error(">> [ERROR] MongoDB Unavailable, using in-memory fallback.", e.message);
         }
+    } catch (e) {
+        console.error(">> [FATAL] Hub Initialization Failed:", e.message);
+        SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
     }
 }
 
@@ -121,7 +107,7 @@ app.get('/health', (req, res) => {
         sdk_initialized: !!client,
         persistence: agentCollection ? "MONGODB" : "IN_MEMORY",
         error: SDK_LOAD_ERROR,
-        contracts: { registry: REGISTRY_CA, escrow: ESCROW_CA }
+        network: "ARC-TESTNET"
     });
 });
 
@@ -224,8 +210,8 @@ app.post('/payout/nano', async (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 
+// FAST BINDING: Bypasses ESM hoisting timeout during resolution
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`>> [HEALTH] Definitive Hub active on 0.0.0.0:${PORT}`);
+    console.log(`>> [HEALTH] Swarm Sync Hub active on 0.0.0.0:${PORT}`);
     bootstrap();
-    initDB();
 });
