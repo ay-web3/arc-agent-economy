@@ -19,13 +19,13 @@ let gateway = null;
 let uuidv4 = null;
 let SDK_LOAD_ERROR = null;
 let agentCollection = null;
+let mongoPromise = null;
 
 // --- DUAL-RESOLUTION FACTORY ENGINE ---
 async function bootstrap() {
     try {
         console.log(">> [BOOT] Initiating Factory-Corrected SDK Discovery...");
 
-        // Forensic Fix: Use the discovered factory function 'initiateDeveloperControlledWalletsClient'
         const sdkModule = await import('@circle-fin/developer-controlled-wallets');
         const initClient = sdkModule.initiateDeveloperControlledWalletsClient || 
                            sdkModule.default?.initiateDeveloperControlledWalletsClient;
@@ -34,7 +34,6 @@ async function bootstrap() {
             throw new Error(`CRITICAL: Circle SDK factory not found. Export Keys: ${Object.keys(sdkModule)}`);
         }
 
-        // Resolve Gateway & UUID
         const gatewayModule = await import('@circle-fin/x402-batching');
         const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient || gatewayModule.default;
 
@@ -47,22 +46,20 @@ async function bootstrap() {
         const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
         if (API_KEY && ENTITY_SECRET) {
-            // THE CRITICAL FIX: Calling as a factory function with an object
             client = initClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
-            
             if (Gateway) {
                 gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
             }
             console.log(">> [SUCCESS] Swarm Engines Operational via Factory Fix.");
         }
 
-        // Initialize Persistence (100% Restored)
         if (process.env.MONGODB_URI) {
             console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
             const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
-            await mongo.connect();
-            agentCollection = mongo.db().collection('agent_registry');
-            console.log(">> [PERSISTENCE] Memory Synchronized.");
+            mongoPromise = mongo.connect().then(() => {
+                agentCollection = mongo.db().collection('agent_registry');
+                console.log(">> [PERSISTENCE] Memory Synchronized.");
+            });
         }
     } catch (e) {
         console.error(">> [FATAL] Logic Restoration Failed:", e.message);
@@ -72,6 +69,7 @@ async function bootstrap() {
 
 // --- UTILS ---
 async function getWalletId(agentName) {
+    if (mongoPromise) await mongoPromise;
     if (agentCollection) {
         const record = await agentCollection.findOne({ agentName });
         return record ? record.walletId : null;
@@ -80,6 +78,7 @@ async function getWalletId(agentName) {
 }
 
 async function saveWalletId(agentName, walletId) {
+    if (mongoPromise) await mongoPromise;
     if (agentCollection) {
         await agentCollection.updateOne({ agentName }, { $set: { agentName, walletId, updatedAt: new Date() } }, { upsert: true });
     }
