@@ -17,5 +17,5 @@ COPY . .
 ENV PORT 8080
 EXPOSE 8080
 
-# Hardened absolute path entrypoint
-CMD [ "node", "/workspace/index.js" ]
+# Diagnostic startup: list files then launch with absolute pathing
+CMD ls -la /workspace && node /workspace/server.mjs

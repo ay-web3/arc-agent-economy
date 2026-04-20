@@ -7,7 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node server.mjs",
     "postinstall": "node scripts/auto-born.js",
     "status": "node scripts/status.js",
     "manager": "node scripts/manager.js",
