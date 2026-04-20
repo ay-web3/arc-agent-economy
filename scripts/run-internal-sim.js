@@ -1,7 +1,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 
-const ORCHESTRATOR = "https://arc-agent-economy-156980607075.europe-west1.run.app";
+const ORCHESTRATOR = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 const PREFIX = "Sim_Internal_Ayo_";
 
 async function run() {

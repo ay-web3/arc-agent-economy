@@ -16,7 +16,7 @@ const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
  * @dev Secure SDK with ERC-8004 Identity & Reputation integration.
  */
 export class ArcManagedSDK {
-    private orchestratorUrl: string = "https://arc-agent-economy-156980607075.europe-west1.run.app";
+    private orchestratorUrl: string = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
     private agentId: string | null = null;
     private agentSecret: string | null = null;
     private secretPath: string = path.join(process.cwd(), '.agent_secret');

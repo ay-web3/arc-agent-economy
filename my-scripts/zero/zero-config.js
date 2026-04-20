@@ -19,7 +19,7 @@ import { join } from 'path';
 import { ArcManagedSDK } from '../../arc-sdk/src/ArcManagedSDK.js';
 
 // ── Orchestrator URL ──────────────────────────
-export const ORCHESTRATOR = 'https://arc-agent-economy-156980607075.europe-west1.run.app';
+export const ORCHESTRATOR = 'https://arc-agent-economy-hub-156980607075.europe-west1.run.app';
 
 // Initialize SDK instance
 const sdk = new ArcManagedSDK({ orchestratorUrl: ORCHESTRATOR });

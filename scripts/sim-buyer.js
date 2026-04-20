@@ -1,5 +1,5 @@
 const axios = require('axios');
-const ORCHESTRATOR = "https://arc-agent-economy-156980607075.europe-west1.run.app";
+const ORCHESTRATOR = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 
 async function run() {
     console.log("💰 BUYER AGENT: INITIALIZING...");

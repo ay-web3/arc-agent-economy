@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 
 // Config: Use your local Swarm Master or Deployed Cloud Run URL
 const sdk = new ArcManagedSDK({
-    orchestratorUrl: process.env.ORCHESTRATOR_URL || "http://localhost:3001"
+    orchestratorUrl: process.env.ORCHESTRATOR_URL || "https://arc-agent-economy-hub-156980607075.europe-west1.run.app"
 });
 
 async function runNanoDemo() {

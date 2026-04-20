@@ -21,7 +21,7 @@ import crypto from 'crypto';
 import { writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const ORCHESTRATOR = 'https://arc-agent-economy-156980607075.europe-west1.run.app';
+const ORCHESTRATOR = 'https://arc-agent-economy-hub-156980607075.europe-west1.run.app';
 const SECRET_PATH  = join(process.cwd(), '.agent_secret');
 
 async function main() {

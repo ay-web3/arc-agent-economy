@@ -2,7 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-const ORCHESTRATOR = "https://arc-agent-economy-156980607075.europe-west1.run.app";
+const ORCHESTRATOR = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 
 async function run() {
     console.log("⚔️  SELLER AGENT: INITIALIZING...");
