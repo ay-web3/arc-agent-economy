@@ -8,7 +8,7 @@ WORKDIR /workspace
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --omit=dev
+RUN npm install --omit=dev --ignore-scripts
 
 # Copy the rest of the application code
 COPY . .
