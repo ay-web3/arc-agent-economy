@@ -1,101 +1,98 @@
 import express from 'express';
-import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
-import { GatewayClient } from '@circle-fin/x402-batching';
-import { v4 as uuidv4 } from 'uuid';
 import { MongoClient } from 'mongodb';
 
-// --- GLOBAL DIAGNOSTICS ---
-let client = null;
-let gateway = null;
-let SDK_LOAD_ERROR = null;
-
-process.on('uncaughtException', (err) => {
-    console.error('>> [CRITICAL] Uncaught Exception:', err.stack || err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('>> [CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
+// --- THE FORENSIC SENTINAL (Production Final) ---
 const app = express();
 app.use(express.json());
 
-/**
- * @title SwarmOrchestratorAPI (V15 - Sync Build)
- * @dev Synchronized with SDK static imports while maintaining Cloud Run resilience.
- */
+const PORT = process.env.PORT || 8080;
 
-// --- CONFIGURATION ---
-const API_KEY = process.env.CIRCLE_API_KEY;
-const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SECRET;
-const WALLET_SET_ID = process.env.WALLET_SET_ID;
-const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
-const MONGO_URI = process.env.MONGODB_URI;
-const REGISTRY_CA = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
-const ESCROW_CA = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
-const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
-const SPONSOR_AMOUNT = process.env.SPONSOR_AMOUNT || "0.02";
+// 1. IMMEDIATE BINDING: Satisfy Buildpack/Cloud Run health checks INSTANTLY
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`>> [HEALTH] Forensic Hub online on 0.0.0.0:${PORT}`);
+    bootstrap(); // Start background logic
+});
 
-// --- INITIALIZATION ---
-let db = null;
+// --- GLOBAL STATE ---
+let client = null;
+let gateway = null;
+let uuidv4 = null;
+let SDK_LOAD_ERROR = null;
 let agentCollection = null;
-let IN_MEMORY_DB = {};
 
+// --- DYNAMIC RESOLUTION ENGINE ---
 async function bootstrap() {
     try {
-        console.log(">> [BOOT] Initializing Proven SDK Pattern...");
+        console.log(">> [BOOT] Initiating Forensic Module Discovery...");
+
+        // Un-wrap Circle SDK (Multi-Layer Brute Force)
+        const sdkModule = await import('@circle-fin/developer-controlled-wallets');
+        const CircleClient = sdkModule.CircleDeveloperControlledWalletsClient || 
+                             sdkModule.default?.CircleDeveloperControlledWalletsClient || 
+                             sdkModule.default;
         
-        if (API_KEY && ENTITY_SECRET) {
-            // Restore synchronous constructor pattern within the bootstrap closure
-            client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
-            gateway = new GatewayClient({ 
-                gatewayAddress: GATEWAY_ADDR, 
-                blockchain: "ARC-TESTNET" 
-            });
-            console.log(">> [SUCCESS] Swarm Engines Operational.");
-        } else {
-            console.warn(">> [WARN] Initialization bypassed: Missing Secrets.");
+        if (typeof CircleClient !== 'function') {
+            throw new Error(`CRITICAL: Circle SDK constructor not found. Export Keys: ${Object.keys(sdkModule)}`);
         }
 
-        if (MONGO_URI) {
-            console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
-            const mongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
-            await mongoClient.connect();
-            db = mongoClient.db();
-            agentCollection = db.collection('agent_registry');
-            console.log(">> [PERSISTENCE] MongoDB Connected Successfully.");
+        // Un-wrap Gateway & UUID
+        const gatewayModule = await import('@circle-fin/x402-batching');
+        const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient || gatewayModule.default;
+
+        const uuidModule = await import('uuid');
+        uuidv4 = uuidModule.v4 || uuidModule.default?.v4 || uuidModule.default;
+
+        const API_KEY = process.env.CIRCLE_API_KEY;
+        const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SECRET;
+        const WALLET_SET_ID = process.env.WALLET_SET_ID;
+        const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+
+        if (API_KEY && ENTITY_SECRET) {
+            client = new CircleClient(API_KEY, ENTITY_SECRET);
+            if (Gateway) {
+                gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
+            }
+            console.log(">> [SUCCESS] Swarm Engines Operational.");
+        }
+
+        // Initialize Persistence
+        if (process.env.MONGODB_URI) {
+            console.log(">> [PERSISTENCE] Syncing with MongoDB Atlas...");
+            const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+            await mongo.connect();
+            agentCollection = mongo.db().collection('agent_registry');
+            console.log(">> [PERSISTENCE] Memory Synchronized.");
         }
     } catch (e) {
-        console.error(">> [FATAL] Hub Initialization Failed:", e.message);
+        console.error(">> [FATAL] Logic Restoration Failed:", e.message);
         SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
     }
 }
 
-// --- UTILS ---
+// --- PERSISTENCE WRAPPERS ---
 async function getWalletId(agentName) {
     if (agentCollection) {
         const record = await agentCollection.findOne({ agentName });
         return record ? record.walletId : null;
     }
-    return IN_MEMORY_DB[agentName];
+    return null;
 }
 
 async function saveWalletId(agentName, walletId) {
     if (agentCollection) {
         await agentCollection.updateOne({ agentName }, { $set: { agentName, walletId, updatedAt: new Date() } }, { upsert: true });
-    } else {
-        IN_MEMORY_DB[agentName] = walletId;
     }
 }
 
+// --- SMART TOKEN DISCOVERY ---
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
         const response = await client.listBalances({ walletId });
         const balances = response.data.tokenBalances;
-        const usdc = balances.find(b => b.token.symbol === "USDC" || b.token.name.includes("USDC"));
+        const usdc = balances.find(b => b.token.symbol === "USDC");
         return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
     } catch (e) {
-        console.error(">> [DISCOVERY] Failed to resolve USDC Token ID:", e.message);
         return process.env.USDC_TOKEN_ID;
     }
 }
@@ -105,14 +102,14 @@ app.get('/health', (req, res) => {
     res.json({ 
         status: "READY", 
         sdk_initialized: !!client,
-        persistence: agentCollection ? "MONGODB" : "IN_MEMORY",
+        persistence: !!agentCollection,
         error: SDK_LOAD_ERROR,
-        network: "ARC-TESTNET"
+        timestamp: new Date().toISOString()
     });
 });
 
 app.post('/onboard', async (req, res) => {
-    if (!client) return res.status(503).json({ error: "Orchestrator not ready", details: SDK_LOAD_ERROR });
+    if (!client) return res.status(503).json({ error: "Hub initializing", details: SDK_LOAD_ERROR });
     const { agentName } = req.body;
     try {
         const response = await client.createWallets({
@@ -120,39 +117,38 @@ app.post('/onboard', async (req, res) => {
             accountType: "EOA",
             blockchains: ["ARC-TESTNET"],
             count: 1,
-            walletSetId: WALLET_SET_ID
+            walletSetId: process.env.WALLET_SET_ID
         });
         const newWallet = response.data.wallets[0];
         await saveWalletId(agentName, newWallet.id);
 
-        let sponsorshipTxId = null;
-        if (MASTER_WALLET_ID) {
-            const tokenId = await getUsdcTokenId(MASTER_WALLET_ID);
+        let txId = null;
+        if (process.env.MASTER_WALLET_ID) {
+            const tokenId = await getUsdcTokenId(process.env.MASTER_WALLET_ID);
             if (tokenId) {
-                const txResponse = await client.createTransaction({
+                const tx = await client.createTransaction({
                     idempotencyKey: uuidv4(),
-                    walletId: MASTER_WALLET_ID,
+                    walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     tokenId: tokenId,
                     destinationAddress: newWallet.address,
-                    amounts: [SPONSOR_AMOUNT],
+                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                sponsorshipTxId = txResponse.data.transaction.id;
+                txId = tx.data.transaction.id;
             }
         }
-
-        res.json({ success: true, agentId: agentName, address: newWallet.address, sponsorshipTxId });
+        res.json({ success: true, agentId: agentName, address: newWallet.address, sponsorshipTxId: txId });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
 app.post('/execute', async (req, res) => {
-    if (!client) return res.status(503).json({ error: "Orchestrator not ready" });
+    if (!client) return res.status(503).json({ error: "Hub initializing" });
     const { agentId, action, params } = req.body;
     const walletId = await getWalletId(agentId);
-    if (!walletId) return res.status(404).json({ error: "Agent ID not onboarded" });
+    if (!walletId) return res.status(404).json({ error: "Agent missing" });
 
     try {
         let payload = {
@@ -166,52 +162,25 @@ app.post('/execute', async (req, res) => {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         };
 
+        const REGISTRY = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
+        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+
         switch(action) {
             case "register":
-                payload.contractAddress = REGISTRY_CA;
+                payload.contractAddress = REGISTRY;
                 payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
                 payload.abiParameters = [params.asSeller, params.asVerifier, params.capHash, params.pubKey];
                 payload.amount = params.stake;
                 break;
             case "placeBid":
-                payload.contractAddress = ESCROW_CA;
+                payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
                 payload.abiParameters = [params.taskId, (parseFloat(params.price) * 10**18).toString(), params.eta.toString(), params.meta];
                 break;
-            case "createOpenTask":
-                payload.contractAddress = ESCROW_CA;
-                payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
-                payload.abiParameters = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM, params.isNano];
-                break;
-            case "finalizeTask":
-                payload.contractAddress = ESCROW_CA;
-                payload.abiFunctionSignature = "finalize(uint256)";
-                payload.abiParameters = [params.taskId];
-                break;
         }
-
-        const response = await client.createContractExecutionTransaction(payload);
-        res.json({ success: true, txId: response.data.transaction.id });
+        const resp = await client.createContractExecutionTransaction(payload);
+        res.json({ success: true, txId: resp.data.transaction.id });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
-});
-
-app.post('/payout/nano', async (req, res) => {
-    if (!gateway) return res.status(503).json({ error: "Gateway not ready" });
-    const { recipient, amount } = req.body;
-    try {
-        const response = await gateway.pay({ amount, recipient, currency: "USDC" });
-        res.json({ success: true, batchId: response.batchId });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-const PORT = process.env.PORT || 8080;
-
-// FAST BINDING: Bypasses ESM hoisting timeout during resolution
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`>> [HEALTH] Swarm Sync Hub active on 0.0.0.0:${PORT}`);
-    bootstrap();
 });
