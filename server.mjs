@@ -47,8 +47,8 @@ async function bootstrap() {
         const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
         if (API_KEY && ENTITY_SECRET) {
-            // THE CRITICAL FIX: Calling as a factory function, not a constructor
-            client = initClient(API_KEY, ENTITY_SECRET);
+            // THE CRITICAL FIX: Calling as a factory function with an object
+            client = initClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
             
             if (Gateway) {
                 gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
