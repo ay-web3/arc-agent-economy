@@ -1,8 +1,8 @@
 # Use Node 20 as the base for full ESM support
 FROM node:20-slim
 
-# Create and define the application directory
-WORKDIR /usr/src/app
+# Align with Cloud Run's expected workdir logic
+WORKDIR /workspace
 
 # Copy the dependency manifests
 COPY package*.json ./
@@ -17,5 +17,5 @@ COPY . .
 ENV PORT 8080
 EXPOSE 8080
 
-# The definitive entry point at root
-CMD [ "node", "index.js" ]
+# Hardened absolute path entrypoint
+CMD [ "node", "/workspace/index.js" ]
