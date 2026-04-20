@@ -1,5 +1,5 @@
-# Use Node 20 as the base for full ESM support
-FROM node:20-slim
+# Use the full Node.js production image for crypto SDK compatibility
+FROM node:20
 
 # Align with Cloud Run's expected workdir logic
 WORKDIR /workspace

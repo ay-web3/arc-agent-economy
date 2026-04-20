@@ -24,21 +24,22 @@ const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SEC
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
 
 console.log(">> [BOOT] Starting Restoration Stage 1...");
-console.log(">> [CONFIG] API_KEY:", API_KEY ? "FOUND" : "MISSING");
-console.log(">> [CONFIG] ENTITY_SECRET:", ENTITY_SECRET ? "FOUND" : "MISSING");
-console.log(">> [CONFIG] WALLET_SET_ID:", WALLET_SET_ID || "MISSING");
+console.log(">> [DEBUG] Environment Inspection: API_KEY present:", !!API_KEY);
+console.log(">> [DEBUG] Environment Inspection: WALLET_SET_ID:", WALLET_SET_ID);
 
 // --- INITIALIZATION ---
 let client = null;
 try {
     if (API_KEY && ENTITY_SECRET) {
+        console.log(">> [DEBUG] Attempting to construct Circle SDK Client...");
         client = new CircleDeveloperControlledWalletsClient(API_KEY, ENTITY_SECRET);
         console.log(">> [INIT] Circle SDK Client Initialized Successfully.");
     } else {
         console.warn(">> [WARN] Running in DEGRADED MODE: Missing required secrets.");
     }
 } catch (e) {
-    console.error(">> [ERROR] Circle SDK failed to initialize:", e.message);
+    console.error(">> [CRITICAL_ERROR] Circle SDK failed to initialize:", e.message);
+    console.error(e.stack);
 }
 
 // --- TEMP IN-MEMORY DB (Restoring Persitence next stage) ---
