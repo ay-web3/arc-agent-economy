@@ -170,29 +170,30 @@ app.post('/execute/:action', async (req, res) => {
             case "register":
                 payload.contractAddress = REGISTRY;
                 payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
-                payload.abiParameters = [params.asSeller, params.asVerifier, params.capHash, params.pubKey];
+                payload.abiParameters = [String(params.asSeller), String(params.asVerifier), params.capHash, params.pubKey];
                 payload.amount = params.stake;
                 break;
             case "placeBid":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
-                payload.abiParameters = [params.taskId, (parseFloat(params.price) * 10**18).toString(), params.eta.toString(), params.meta];
+                payload.abiParameters = [String(params.taskId), (parseFloat(params.price) * 10**18).toString(), String(params.eta), params.meta];
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
-                payload.abiParameters = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM, params.isNano];
+                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), params.taskHash, params.verifiers, String(params.quorumM), String(params.isNano)];
                 break;
             case "finalizeTask":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "finalize(uint256)";
-                payload.abiParameters = [params.taskId];
+                payload.abiParameters = [String(params.taskId)];
                 break;
         }
         const resp = await client.createContractExecutionTransaction(payload);
         res.json({ success: true, txId: resp.data.transaction.id });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        res.status(500).json({ error: errorDetail });
     }
 });
 
