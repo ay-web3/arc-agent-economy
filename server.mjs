@@ -144,9 +144,11 @@ app.post('/onboard', async (req, res) => {
     }
 });
 
-app.post('/execute', async (req, res) => {
+app.post('/execute/:action', async (req, res) => {
     if (!client) return res.status(503).json({ error: "Initializing Hub" });
-    const { agentId, action, params } = req.body;
+    const { action } = req.params;
+    const { agentId, agentSecret, ...params } = req.body;
+    
     const walletId = await getWalletId(agentId);
     if (!walletId) return res.status(404).json({ error: "Agent missing" });
 
