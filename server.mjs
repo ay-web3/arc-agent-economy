@@ -1,15 +1,15 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
 
-// --- THE FORENSIC SENTINAL (Production Final) ---
+// --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 
-// 1. IMMEDIATE BINDING: Satisfy Buildpack/Cloud Run health checks INSTANTLY
+// 1. IMMEDIATE BINDING: Satisfy Cloud Run health checks INSTANTLY
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`>> [HEALTH] Forensic Hub online on 0.0.0.0:${PORT}`);
+    console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
     bootstrap(); // Start background logic
 });
 
@@ -20,22 +20,21 @@ let uuidv4 = null;
 let SDK_LOAD_ERROR = null;
 let agentCollection = null;
 
-// --- DYNAMIC RESOLUTION ENGINE ---
+// --- DUAL-RESOLUTION FACTORY ENGINE ---
 async function bootstrap() {
     try {
-        console.log(">> [BOOT] Initiating Forensic Module Discovery...");
+        console.log(">> [BOOT] Initiating Factory-Corrected SDK Discovery...");
 
-        // Un-wrap Circle SDK (Multi-Layer Brute Force)
+        // Forensic Fix: Use the discovered factory function 'initiateDeveloperControlledWalletsClient'
         const sdkModule = await import('@circle-fin/developer-controlled-wallets');
-        const CircleClient = sdkModule.CircleDeveloperControlledWalletsClient || 
-                             sdkModule.default?.CircleDeveloperControlledWalletsClient || 
-                             sdkModule.default;
+        const initClient = sdkModule.initiateDeveloperControlledWalletsClient || 
+                           sdkModule.default?.initiateDeveloperControlledWalletsClient;
         
-        if (typeof CircleClient !== 'function') {
-            throw new Error(`CRITICAL: Circle SDK constructor not found. Export Keys: ${Object.keys(sdkModule)}`);
+        if (typeof initClient !== 'function') {
+            throw new Error(`CRITICAL: Circle SDK factory not found. Export Keys: ${Object.keys(sdkModule)}`);
         }
 
-        // Un-wrap Gateway & UUID
+        // Resolve Gateway & UUID
         const gatewayModule = await import('@circle-fin/x402-batching');
         const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient || gatewayModule.default;
 
@@ -48,16 +47,18 @@ async function bootstrap() {
         const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
         if (API_KEY && ENTITY_SECRET) {
-            client = new CircleClient(API_KEY, ENTITY_SECRET);
+            // THE CRITICAL FIX: Calling as a factory function, not a constructor
+            client = initClient(API_KEY, ENTITY_SECRET);
+            
             if (Gateway) {
                 gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
             }
-            console.log(">> [SUCCESS] Swarm Engines Operational.");
+            console.log(">> [SUCCESS] Swarm Engines Operational via Factory Fix.");
         }
 
-        // Initialize Persistence
+        // Initialize Persistence (100% Restored)
         if (process.env.MONGODB_URI) {
-            console.log(">> [PERSISTENCE] Syncing with MongoDB Atlas...");
+            console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
             const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
             await mongo.connect();
             agentCollection = mongo.db().collection('agent_registry');
@@ -69,7 +70,7 @@ async function bootstrap() {
     }
 }
 
-// --- PERSISTENCE WRAPPERS ---
+// --- UTILS ---
 async function getWalletId(agentName) {
     if (agentCollection) {
         const record = await agentCollection.findOne({ agentName });
@@ -84,7 +85,6 @@ async function saveWalletId(agentName, walletId) {
     }
 }
 
-// --- SMART TOKEN DISCOVERY ---
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
@@ -109,7 +109,7 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/onboard', async (req, res) => {
-    if (!client) return res.status(503).json({ error: "Hub initializing", details: SDK_LOAD_ERROR });
+    if (!client) return res.status(503).json({ error: "Initializing Hub", details: SDK_LOAD_ERROR });
     const { agentName } = req.body;
     try {
         const response = await client.createWallets({
@@ -145,7 +145,7 @@ app.post('/onboard', async (req, res) => {
 });
 
 app.post('/execute', async (req, res) => {
-    if (!client) return res.status(503).json({ error: "Hub initializing" });
+    if (!client) return res.status(503).json({ error: "Initializing Hub" });
     const { agentId, action, params } = req.body;
     const walletId = await getWalletId(agentId);
     if (!walletId) return res.status(404).json({ error: "Agent missing" });
@@ -177,9 +177,30 @@ app.post('/execute', async (req, res) => {
                 payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
                 payload.abiParameters = [params.taskId, (parseFloat(params.price) * 10**18).toString(), params.eta.toString(), params.meta];
                 break;
+            case "createOpenTask":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
+                payload.abiParameters = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM, params.isNano];
+                break;
+            case "finalizeTask":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "finalize(uint256)";
+                payload.abiParameters = [params.taskId];
+                break;
         }
         const resp = await client.createContractExecutionTransaction(payload);
         res.json({ success: true, txId: resp.data.transaction.id });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/payout/nano', async (req, res) => {
+    if (!gateway) return res.status(503).json({ error: "Gateway not ready" });
+    const { recipient, amount } = req.body;
+    try {
+        const response = await gateway.pay({ amount, recipient, currency: "USDC" });
+        res.json({ success: true, batchId: response.batchId });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
