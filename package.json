@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "The Sovereign Standard for autonomous Agent-to-Agent commerce on ARC Testnet.",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
-    "start": "node arc-sdk/examples/SwarmOrchestratorServer.js",
+    "start": "node index.js",
     "postinstall": "node scripts/auto-born.js",
     "status": "node scripts/status.js",
     "manager": "node scripts/manager.js",
