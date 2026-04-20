@@ -8,17 +8,18 @@ const app = express();
 app.use(express.json());
 
 /**
- * @title SwarmOrchestratorAPI (Advanced Production Edition)
- * @dev Hardened pathing, ESM loader-forced, and Persistent MongoDB Mapping.
+ * @title SwarmOrchestratorAPI (Production Hub)
+ * @dev ESM-forced, Persistent Mongo mapping, and Automatic USDC Gas Sponsorship.
  */
 
 // --- DYNAMIC CONFIGURATION ---
 const API_KEY = process.env.CIRCLE_API_KEY;
-// Handle aliases (CIRCLE_ENTITY_SECRET vs ENTITY_SECRET)
 const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SECRET;
 const WALLET_SET_ID = process.env.WALLET_SET_ID;
-// Handle aliases (CIRCLE_GATEWAY_ADDRESS vs GATEWAY_ADDR)
 const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+
+const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
+const SPONSOR_AMOUNT = process.env.SPONSOR_AMOUNT || "0.02";
 
 const REGISTRY_CA = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
 const ESCROW_CA = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
@@ -34,7 +35,6 @@ const gateway = new GatewayClient({
     blockchain: "ARC-TESTNET" 
 });
 
-// In-memory fallback if Mongo isn't provided
 let IN_MEMORY_DB = {};
 
 async function initDB() {
@@ -48,8 +48,20 @@ async function initDB() {
         } catch (e) {
             console.error(">> [ERROR] MongoDB Connection Failed, using in-memory fallback.", e.message);
         }
-    } else {
-        console.log(">> [PERSISTENCE] No MONGODB_URI provided, using in-memory storage.");
+    }
+}
+
+// --- SMART TOKEN DISCOVERY ---
+async function getUsdcTokenId(walletId) {
+    try {
+        const response = await client.listBalances({ walletId });
+        const balances = response.data.tokenBalances;
+        // Search for USDC by symbol or name on ARC-TESTNET
+        const usdc = balances.find(b => b.token.symbol === "USDC" || b.token.name.includes("USDC"));
+        return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
+    } catch (e) {
+        console.error(">> [DISCOVERY] Failed to resolve USDC Token ID:", e.message);
+        return process.env.USDC_TOKEN_ID;
     }
 }
 
@@ -80,6 +92,7 @@ app.get('/health', async (req, res) => {
         status: "READY", 
         network: "ARC-TESTNET", 
         persistence: agentCollection ? "MONGODB" : "IN_MEMORY",
+        sponsor: MASTER_WALLET_ID ? "ENABLED" : "OFF",
         contracts: { registry: REGISTRY_CA, escrow: ESCROW_CA }
     });
 });
@@ -87,6 +100,7 @@ app.get('/health', async (req, res) => {
 app.post('/onboard', async (req, res) => {
     const { agentName } = req.body;
     try {
+        // 1. Create the Wallet
         const response = await client.createWallets({
             idempotencyKey: uuidv4(),
             accountType: "EOA",
@@ -98,8 +112,37 @@ app.post('/onboard', async (req, res) => {
         
         await saveWalletId(agentName, newWallet.id);
 
-        res.json({ success: true, agentId: agentName, address: newWallet.address, walletId: newWallet.id });
+        // 2. Automatic Sponsorship Seeding (0.02 USDC)
+        let sponsorshipTxId = null;
+        if (MASTER_WALLET_ID) {
+            console.log(`>> [SPONSOR] Seeding ${agentName} with ${SPONSOR_AMOUNT} USDC...`);
+            const tokenId = await getUsdcTokenId(MASTER_WALLET_ID);
+            if (tokenId) {
+                const txResponse = await client.createTransaction({
+                    idempotencyKey: uuidv4(),
+                    walletId: MASTER_WALLET_ID,
+                    blockchain: "ARC-TESTNET",
+                    tokenId: tokenId,
+                    destinationAddress: newWallet.address,
+                    amounts: [SPONSOR_AMOUNT],
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                });
+                sponsorshipTxId = txResponse.data.transaction.id;
+                console.log(`>> [SPONSOR] Transfer Initiated: ${sponsorshipTxId}`);
+            } else {
+                console.warn(">> [SPONSOR] Skipped: USDC Token ID not resolved.");
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            agentId: agentName, 
+            address: newWallet.address, 
+            walletId: newWallet.id,
+            sponsorshipTxId: sponsorshipTxId
+        });
     } catch (e) {
+        console.error(">> [ERROR] Onboarding failed:", e.message);
         res.status(500).json({ error: e.message });
     }
 });
@@ -171,6 +214,6 @@ const PORT = process.env.PORT || 8080;
 
 initDB().then(() => {
     app.listen(PORT, "0.0.0.0", () => {
-        console.log(`[ORCHESTRATOR] Advanced Swarm Logic active on 0.0.0.0:${PORT}`);
+        console.log(`[ORCHESTRATOR] Advanced Hub + Sponsorship active on 0.0.0.0:${PORT}`);
     });
 });
