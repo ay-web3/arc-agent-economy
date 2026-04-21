@@ -140,10 +140,10 @@ app.post('/onboard', async (req, res) => {
                 });
                 txId = tx.data.transaction.id;
 
-                // 2. Trigger ERC-8004 Identity Minting
+                // 2. Trigger ERC-8004 Identity Minting (Self-Minting via New Wallet)
                 const mintTx = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
-                    walletId: process.env.MASTER_WALLET_ID,
+                    walletId: newWallet.id, // <--- New Agent Wallet calls its own birth
                     blockchain: "ARC-TESTNET",
                     contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
                     abiFunctionSignature: "mint(address)",
