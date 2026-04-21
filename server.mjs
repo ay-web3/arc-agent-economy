@@ -101,19 +101,10 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        // Attempt to find the balance method (Circle SDK method names can vary by version)
-        const balanceMethod = client.getWalletBalances || client.listBalances || client.getBalances;
-        if (!balanceMethod) {
-            return res.json({ 
-                address: wallet.data.wallet.address, 
-                error: "Balance method not found", 
-                methods: Object.keys(client).filter(m => m.toLowerCase().includes('balance') || m.toLowerCase().includes('wallet')) 
-            });
-        }
-        const balances = await balanceMethod.call(client, { walletId: process.env.MASTER_WALLET_ID });
+        const methods = Object.keys(client);
         res.json({
             address: wallet.data.wallet.address,
-            balances: balances.data.tokenBalances
+            clientMethods: methods
         });
     } catch (e) {
         res.status(500).json({ error: e.message, stack: e.stack });
