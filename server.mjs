@@ -101,18 +101,12 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID }); // Fix: use id
-        
         res.json({
             address: wallet.data.wallet.address,
-            balances: bResp.data.tokenBalances,
-            sdk: "@circle-fin/dcw (discovered: getWalletTokenBalance)"
+            methods: Object.keys(client).filter(k => k.includes('Balance'))
         });
     } catch (e) {
-        res.status(500).json({ 
-            error: e.message, 
-            availableMethods: Object.keys(client).filter(k => k.toLowerCase().includes('balance'))
-        });
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -135,20 +129,16 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // 1. Get USDC Token ID for sponsorship
-                const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID }); // Fix: use id
-                const usdc = bResp.data.tokenBalances.find(b => b.token.symbol === "USDC");
-                const tokenId = usdc ? usdc.token.id : null;
-
-                console.log(`>> Sponsoring 0.02 USDC for ${agentName} (TokenId: ${tokenId})...`);
-                
+                // Try sending sponsorship directly
+                console.log(`>> Sponsoring 0.02 for ${agentName}...`);
                 const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     destinationAddress: newWallet.address,
                     amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
-                    tokenId: tokenId, // <--- EXPLICITLY USE USDC TOKEN ID
+                    // If USDC is native, we don't need a tokenId. 
+                    // If it's an ERC-20, we'll get an error and know for sure.
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = txResp?.data?.transaction?.id || "Pending";
