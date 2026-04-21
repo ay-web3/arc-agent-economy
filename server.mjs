@@ -129,21 +129,8 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // 1. Hub Sponsors the Identity NFT Minting (Master Wallet calls mint)
-                console.log(`>> Hub Minting Identity for ${agentName}...`);
-                const mintResp = await client.createContractExecutionTransaction({
-                    idempotencyKey: uuidv4(),
-                    walletId: process.env.MASTER_WALLET_ID, 
-                    blockchain: "ARC-TESTNET",
-                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                    abiFunctionSignature: "mint(address)",
-                    abiParameters: [newWallet.address],
-                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                });
-                identityTxId = mintResp?.data?.transaction?.id || "Pending";
-
-                // 2. Hub Sends Gas Sponsorship (0.02 USDC)
-                console.log(`>> Hub Sponsoring Gas for ${agentName}...`);
+                // 1. Hub Sponsors Gas (USDC is Native Gas on ARC)
+                console.log(`>> Sponsoring Gas for ${agentName}...`);
                 const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
@@ -152,12 +139,24 @@ app.post('/onboard', async (req, res) => {
                     amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                txId = txResp?.data?.transaction?.id || "Pending";
-                
-                console.log(`>> Onboarding Complete for ${agentName}.`);
+                txId = txResp?.data?.transaction?.id;
+
+                // 2. Agent Mints Own Identity
+                console.log(`>> Agent ${agentName} Minting Identity...`);
+                const mintResp = await client.createContractExecutionTransaction({
+                    idempotencyKey: uuidv4(),
+                    walletId: newWallet.id, 
+                    blockchain: "ARC-TESTNET",
+                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                    abiFunctionSignature: "mint(address)",
+                    abiParameters: [newWallet.address],
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                });
+                identityTxId = mintResp?.data?.transaction?.id;
             } catch(e) {
+                // Log but don't crash - some transactions might be pending
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                console.error(">> Onboarding Failed:", hubError);
+                console.log(">> Onboarding Status:", hubError);
             }
         }
         res.json({ 
