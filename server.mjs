@@ -97,13 +97,13 @@ async function getUsdcTokenId(walletId) {
 }
 
 // --- ENDPOINTS ---
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: "READY", 
-        sdk_initialized: !!client,
-        persistence: !!agentCollection,
-        error: SDK_LOAD_ERROR,
-        timestamp: new Date().toISOString()
+app.get('/debug/env', (req, res) => {
+    res.json({
+        has_master_id: !!process.env.MASTER_WALLET_ID,
+        has_api_key: !!process.env.CIRCLE_API_KEY,
+        has_entity_secret: !!process.env.CIRCLE_ENTITY_SECRET,
+        has_wallet_set: !!process.env.WALLET_SET_ID,
+        sdk_initialized: !!client
     });
 });
 
