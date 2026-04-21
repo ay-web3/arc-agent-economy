@@ -101,14 +101,23 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        // Correct method name for version 1.1.0 is getWalletTokenBalances
-        const balances = await client.getWalletTokenBalances({ walletId: process.env.MASTER_WALLET_ID });
+        // Return address immediately, try balances separately
+        let balances = "Pending";
+        try {
+            const bResp = await client.getWalletTokenBalances({ walletId: process.env.MASTER_WALLET_ID });
+            balances = bResp.data.tokenBalances;
+        } catch(e) { balances = "Error: " + e.message; }
+        
         res.json({
             address: wallet.data.wallet.address,
-            balances: balances.data.tokenBalances
+            balances: balances,
+            env: {
+                identity: process.env.IDENTITY_REGISTRY_CA,
+                sponsor: process.env.SPONSOR_AMOUNT
+            }
         });
     } catch (e) {
-        res.status(500).json({ error: e.message, stack: e.stack, hint: "Version 1.1.0 uses getWalletTokenBalances" });
+        res.status(500).json({ error: e.message, stack: e.stack });
     }
 });
 
@@ -133,22 +142,20 @@ app.post('/onboard', async (req, res) => {
             try {
                 // 1. Sponsor Native ARC gas (Native ARC, not USDC)
                 console.log(`>> Sponsoring Gas for ${agentName} from ${process.env.MASTER_WALLET_ID}...`);
-                const tx = await client.createTransaction({
+                const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     destinationAddress: newWallet.address,
-                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"], // No tokenId = Native ARC
+                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"], 
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                if (tx.data && tx.data.transaction) {
-                    txId = tx.data.transaction.id;
-                    console.log(`>> Gas Sponsored: ${txId}.`);
-                }
+                txId = txResp?.data?.transaction?.id || "Pending";
+                console.log(`>> Gas Sponsored: ${txId}.`);
 
                 // 2. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
                 console.log(`>> Triggering Self-Mint for ${agentName} via wallet ${newWallet.id}...`);
-                const mintTx = await client.createContractExecutionTransaction({
+                const mintResp = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
                     blockchain: "ARC-TESTNET",
@@ -157,10 +164,8 @@ app.post('/onboard', async (req, res) => {
                     abiParameters: [newWallet.address],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                if (mintTx.data && mintTx.data.transaction) {
-                    identityTxId = mintTx.data.transaction.id;
-                    console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
-                }
+                identityTxId = mintResp?.data?.transaction?.id || "Pending";
+                console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
             } catch(e) {
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 console.error(">> Onboarding Logic Failed:", hubError);
