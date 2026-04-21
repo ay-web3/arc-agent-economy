@@ -101,23 +101,20 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        // Return address immediately, try balances separately
-        let balances = "Pending";
-        try {
-            const bResp = await client.getWalletTokenBalances({ walletId: process.env.MASTER_WALLET_ID });
-            balances = bResp.data.tokenBalances;
-        } catch(e) { balances = "Error: " + e.message; }
+        // Correct method name for version 1.1.0 is getWalletTokenBalances
+        const bResp = await client.getWalletTokenBalances({ walletId: process.env.MASTER_WALLET_ID });
         
         res.json({
             address: wallet.data.wallet.address,
-            balances: balances,
-            env: {
-                identity: process.env.IDENTITY_REGISTRY_CA,
-                sponsor: process.env.SPONSOR_AMOUNT
-            }
+            balances: bResp.data.tokenBalances,
+            sdk: "@circle-fin/dcw v1.1.0 (verified)"
         });
     } catch (e) {
-        res.status(500).json({ error: e.message, stack: e.stack });
+        res.status(500).json({ 
+            error: e.message, 
+            stack: e.stack,
+            availableMethods: Object.keys(client).filter(k => k.includes('Balance'))
+        });
     }
 });
 
