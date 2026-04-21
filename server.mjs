@@ -101,13 +101,14 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        const balances = await client.getWalletBalances({ walletId: process.env.MASTER_WALLET_ID });
+        // Correct method name for version 1.1.0 is getWalletTokenBalances
+        const balances = await client.getWalletTokenBalances({ walletId: process.env.MASTER_WALLET_ID });
         res.json({
             address: wallet.data.wallet.address,
             balances: balances.data.tokenBalances
         });
     } catch (e) {
-        res.status(500).json({ error: e.message, stack: e.stack });
+        res.status(500).json({ error: e.message, stack: e.stack, hint: "Version 1.1.0 uses getWalletTokenBalances" });
     }
 });
 
