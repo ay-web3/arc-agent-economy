@@ -1,5 +1,6 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
+import crypto from 'crypto';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -61,19 +62,28 @@ async function bootstrap() {
 }
 
 // --- UTILS ---
-async function getWalletId(agentName) {
+async function verifyAgent(agentName, providedSecret) {
     if (mongoPromise) await mongoPromise;
-    if (agentCollection) {
-        const record = await agentCollection.findOne({ agentName });
-        return record ? record.walletId : null;
-    }
-    return null;
+    if (!agentCollection || !providedSecret) return { success: false, error: "Missing identity or validation" };
+    
+    const record = await agentCollection.findOne({ agentName });
+    if (!record || !record.hashedSecret) return { success: false, error: "Agent unauthorized or not secured" };
+
+    const hash = crypto.createHash('sha256').update(providedSecret).digest('hex');
+    if (hash !== record.hashedSecret) return { success: false, error: "Invalid agent secret" };
+
+    return { success: true, walletId: record.walletId };
 }
 
-async function saveWalletId(agentName, walletId) {
+async function saveWalletId(agentName, walletId, rawSecret) {
     if (mongoPromise) await mongoPromise;
     if (agentCollection) {
-        await agentCollection.updateOne({ agentName }, { $set: { agentName, walletId, updatedAt: new Date() } }, { upsert: true });
+        const hashedSecret = crypto.createHash('sha256').update(rawSecret).digest('hex');
+        await agentCollection.updateOne(
+            { agentName }, 
+            { $set: { agentName, walletId, hashedSecret, updatedAt: new Date() } }, 
+            { upsert: true }
+        );
     }
 }
 
@@ -166,7 +176,8 @@ app.post('/onboard', async (req, res) => {
             walletSetId: process.env.WALLET_SET_ID
         });
         const newWallet = response.data.wallets[0];
-        await saveWalletId(agentName, newWallet.id);
+        const agentSecret = crypto.randomBytes(32).toString('hex');
+        await saveWalletId(agentName, newWallet.id, agentSecret);
 
         let txId = null;
         let identityTxId = null;
@@ -221,6 +232,7 @@ app.post('/onboard', async (req, res) => {
         res.json({ 
             success: true, 
             agentId: agentName, 
+            agentSecret: agentSecret,
             address: newWallet.address, 
             sponsorshipTxId: txId, 
             identityTxId: identityTxId,
@@ -238,8 +250,10 @@ app.post('/execute/:action', async (req, res) => {
     const { action } = req.params;
     const { agentId, agentSecret, ...params } = req.body;
     
-    const walletId = await getWalletId(agentId);
-    if (!walletId) return res.status(404).json({ error: "Agent missing" });
+    const auth = await verifyAgent(agentId, agentSecret);
+    if (!auth.success) return res.status(401).json({ error: auth.error });
+
+    const walletId = auth.walletId;
 
     try {
         let payload = {
