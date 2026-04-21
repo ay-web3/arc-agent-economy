@@ -7,11 +7,8 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 
-// 1. IMMEDIATE BINDING: Satisfy Cloud Run health checks INSTANTLY
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
-    bootstrap(); // Start background logic
-});
+// --- BOOTSTRAP INITIATION ---
+bootstrap(); // Start background logic (SDK + DB)
 
 // --- GLOBAL STATE ---
 let client = null;
@@ -118,6 +115,13 @@ app.get('/debug/master', async (req, res) => {
 });
 
 app.post('/onboard', async (req, res) => {
+    // 🛡️ Await-Ready Guard: Ensure SDK and Persistence are locked in before processing
+    if (mongoPromise) await mongoPromise;
+    for (let i = 0; i < 10 && !client; i++) {
+        console.log(">> [WAIT] SDK initializing, holding request...");
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
     if (!client) return res.status(503).json({ error: "Initializing Hub", details: SDK_LOAD_ERROR });
     const { agentName } = req.body;
     try {
@@ -257,4 +261,8 @@ app.post('/payout/nano', async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+// --- FINAL LISTENER: Bind only after all routes are registered ---
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
 });

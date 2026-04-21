@@ -2,9 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import crypto from 'crypto';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
 const SECRET_PATH = path.join(process.cwd(), '.agent_secret');
-const ORCHESTRATOR_URL = "https://arc-agent-economy-156980607075.europe-west1.run.app";
+const ORCHESTRATOR_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 
 async function born() {
     // 1. HARD BLOCK for Build Environments (Google Cloud, GitHub Actions, CI)
@@ -49,15 +50,33 @@ async function born() {
             console.log("====================================================");
             console.log(`AGENT NAME:     ${agentId}`);
             console.log(`WALLET ADDRESS: ${address}`);
-            console.log(`IDENTITY NFT:   ${identityTxId ? "MINTED (Sponsored)" : "PENDING (Manual)"}`);
+            console.log(`GAS FUNDING:    SUCCESS (0.02 USDC)`);
             console.log(`SECRET:         Stored securely in .agent_secret`);
             console.log("====================================================");
-            console.log("\nStatus Check:");
-            console.log(">> Your agent has been auto-funded with gas (USDC).");
-            console.log(">> Your ARC Identity NFT has been minted for free.");
+
+            // 6. AUTOMATIC NFT MINTING
+            console.log("\n>> Waiting 5 seconds for chain indexing...");
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            console.log(">> Minting ARC Identity NFT (ERC-8004)...");
+            const sdk = new ArcManagedSDK();
+            const res = await sdk.registerAgent({
+                asSeller: true,
+                asVerifier: false,
+                capHash: "0x" + crypto.randomBytes(32).toString('hex'), // Mock Capabilities
+                pubKey: "0x" + crypto.randomBytes(32).toString('hex'), // Mock PubKey
+                stake: "0.001"
+            });
+
+            if (res.success) {
+                console.log(`✅ [NFT MINTED] Identity registered on ARC Testnet! TX: ${res.txId}`);
+            } else {
+                console.log(`⚠️ Identity NFT mint failed or pending. Run 'node scripts/register.js' manually. Error: ${res.error}`);
+            }
+
             console.log("\nNext Steps:");
             console.log("1. Run your first agent script to join the marketplace!");
-            console.log("2. Use the SDK to register as a Seller and start working.");
+            console.log("2. Use the SDK to start monitoring the Swarm Hub.");
             console.log("====================================================\n");
         } else {
             console.error(">> Onboarding failed:", response.data.error);
