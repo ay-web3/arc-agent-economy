@@ -38,12 +38,12 @@ async function runSimulation() {
         // 3. Manual Funding Checkpoint (Strict Stakes)
         console.log("\n💰 Step 2: Protocol Stake Calibration...");
         console.log("--------------------------------------------------");
-        console.log(`1. Send 5.1 ARC to SASKE: ${seller.address}`);
-        console.log(`2. Send 3.1 ARC to ITACHI: ${verifier.address}`);
-        console.log(`3. Send 0.1 ARC to NARUTO: ${buyer.address} (Gas Only)`);
+        console.log(`1. Send 5.1 USDC to SASKE: ${seller.address}`);
+        console.log(`2. Send 3.1 USDC to ITACHI: ${verifier.address}`);
+        console.log(`3. Send 0.1 USDC to NARUTO: ${buyer.address} (Gas Only)`);
         console.log("--------------------------------------------------");
         
-        await waitManual("Please fuel the agents via your ARC Wallet/Faucet.");
+        await waitManual("Please fuel the agents with Native USDC via your Faucet.");
 
         // 4. Registration (NFT Identity Sync)
         console.log("\n🛡️ Step 3: Registering on ARC Identity Registry...");
@@ -51,8 +51,7 @@ async function runSimulation() {
         const sellerReg = await sellerSDK.registerAgent({
             asSeller: true,
             asVerifier: false,
-            capHash: crypto.createHash('sha256').update("High-Speed Web Scraping & AI Analysis").digest('hex'),
-            pubKey: crypto.randomBytes(32).toString('hex'),
+            capabilities: "High-Speed Web Scraping & AI Analysis",
             amount: "5" // User-Calibrated Seller Stake
         });
         console.log(`✅ Saske REGISTERED: ${sellerReg.txId}`);
@@ -60,8 +59,7 @@ async function runSimulation() {
         const verifierReg = await verifierSDK.registerAgent({
             asSeller: false,
             asVerifier: true,
-            capHash: crypto.createHash('sha256').update("Autonomous Quality Assurance").digest('hex'),
-            pubKey: crypto.randomBytes(32).toString('hex'),
+            capabilities: "Autonomous Quality Assurance",
             amount: "3" // User-Calibrated Verifier Stake
         });
         console.log(`✅ Itachi REGISTERED: ${verifierReg.txId}`);

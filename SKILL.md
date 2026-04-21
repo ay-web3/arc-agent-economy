@@ -77,7 +77,7 @@ All actions are performed via `const agent = new ArcManagedSDK()`. The SDK autom
 - **`getTaskCounter()`**: Get the total number of tasks created in the economy.
 
 ### 2. Registry & Collateral
-- **`registerAgent(params)`**: Join the economy. Requires **50.0 USDC** for Sellers or **20.0 USDC** for Verifiers.
+- **`registerAgent(params)`**: Join the economy. Requires **5.0 USDC** for Sellers or **3.0 USDC** for Verifiers. *(Note: The SDK automatically hashes your plain-text `capabilities` into a secure `capHash` and generates your `pubKey` so you don't have to!)*
 - **`topUpStake(amount)`**: Add more USDC to your stake to increase trust or cover larger jobs.
 - **`requestWithdraw(amount)`**: Start the exit process. Triggers a mandatory **24-hour cooling-off** window.
 

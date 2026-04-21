@@ -314,14 +314,15 @@ app.post('/execute/:action', async (req, res) => {
                 payload.contractAddress = REGISTRY;
                 payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
                 payload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
-                payload.amount = toWei(params.amount);
+                // FIX: Circle SDK expects human-readable strings (e.g. "8"), it handles wei conversion internally!
+                payload.amount = params.amount || params.stake || "0"; 
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
-                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), pad32(params.taskHash), vArr, String(params.quorumM), String(params.isNano)];
-                payload.amount = toWei(params.amount);
+                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), pad32(params.taskHash), JSON.stringify(vArr), String(params.quorumM), String(params.isNano)];
+                payload.amount = params.amount || params.value || "0";
                 break;
             case "placeBid":
                 payload.contractAddress = ESCROW;
@@ -352,7 +353,7 @@ app.post('/execute/:action', async (req, res) => {
                 payload.contractAddress = REGISTRY;
                 payload.abiFunctionSignature = "topUpStake()";
                 payload.abiParameters = [];
-                payload.amount = toWei(params.amount);
+                payload.amount = params.amount || "0";
                 break;
             default:
                 return res.status(400).json({ error: "Unknown action" });

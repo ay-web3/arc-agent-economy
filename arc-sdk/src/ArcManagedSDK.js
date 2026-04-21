@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createPublicClient, http, parseAbiItem, keccak256, toBytes } from 'viem';
 import { arcTestnet } from 'viem/chains';
+import crypto from 'crypto';
+
 const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
 /**
  * @title ArcManagedSDK
@@ -122,7 +124,20 @@ export class ArcManagedSDK {
     }
     // --- AGENT REGISTRY ACTIONS ---
     async registerAgent(params) {
-        return this.requestAction("execute/register", params);
+        const payload = { ...params };
+        
+        // Auto-generate crypto parameters so agents don't have the stress of handling them
+        if (params.capabilities && !params.capHash) {
+            payload.capHash = crypto.createHash('sha256').update(params.capabilities).digest('hex');
+        } else if (!params.capHash) {
+            payload.capHash = crypto.createHash('sha256').update("Default Capabilities").digest('hex');
+        }
+
+        if (!params.pubKey) {
+            payload.pubKey = crypto.randomBytes(32).toString('hex');
+        }
+
+        return this.requestAction("execute/register", payload);
     }
     async updateProfile(params) {
         return this.requestAction("execute/updateProfile", params);
