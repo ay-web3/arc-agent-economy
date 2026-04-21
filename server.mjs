@@ -129,51 +129,35 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // Try sending sponsorship directly
-                console.log(`>> Sponsoring 0.02 for ${agentName}...`);
+                // 1. Hub Sponsors the Identity NFT Minting (Master Wallet calls mint)
+                console.log(`>> Hub Minting Identity for ${agentName}...`);
+                const mintResp = await client.createContractExecutionTransaction({
+                    idempotencyKey: uuidv4(),
+                    walletId: process.env.MASTER_WALLET_ID, 
+                    blockchain: "ARC-TESTNET",
+                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                    abiFunctionSignature: "mint(address)",
+                    abiParameters: [newWallet.address],
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                });
+                identityTxId = mintResp?.data?.transaction?.id || "Pending";
+
+                // 2. Hub Sends Gas Sponsorship (0.02 USDC)
+                console.log(`>> Hub Sponsoring Gas for ${agentName}...`);
                 const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     destinationAddress: newWallet.address,
                     amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
-                    // If USDC is native, we don't need a tokenId. 
-                    // If it's an ERC-20, we'll get an error and know for sure.
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = txResp?.data?.transaction?.id || "Pending";
-                console.log(`>> Gas Sponsored: ${txId}. Entering Smart-Retry Minting...`);
-
-                // 2. Trigger ERC-8004 Identity Minting (Smart-Retry Loop)
-                for (let attempt = 1; attempt <= 5; attempt++) {
-                    try {
-                        const mintResp = await client.createContractExecutionTransaction({
-                            idempotencyKey: uuidv4(),
-                            walletId: newWallet.id, 
-                            blockchain: "ARC-TESTNET",
-                            contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                            abiFunctionSignature: "mint(address)",
-                            abiParameters: [newWallet.address],
-                            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                        });
-                        identityTxId = mintResp?.data?.transaction?.id;
-                        console.log(`>> Identity Minted on attempt ${attempt}: ${identityTxId}`);
-                        break;
-                    } catch (e) {
-                        const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                        if (errBody.includes("insufficient") && attempt < 5) {
-                            console.log(`>> Attempt ${attempt} failed (Gas not arrived). Retrying in 3s...`);
-                            await new Promise(resolve => setTimeout(resolve, 3000));
-                        } else {
-                            hubError = errBody;
-                            console.error(`>> Minting Failed (Attempt ${attempt}):`, hubError);
-                            break;
-                        }
-                    }
-                }
+                
+                console.log(`>> Onboarding Complete for ${agentName}.`);
             } catch(e) {
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                console.error(">> Onboarding Logic Failed:", hubError);
+                console.error(">> Onboarding Failed:", hubError);
             }
         }
         res.json({ 
