@@ -141,12 +141,9 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = tx.data.transaction.id;
-                console.log(`>> Gas Sponsored: ${txId}. Waiting for propagation...`);
+                console.log(`>> Gas Sponsored: ${txId}.`);
 
-                // 2. WAIT for gas to arrive (Blockchain propagation delay)
-                await new Promise(resolve => setTimeout(resolve, 8000));
-
-                // 3. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
+                // 2. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
                 const mintTx = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
