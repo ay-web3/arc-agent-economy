@@ -122,9 +122,10 @@ app.post('/onboard', async (req, res) => {
         await saveWalletId(agentName, newWallet.id);
 
         let txId = null;
+        let identityTxId = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // Sponsor Native ARC gas (no tokenId) required for Smart Contract executions
+                // 1. Sponsor Native ARC gas (no tokenId)
                 const tx = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
@@ -134,11 +135,30 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = tx.data.transaction.id;
+
+                // 2. Trigger ERC-8004 Identity Minting
+                const mintTx = await client.createContractExecutionTransaction({
+                    idempotencyKey: uuidv4(),
+                    walletId: process.env.MASTER_WALLET_ID,
+                    blockchain: "ARC-TESTNET",
+                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                    abiFunctionSignature: "mint(address)",
+                    abiParameters: [newWallet.address],
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                });
+                identityTxId = mintTx.data.transaction.id;
+                console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
             } catch(e) {
-                console.error(">> Sponsorship Failed:", e.response?.data || e.message);
+                console.error(">> Hub Ops Failed:", e.response?.data || e.message);
             }
         }
-        res.json({ success: true, agentId: agentName, address: newWallet.address, sponsorshipTxId: txId });
+        res.json({ 
+            success: true, 
+            agentId: agentName, 
+            address: newWallet.address, 
+            sponsorshipTxId: txId, 
+            identityTxId: identityTxId 
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
