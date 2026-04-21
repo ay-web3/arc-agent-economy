@@ -101,12 +101,19 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
+        // Correct parameter for v1.1.0 is 'id', not 'walletId'
+        const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID });
+        
         res.json({
             address: wallet.data.wallet.address,
-            methods: Object.keys(client).filter(k => k.includes('Balance'))
+            balances: bResp.data.tokenBalances,
+            sdk: "@circle-fin/dcw (fixed: id parameter)"
         });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ 
+            error: e.message, 
+            availableMethods: Object.keys(client).filter(k => k.toLowerCase().includes('balance'))
+        });
     }
 });
 
