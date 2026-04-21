@@ -141,15 +141,15 @@ app.post('/onboard', async (req, res) => {
                 });
                 txId = txResp?.data?.transaction?.id;
 
-                // 2. Agent Mints Own Identity
-                console.log(`>> Agent ${agentName} Minting Identity...`);
+                // 2. Agent Mints Own Identity via register(string)
+                console.log(`>> Agent ${agentName} Registering Identity...`);
                 const mintResp = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
                     blockchain: "ARC-TESTNET",
                     contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                    abiFunctionSignature: "mint(address)",
-                    abiParameters: [newWallet.address],
+                    abiFunctionSignature: "register(string)",
+                    abiParameters: ["ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 identityTxId = mintResp?.data?.transaction?.id;
