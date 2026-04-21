@@ -98,16 +98,16 @@ async function getUsdcTokenId(walletId) {
 
 // --- ENDPOINTS ---
 app.get('/debug/master', async (req, res) => {
-    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
+    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id", envKeys: Object.keys(process.env).filter(k => k.includes('WALLET') || k.includes('ID')) });
     try {
-        const wallet = await client.getWallet({ walletId: process.env.MASTER_WALLET_ID });
+        const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID }); // FIXED: changed walletId to id
         const balances = await client.listBalances({ walletId: process.env.MASTER_WALLET_ID });
         res.json({
             address: wallet.data.wallet.address,
             balances: balances.data.tokenBalances
         });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e.message, masterId: process.env.MASTER_WALLET_ID });
     }
 });
 
