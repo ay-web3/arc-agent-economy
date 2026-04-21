@@ -140,10 +140,13 @@ app.post('/onboard', async (req, res) => {
                     amounts: [process.env.SPONSOR_AMOUNT || "0.02"], // No tokenId = Native ARC
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                txId = tx.data.transaction.id;
-                console.log(`>> Gas Sponsored: ${txId}.`);
+                if (tx.data && tx.data.transaction) {
+                    txId = tx.data.transaction.id;
+                    console.log(`>> Gas Sponsored: ${txId}.`);
+                }
 
                 // 2. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
+                console.log(`>> Triggering Self-Mint for ${agentName} via wallet ${newWallet.id}...`);
                 const mintTx = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
@@ -153,8 +156,10 @@ app.post('/onboard', async (req, res) => {
                     abiParameters: [newWallet.address],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
-                identityTxId = mintTx.data.transaction.id;
-                console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
+                if (mintTx.data && mintTx.data.transaction) {
+                    identityTxId = mintTx.data.transaction.id;
+                    console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
+                }
             } catch(e) {
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 console.error(">> Onboarding Logic Failed:", hubError);
