@@ -371,13 +371,35 @@ app.post('/payout/nano', async (req, res) => {
     if (adminSecret !== process.env.HUB_ADMIN_SECRET) return res.status(401).json({ error: "Unauthorized" });
 
     try {
-        console.log(`>> [X402] Executing Official Pay Payout for ${recipient}...`);
-        const payout = await gateway.pay({
-            amount: amount,
-            recipient: recipient, 
-            currency: "USDC"
-        });
-        res.json({ success: true, transaction: payout });
+        console.log(`>> [X402] Executing Sovereign Nano-Payout to ${recipient} (Amount: ${amount} USDC)...`);
+        
+        const masterWalletId = process.env.MASTER_WALLET_ID;
+        if (!masterWalletId) {
+            throw new Error("MASTER_WALLET_ID is not configured in the Sovereign environment.");
+        }
+
+        // Auto-resolve USDC Token ID
+        const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
+        const tokens = balancesResp.data?.tokenBalances || [];
+        const usdcToken = tokens.find(t => t.token?.symbol === 'USDC');
+        
+        if (!usdcToken) {
+            throw new Error("No USDC token balance found in the Hub Treasury (MASTER_WALLET_ID).");
+        }
+
+        // Execute Nano-Settlement via Circle SDK
+        const payoutPayload = {
+            walletId: masterWalletId,
+            tokenId: usdcToken.token.id,
+            destinationAddress: recipient,
+            amounts: [String(amount)],
+            fee: { type: "SPONSORED" }, // Hub sponsors the nano-settlement gas
+            idempotencyKey: uuidv4()
+        };
+
+        const payoutResp = await client.createTransaction(payoutPayload);
+        
+        res.json({ success: true, transaction: payoutResp.data });
     } catch (e) {
         console.error(">> [FATAL] Nano-Payout Failed:", e.message);
         res.status(500).json({ error: e.message });
