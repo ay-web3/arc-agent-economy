@@ -87,7 +87,7 @@ async function saveWalletId(agentName, walletId) {
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
-        const response = await client.listBalances({ walletId });
+        const response = await client.getWalletTokenBalance({ walletId });
         const balances = response.data.tokenBalances;
         const usdc = balances.find(b => b.token.symbol === "USDC");
         return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
@@ -101,8 +101,6 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        // The SDK uses getWalletTokenBalance (singular) for list and getWalletTokenBalances for one?
-        // Let's use the one found in the availableMethods: getWalletTokenBalance
         const bResp = await client.getWalletTokenBalance({ walletId: process.env.MASTER_WALLET_ID });
         
         res.json({
@@ -113,7 +111,6 @@ app.get('/debug/master', async (req, res) => {
     } catch (e) {
         res.status(500).json({ 
             error: e.message, 
-            stack: e.stack,
             availableMethods: Object.keys(client).filter(k => k.toLowerCase().includes('balance'))
         });
     }
@@ -138,21 +135,26 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // 1. Sponsor Native ARC gas (Native ARC, not USDC)
-                console.log(`>> Sponsoring Gas for ${agentName} from ${process.env.MASTER_WALLET_ID}...`);
+                // 1. Get USDC Token ID for sponsorship
+                const bResp = await client.getWalletTokenBalance({ walletId: process.env.MASTER_WALLET_ID });
+                const usdc = bResp.data.tokenBalances.find(b => b.token.symbol === "USDC");
+                const tokenId = usdc ? usdc.token.id : null;
+
+                console.log(`>> Sponsoring 0.02 USDC for ${agentName} (TokenId: ${tokenId})...`);
+                
                 const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     destinationAddress: newWallet.address,
-                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"], 
+                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
+                    tokenId: tokenId, // <--- EXPLICITLY USE USDC TOKEN ID
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = txResp?.data?.transaction?.id || "Pending";
-                console.log(`>> Gas Sponsored: ${txId}.`);
 
                 // 2. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
-                console.log(`>> Triggering Self-Mint for ${agentName} via wallet ${newWallet.id}...`);
+                console.log(`>> Triggering Self-Mint for ${agentName}...`);
                 const mintResp = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
@@ -163,7 +165,6 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 identityTxId = mintResp?.data?.transaction?.id || "Pending";
-                console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
             } catch(e) {
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 console.error(">> Onboarding Logic Failed:", hubError);
