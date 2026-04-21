@@ -142,19 +142,35 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = txResp?.data?.transaction?.id || "Pending";
+                console.log(`>> Gas Sponsored: ${txId}. Entering Smart-Retry Minting...`);
 
-                // 2. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
-                console.log(`>> Triggering Self-Mint for ${agentName}...`);
-                const mintResp = await client.createContractExecutionTransaction({
-                    idempotencyKey: uuidv4(),
-                    walletId: newWallet.id, 
-                    blockchain: "ARC-TESTNET",
-                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                    abiFunctionSignature: "mint(address)",
-                    abiParameters: [newWallet.address],
-                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                });
-                identityTxId = mintResp?.data?.transaction?.id || "Pending";
+                // 2. Trigger ERC-8004 Identity Minting (Smart-Retry Loop)
+                for (let attempt = 1; attempt <= 5; attempt++) {
+                    try {
+                        const mintResp = await client.createContractExecutionTransaction({
+                            idempotencyKey: uuidv4(),
+                            walletId: newWallet.id, 
+                            blockchain: "ARC-TESTNET",
+                            contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                            abiFunctionSignature: "mint(address)",
+                            abiParameters: [newWallet.address],
+                            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                        });
+                        identityTxId = mintResp?.data?.transaction?.id;
+                        console.log(`>> Identity Minted on attempt ${attempt}: ${identityTxId}`);
+                        break;
+                    } catch (e) {
+                        const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+                        if (errBody.includes("insufficient") && attempt < 5) {
+                            console.log(`>> Attempt ${attempt} failed (Gas not arrived). Retrying in 3s...`);
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                        } else {
+                            hubError = errBody;
+                            console.error(`>> Minting Failed (Attempt ${attempt}):`, hubError);
+                            break;
+                        }
+                    }
+                }
             } catch(e) {
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 console.error(">> Onboarding Logic Failed:", hubError);
