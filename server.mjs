@@ -101,10 +101,10 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        const methods = Object.keys(client);
+        const balances = await client.getWalletBalances({ walletId: process.env.MASTER_WALLET_ID });
         res.json({
             address: wallet.data.wallet.address,
-            clientMethods: methods
+            balances: balances.data.tokenBalances
         });
     } catch (e) {
         res.status(500).json({ error: e.message, stack: e.stack });
@@ -130,18 +130,23 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // 1. Sponsor Native ARC gas (no tokenId)
+                // 1. Sponsor Native ARC gas (Native ARC, not USDC)
+                console.log(`>> Sponsoring Gas for ${agentName} from ${process.env.MASTER_WALLET_ID}...`);
                 const tx = await client.createTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     destinationAddress: newWallet.address,
-                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
+                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"], // No tokenId = Native ARC
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = tx.data.transaction.id;
+                console.log(`>> Gas Sponsored: ${txId}. Waiting for propagation...`);
 
-                // 2. Trigger ERC-8004 Identity Minting (Self-Minting via New Wallet)
+                // 2. WAIT for gas to arrive (Blockchain propagation delay)
+                await new Promise(resolve => setTimeout(resolve, 8000));
+
+                // 3. Trigger ERC-8004 Identity Minting (Agent mints its own identity)
                 const mintTx = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
                     walletId: newWallet.id, 
@@ -154,8 +159,8 @@ app.post('/onboard', async (req, res) => {
                 identityTxId = mintTx.data.transaction.id;
                 console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
             } catch(e) {
-                hubError = e.response?.data || e.message;
-                console.error(">> Hub Ops Failed:", hubError);
+                hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+                console.error(">> Onboarding Logic Failed:", hubError);
             }
         }
         res.json({ 
