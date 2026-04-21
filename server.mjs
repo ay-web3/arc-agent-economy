@@ -1,6 +1,8 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
+import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { GatewayClient } from '@circle-fin/x402-batching/client';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -8,50 +10,32 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 
-// --- BOOTSTRAP INITIATION ---
-bootstrap(); // Start background logic (SDK + DB)
-
 // --- GLOBAL STATE ---
 let client = null;
 let gateway = null;
 let uuidv4 = null;
 let SDK_LOAD_ERROR = null;
-let agentCollection = null;
+let mongoClient = null;
 let mongoPromise = null;
 
-// --- DUAL-RESOLUTION FACTORY ENGINE ---
+// --- DUAL-RESOLUTION ENGINE ---
 async function bootstrap() {
     try {
-        const sdkModule = await import('@circle-fin/developer-controlled-wallets');
-        const initClient = sdkModule.initiateDeveloperControlledWalletsClient || 
-                           sdkModule.default?.initiateDeveloperControlledWalletsClient;
-        
-        if (typeof initClient !== 'function') {
-            throw new Error(`CRITICAL: Circle SDK factory not found.`);
-        }
-
-        const gatewayModule = await import('@circle-fin/x402-batching');
-        const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient || gatewayModule.default;
-
         uuidv4 = () => crypto.randomUUID();
 
         const API_KEY = process.env.CIRCLE_API_KEY;
         const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SECRET;
         const WALLET_SET_ID = process.env.WALLET_SET_ID;
-        const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || process.env.GATEWAY_ADDR || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+        const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID; // Sovereign Hub Treasury
 
         if (API_KEY && ENTITY_SECRET) {
-            client = initClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
-            if (Gateway) {
-                gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
-            }
-            console.log(">> [SENTINEL] Swarm Engines Operational.");
+            client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
+            console.log(">> [SENTINEL] Swarm Engines Operational (Keyless Mode).");
         }
 
         if (process.env.MONGODB_URI) {
-            const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
-            mongoPromise = mongo.connect().then(() => {
-                agentCollection = mongo.db().collection('agent_registry');
+            mongoClient = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
+            mongoPromise = mongoClient.connect().then(() => {
                 console.log(">> [SENTINEL] Memory Persistence Synchronized.");
             });
         }
@@ -64,24 +48,38 @@ async function bootstrap() {
 // --- UTILS ---
 async function verifyAgent(agentName, providedSecret) {
     if (mongoPromise) await mongoPromise;
-    if (!agentCollection || !providedSecret) return { success: false, error: "Missing identity or validation" };
+    if (!mongoClient || !providedSecret) return { success: false, error: "Missing identity or validation" };
     
-    const record = await agentCollection.findOne({ agentName });
-    if (!record || !record.hashedSecret) return { success: false, error: "Agent unauthorized or not secured" };
+    const db = mongoClient.db("arc_swarm");
+    const record = await db.collection("agents").findOne({ agentName });
+    
+    if (!record) {
+        console.error(`>> [AUTH_FAIL] Agent Not Found in DB: ${agentName}`);
+        return { success: false, error: "Agent unauthorized or not secured" };
+    }
+
+    if (!record.hashedSecret) {
+        console.error(`>> [AUTH_FAIL] Record missing hashedSecret for: ${agentName}`);
+        return { success: false, error: "Agent unauthorized or not secured" };
+    }
 
     const hash = crypto.createHash('sha256').update(providedSecret).digest('hex');
-    if (hash !== record.hashedSecret) return { success: false, error: "Invalid agent secret" };
+    if (hash !== record.hashedSecret) {
+        console.error(`>> [AUTH_FAIL] Secret mismatch for agent: ${agentName}`);
+        return { success: false, error: "Invalid agent secret" };
+    }
 
     return { success: true, walletId: record.walletId };
 }
 
-async function saveWalletId(agentName, walletId, rawSecret) {
+async function saveWalletId(agentName, walletId, rawSecret, address) {
     if (mongoPromise) await mongoPromise;
-    if (agentCollection) {
+    if (mongoClient) {
+        const db = mongoClient.db("arc_swarm");
         const hashedSecret = crypto.createHash('sha256').update(rawSecret).digest('hex');
-        await agentCollection.updateOne(
+        await db.collection("agents").updateOne(
             { agentName }, 
-            { $set: { agentName, walletId, hashedSecret, updatedAt: new Date() } }, 
+            { $set: { agentName, walletId, hashedSecret, address: address.toLowerCase(), updatedAt: new Date() } }, 
             { upsert: true }
         );
     }
@@ -122,39 +120,72 @@ app.get('/debug/master', async (req, res) => {
 
 app.get('/health', async (req, res) => {
     if (mongoPromise) await mongoPromise;
+    const isReady = client && gateway;
     const status = {
         hub: "SENTINEL-v2",
         sdk: client ? "READY" : "BOOTING",
-        persistence: agentCollection ? "CONNECTED" : "OFFLINE",
+        gateway: gateway ? "READY" : "BOOTING",
+        persistence: mongoClient ? "CONNECTED" : "OFFLINE",
         time: new Date().toISOString()
     };
-    res.status(client ? 200 : 503).json(status);
+    res.status(isReady ? 200 : 503).json(status);
+});
+
+app.get('/admin/swarm-fuel', async (req, res) => {
+    if (!gateway || !process.env.MASTER_WALLET_ID) return res.status(503).json({ error: "Engines Offline" });
+    try {
+        const balances = await gateway.getBalances();
+        res.json({
+            masterAddress: gateway.address,
+            standardWalletUSDC: balances.wallet.formatted,
+            nanoGatewayLiquidity: balances.gateway.formattedAvailable,
+            status: parseFloat(balances.gateway.formattedAvailable) > 0.005 ? "READY_TO_SWARM" : "NEEDS_FUEL"
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/agents', async (req, res) => {
     if (mongoPromise) await mongoPromise;
-    if (!agentCollection) return res.status(503).json({ error: "Persistence Offline" });
+    if (!mongoClient) return res.status(503).json({ error: "Persistence Offline" });
     try {
-        const agents = await agentCollection.find({}).toArray();
+        const db = mongoClient.db("arc_swarm");
+        const agents = await db.collection("agents").find({}).toArray();
         res.json(agents);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
+// IDENTITY_LINKING: Saves the ERC-8004 Identity NFT Token ID to MongoDB
+async function linkArcIdentity(agentId, tokenId) {
+    const db = mongoClient.db("arc_swarm");
+    const agents = db.collection("agents");
+    await agents.updateOne({ agentName: agentId }, { $set: { arcIdentityTokenId: tokenId.toString(), identityLinkedAt: new Date() } });
+}
+
+// PROFILE_QUERY: Retrieves the decentralized reputation profile (SDK expectation)
+app.get('/registry/profile/:address', async (req, res) => {
+    if (mongoPromise) await mongoPromise;
+    const { address } = req.params;
+    if (!mongoClient) return res.status(503).json({ error: "Persistence Offline" });
+    const db = mongoClient.db("arc_swarm");
+    const agents = db.collection("agents");
+    const profile = await agents.findOne({ address: address.toLowerCase() });
+    if (!profile) return res.status(404).json({ error: "Profile Not Found" });
+    res.json({ address, profile });
+});
+
+// ERC-8004 Identity Update (SDK Official Sync)
 app.post('/updateArcIdentity', async (req, res) => {
     if (mongoPromise) await mongoPromise;
-    const { agentName, tokenId } = req.body;
-    if (!agentCollection) return res.status(503).json({ error: "Persistence Offline" });
-    try {
-        await agentCollection.updateOne(
-            { agentName },
-            { $set: { tokenId, identityLinkedAt: new Date() } }
-        );
-        res.json({ success: true, agentName, tokenId });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    const { agentId, agentSecret, tokenId } = req.body;
+    const auth = await verifyAgent(agentId, agentSecret);
+    if (!auth.success) return res.status(401).json({ error: auth.error });
+    
+    await linkArcIdentity(agentId, tokenId);
+    res.json({ success: true, agentId, tokenId });
 });
 
 app.post('/onboard', async (req, res) => {
@@ -168,6 +199,22 @@ app.post('/onboard', async (req, res) => {
     if (!client) return res.status(503).json({ error: "Initializing Hub", details: SDK_LOAD_ERROR });
     const { agentName } = req.body;
     try {
+        const db = mongoClient.db("arc_swarm");
+        const existingAgent = await db.collection("agents").findOne({ agentName });
+        
+        if (existingAgent) {
+            console.log(`>> [RECOVERY] Identity restored for: ${agentName} (${existingAgent.address})`);
+            return res.json({ 
+                success: true, 
+                agentId: agentName, 
+                agentSecret: existingAgent.agentSecret, 
+                address: existingAgent.address, 
+                sponsorshipTxId: null, 
+                hubError: null,
+                recovered: true
+            });
+        }
+
         const response = await client.createWallets({
             idempotencyKey: uuidv4(),
             accountType: "EOA",
@@ -177,10 +224,11 @@ app.post('/onboard', async (req, res) => {
         });
         const newWallet = response.data.wallets[0];
         const agentSecret = crypto.randomBytes(32).toString('hex');
-        await saveWalletId(agentName, newWallet.id, agentSecret);
+        
+        // PERSISTENCE_SYNC: Securely save the identity and hash the secret for verifyAgent
+        await saveWalletId(agentName, newWallet.id, agentSecret, newWallet.address);
 
         let txId = null;
-        let identityTxId = null;
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
@@ -195,38 +243,10 @@ app.post('/onboard', async (req, res) => {
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
                 txId = txResp?.data?.transaction?.id;
-
-                // 2. Agent Registers Identity (with smart retry for the 10s delay)
-                console.log(`>> Agent ${agentName} starting registration loop...`);
-                for (let attempt = 1; attempt <= 10; attempt++) {
-                    try {
-                        const mintResp = await client.createContractExecutionTransaction({
-                            idempotencyKey: uuidv4(),
-                            walletId: newWallet.id, 
-                            blockchain: "ARC-TESTNET",
-                            contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                            abiFunctionSignature: "register(string)",
-                            abiParameters: ["ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"],
-                            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                        });
-                        identityTxId = mintResp?.data?.transaction?.id || mintResp?.data?.id;
-                        console.log(`>> Identity Registered for ${agentName} on attempt ${attempt}: ${identityTxId}`);
-                        break; // Success
-                    } catch (e) {
-                        const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                        if (errBody.includes("insufficient") && attempt < 10) {
-                            console.log(`>> Attempt ${attempt}: Gas not arrived yet. Retrying in 3s...`);
-                            await new Promise(resolve => setTimeout(resolve, 3000));
-                        } else {
-                            hubError = errBody;
-                            console.error(`>> Registration Final Failure (Attempt ${attempt}):`, hubError);
-                            break;
-                        }
-                    }
-                }
-            } catch(e) {
-                hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                console.error(">> Onboarding Logic Failed:", hubError);
+            } catch (e) {
+                const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+                hubError = errBody;
+                console.error(">> Sponsorship Failed:", hubError);
             }
         }
         res.json({ 
@@ -235,7 +255,6 @@ app.post('/onboard', async (req, res) => {
             agentSecret: agentSecret,
             address: newWallet.address, 
             sponsorshipTxId: txId, 
-            identityTxId: identityTxId,
             hubError: hubError
         });
     } catch (e) {
@@ -248,12 +267,16 @@ app.post('/onboard', async (req, res) => {
 app.post('/execute/:action', async (req, res) => {
     if (!client) return res.status(503).json({ error: "Initializing Hub" });
     const { action } = req.params;
-    const { agentId, agentSecret, ...params } = req.body;
     
-    const auth = await verifyAgent(agentId, agentSecret);
+    // Aligns with ArcManagedSDK top-level spread pattern (...params)
+    const payload = req.body;
+    const effectiveName = payload.agentId || payload.agentName;
+    
+    const auth = await verifyAgent(effectiveName, payload.agentSecret);
     if (!auth.success) return res.status(401).json({ error: auth.error });
 
     const walletId = auth.walletId;
+    const params = payload; // Redirect params to top-level payload
 
     try {
         let payload = {
@@ -263,35 +286,76 @@ app.post('/execute/:action', async (req, res) => {
             contractAddress: "",
             abiFunctionSignature: "",
             abiParameters: [],
-            amount: params.amount || "0",
+            amount: "0",
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         };
 
+        const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
         const REGISTRY = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
         const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+        const SDK_LOAD_ERROR = null;
+
+        const toWei = (val) => {
+            if (!val || val === "0") return "0";
+            try {
+                return (BigInt(Math.floor(parseFloat(val) * 1e9)) * BigInt(1e9)).toString();
+            } catch(e) { return "0"; }
+        };
+
+        const pad32 = (hex) => {
+            if (!hex) return "0x" + "0".repeat(64);
+            if (hex.startsWith("0x")) hex = hex.slice(2);
+            return "0x" + hex.padEnd(64, '0');
+        };
 
         switch(action) {
             case "register":
                 payload.contractAddress = REGISTRY;
                 payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
-                payload.abiParameters = [String(params.asSeller), String(params.asVerifier), params.capHash, params.pubKey];
-                payload.amount = params.stake;
-                break;
-            case "placeBid":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
-                payload.abiParameters = [String(params.taskId), (parseFloat(params.price) * 10**18).toString(), String(params.eta), params.meta];
+                payload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
+                payload.amount = toWei(params.amount);
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
-                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), params.taskHash, params.verifiers, String(params.quorumM), String(params.isNano)];
+                const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
+                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), pad32(params.taskHash), vArr, String(params.quorumM), String(params.isNano)];
+                payload.amount = toWei(params.amount);
                 break;
-            case "finalizeTask":
+            case "placeBid":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
+                payload.abiParameters = [String(params.taskId), toWei(params.price), String(params.eta), pad32(params.meta)];
+                break;
+            case "selectBid":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "selectBid(uint256,uint256)";
+                payload.abiParameters = [String(params.taskId), String(params.bidIndex)];
+                break;
+            case "submitResult":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
+                payload.abiParameters = [String(params.taskId), pad32(params.hash), params.uri];
+                break;
+            case "approve":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "approve(uint256)";
+                payload.abiParameters = [String(params.taskId)];
+                break;
+            case "finalize":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "finalize(uint256)";
                 payload.abiParameters = [String(params.taskId)];
                 break;
+            case "topUpStake":
+                payload.contractAddress = REGISTRY;
+                payload.abiFunctionSignature = "topUpStake()";
+                payload.abiParameters = [];
+                payload.amount = toWei(params.amount);
+                break;
+            default:
+                return res.status(400).json({ error: "Unknown action" });
         }
         const resp = await client.createContractExecutionTransaction(payload);
         res.json({ success: true, txId: resp.data.transaction?.id || resp.data?.id });
@@ -303,16 +367,26 @@ app.post('/execute/:action', async (req, res) => {
 });
 
 app.post('/payout/nano', async (req, res) => {
-    if (!gateway) return res.status(503).json({ error: "Gateway not ready" });
-    const { recipient, amount } = req.body;
+    const { adminSecret, amount, recipient } = req.body;
+    if (adminSecret !== process.env.HUB_ADMIN_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
     try {
-        const response = await gateway.pay({ amount, recipient, currency: "USDC" });
-        res.json({ success: true, batchId: response.batchId });
+        console.log(`>> [X402] Executing Official Pay Payout for ${recipient}...`);
+        const payout = await gateway.pay({
+            amount: amount,
+            recipient: recipient, 
+            currency: "USDC"
+        });
+        res.json({ success: true, transaction: payout });
     } catch (e) {
+        console.error(">> [FATAL] Nano-Payout Failed:", e.message);
         res.status(500).json({ error: e.message });
     }
 });
 // --- FINAL LISTENER: Bind only after all routes are registered ---
+// --- BOOTSTRAP INITIATION ---
+bootstrap();
+
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
 });
