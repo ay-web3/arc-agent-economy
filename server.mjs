@@ -97,14 +97,18 @@ async function getUsdcTokenId(walletId) {
 }
 
 // --- ENDPOINTS ---
-app.get('/debug/env', (req, res) => {
-    res.json({
-        has_master_id: !!process.env.MASTER_WALLET_ID,
-        has_api_key: !!process.env.CIRCLE_API_KEY,
-        has_entity_secret: !!process.env.CIRCLE_ENTITY_SECRET,
-        has_wallet_set: !!process.env.WALLET_SET_ID,
-        sdk_initialized: !!client
-    });
+app.get('/debug/master', async (req, res) => {
+    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
+    try {
+        const wallet = await client.getWallet({ walletId: process.env.MASTER_WALLET_ID });
+        const balances = await client.listBalances({ walletId: process.env.MASTER_WALLET_ID });
+        res.json({
+            address: wallet.data.wallet.address,
+            balances: balances.data.tokenBalances
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/onboard', async (req, res) => {
