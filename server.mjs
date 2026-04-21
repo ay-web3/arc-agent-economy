@@ -98,16 +98,25 @@ async function getUsdcTokenId(walletId) {
 
 // --- ENDPOINTS ---
 app.get('/debug/master', async (req, res) => {
-    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id", envKeys: Object.keys(process.env).filter(k => k.includes('WALLET') || k.includes('ID')) });
+    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
-        const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID }); // FIXED: changed walletId to id
-        const balances = await client.listBalances({ walletId: process.env.MASTER_WALLET_ID });
+        const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
+        // Attempt to find the balance method (Circle SDK method names can vary by version)
+        const balanceMethod = client.getWalletBalances || client.listBalances || client.getBalances;
+        if (!balanceMethod) {
+            return res.json({ 
+                address: wallet.data.wallet.address, 
+                error: "Balance method not found", 
+                methods: Object.keys(client).filter(m => m.toLowerCase().includes('balance') || m.toLowerCase().includes('wallet')) 
+            });
+        }
+        const balances = await balanceMethod.call(client, { walletId: process.env.MASTER_WALLET_ID });
         res.json({
             address: wallet.data.wallet.address,
             balances: balances.data.tokenBalances
         });
     } catch (e) {
-        res.status(500).json({ error: e.message, masterId: process.env.MASTER_WALLET_ID });
+        res.status(500).json({ error: e.message, stack: e.stack });
     }
 });
 
@@ -127,6 +136,7 @@ app.post('/onboard', async (req, res) => {
 
         let txId = null;
         let identityTxId = null;
+        let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
                 // 1. Sponsor Native ARC gas (no tokenId)
@@ -143,7 +153,7 @@ app.post('/onboard', async (req, res) => {
                 // 2. Trigger ERC-8004 Identity Minting (Self-Minting via New Wallet)
                 const mintTx = await client.createContractExecutionTransaction({
                     idempotencyKey: uuidv4(),
-                    walletId: newWallet.id, // <--- New Agent Wallet calls its own birth
+                    walletId: newWallet.id, 
                     blockchain: "ARC-TESTNET",
                     contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
                     abiFunctionSignature: "mint(address)",
@@ -153,7 +163,8 @@ app.post('/onboard', async (req, res) => {
                 identityTxId = mintTx.data.transaction.id;
                 console.log(`>> Identity Minted for ${agentName}: ${identityTxId}`);
             } catch(e) {
-                console.error(">> Hub Ops Failed:", e.response?.data || e.message);
+                hubError = e.response?.data || e.message;
+                console.error(">> Hub Ops Failed:", hubError);
             }
         }
         res.json({ 
@@ -161,7 +172,8 @@ app.post('/onboard', async (req, res) => {
             agentId: agentName, 
             address: newWallet.address, 
             sponsorshipTxId: txId, 
-            identityTxId: identityTxId 
+            identityTxId: identityTxId,
+            hubError: hubError
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
