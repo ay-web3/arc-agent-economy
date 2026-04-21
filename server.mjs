@@ -21,21 +21,18 @@ let mongoPromise = null;
 // --- DUAL-RESOLUTION FACTORY ENGINE ---
 async function bootstrap() {
     try {
-        console.log(">> [BOOT] Initiating Factory-Corrected SDK Discovery...");
-
         const sdkModule = await import('@circle-fin/developer-controlled-wallets');
         const initClient = sdkModule.initiateDeveloperControlledWalletsClient || 
                            sdkModule.default?.initiateDeveloperControlledWalletsClient;
         
         if (typeof initClient !== 'function') {
-            throw new Error(`CRITICAL: Circle SDK factory not found. Export Keys: ${Object.keys(sdkModule)}`);
+            throw new Error(`CRITICAL: Circle SDK factory not found.`);
         }
 
         const gatewayModule = await import('@circle-fin/x402-batching');
         const Gateway = gatewayModule.GatewayClient || gatewayModule.default?.GatewayClient || gatewayModule.default;
 
-        const uuidModule = await import('uuid');
-        uuidv4 = uuidModule.v4 || uuidModule.default?.v4 || uuidModule.default;
+        uuidv4 = () => crypto.randomUUID();
 
         const API_KEY = process.env.CIRCLE_API_KEY;
         const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET || process.env.ENTITY_SECRET;
@@ -47,15 +44,14 @@ async function bootstrap() {
             if (Gateway) {
                 gateway = new Gateway({ gatewayAddress: GATEWAY_ADDR, blockchain: "ARC-TESTNET" });
             }
-            console.log(">> [SUCCESS] Swarm Engines Operational via Factory Fix.");
+            console.log(">> [SENTINEL] Swarm Engines Operational.");
         }
 
         if (process.env.MONGODB_URI) {
-            console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
             const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
             mongoPromise = mongo.connect().then(() => {
                 agentCollection = mongo.db().collection('agent_registry');
-                console.log(">> [PERSISTENCE] Memory Synchronized.");
+                console.log(">> [SENTINEL] Memory Persistence Synchronized.");
             });
         }
     } catch (e) {

@@ -69,15 +69,19 @@ async function born() {
             });
 
             if (res.success) {
-                console.log(`✅ [NFT MINTED] Identity registered on ARC Testnet! TX: ${res.txId}`);
+                console.log(`✅ [IDENTITY VERIFIED] Identity registered on ARC Testnet!`);
+                console.log(`TX ID: ${res.txId}`);
+                console.log("\n====================================================");
+                console.log("💰 SOVEREIGN FUNDING REQUIRED");
+                console.log("====================================================");
+                console.log(`AGENT ADDRESS: ${address}`);
+                console.log("ACTION: Please fund this address with 50 ARC tokens.");
+                console.log("NEXT STEP: After funding, run 'node scripts/register.js' to join the marketplace.");
+                console.log("====================================================\n");
             } else {
-                console.log(`⚠️ Identity NFT mint failed or pending. Run 'node scripts/register.js' manually. Error: ${res.error}`);
+                console.log(`⚠️ Identity NFT mint failed or pending. Error: ${res.error}`);
+                console.log(">> You can manually register later using the SDK.");
             }
-
-            console.log("\nNext Steps:");
-            console.log("1. Run your first agent script to join the marketplace!");
-            console.log("2. Use the SDK to start monitoring the Swarm Hub.");
-            console.log("====================================================\n");
         } else {
             console.error(">> Onboarding failed:", response.data.error);
         }
