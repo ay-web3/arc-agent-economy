@@ -52,7 +52,7 @@ async function bootstrap() {
 
         if (process.env.MONGODB_URI) {
             console.log(">> [PERSISTENCE] Connecting to MongoDB Atlas...");
-            const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+            const mongo = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
             mongoPromise = mongo.connect().then(() => {
                 agentCollection = mongo.db().collection('agent_registry');
                 console.log(">> [PERSISTENCE] Memory Synchronized.");
@@ -114,6 +114,43 @@ app.get('/debug/master', async (req, res) => {
     }
 });
 
+app.get('/health', async (req, res) => {
+    if (mongoPromise) await mongoPromise;
+    const status = {
+        hub: "SENTINEL-v2",
+        sdk: client ? "READY" : "BOOTING",
+        persistence: agentCollection ? "CONNECTED" : "OFFLINE",
+        time: new Date().toISOString()
+    };
+    res.status(client ? 200 : 503).json(status);
+});
+
+app.get('/agents', async (req, res) => {
+    if (mongoPromise) await mongoPromise;
+    if (!agentCollection) return res.status(503).json({ error: "Persistence Offline" });
+    try {
+        const agents = await agentCollection.find({}).toArray();
+        res.json(agents);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/updateArcIdentity', async (req, res) => {
+    if (mongoPromise) await mongoPromise;
+    const { agentName, tokenId } = req.body;
+    if (!agentCollection) return res.status(503).json({ error: "Persistence Offline" });
+    try {
+        await agentCollection.updateOne(
+            { agentName },
+            { $set: { tokenId, identityLinkedAt: new Date() } }
+        );
+        res.json({ success: true, agentName, tokenId });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/onboard', async (req, res) => {
     // 🛡️ Await-Ready Guard: Ensure SDK and Persistence are locked in before processing
     if (mongoPromise) await mongoPromise;
@@ -165,7 +202,7 @@ app.post('/onboard', async (req, res) => {
                             abiParameters: ["ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"],
                             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                         });
-                        identityTxId = mintResp?.data?.transaction?.id;
+                        identityTxId = mintResp?.data?.transaction?.id || mintResp?.data?.id;
                         console.log(`>> Identity Registered for ${agentName} on attempt ${attempt}: ${identityTxId}`);
                         break; // Success
                     } catch (e) {
@@ -194,7 +231,9 @@ app.post('/onboard', async (req, res) => {
             hubError: hubError
         });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [FATAL] Onboarding Request Failed:", errorDetail);
+        res.status(500).json({ error: errorDetail });
     }
 });
 
@@ -245,9 +284,10 @@ app.post('/execute/:action', async (req, res) => {
                 break;
         }
         const resp = await client.createContractExecutionTransaction(payload);
-        res.json({ success: true, txId: resp.data.transaction.id });
+        res.json({ success: true, txId: resp.data.transaction?.id || resp.data?.id });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [FATAL] Contract Execution Failed:", errorDetail);
         res.status(500).json({ error: errorDetail });
     }
 });

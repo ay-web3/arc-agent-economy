@@ -65,7 +65,7 @@ async function born() {
                 asVerifier: false,
                 capHash: "0x" + crypto.randomBytes(32).toString('hex'), // Mock Capabilities
                 pubKey: "0x" + crypto.randomBytes(32).toString('hex'), // Mock PubKey
-                stake: "0.001"
+                stake: "0.01"
             });
 
             if (res.success) {
