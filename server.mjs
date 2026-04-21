@@ -141,22 +141,37 @@ app.post('/onboard', async (req, res) => {
                 });
                 txId = txResp?.data?.transaction?.id;
 
-                // 2. Agent Mints Own Identity via register(string)
-                console.log(`>> Agent ${agentName} Registering Identity...`);
-                const mintResp = await client.createContractExecutionTransaction({
-                    idempotencyKey: uuidv4(),
-                    walletId: newWallet.id, 
-                    blockchain: "ARC-TESTNET",
-                    contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-                    abiFunctionSignature: "register(string)",
-                    abiParameters: ["ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"],
-                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                });
-                identityTxId = mintResp?.data?.transaction?.id;
+                // 2. Agent Registers Identity (with smart retry for the 10s delay)
+                console.log(`>> Agent ${agentName} starting registration loop...`);
+                for (let attempt = 1; attempt <= 10; attempt++) {
+                    try {
+                        const mintResp = await client.createContractExecutionTransaction({
+                            idempotencyKey: uuidv4(),
+                            walletId: newWallet.id, 
+                            blockchain: "ARC-TESTNET",
+                            contractAddress: process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                            abiFunctionSignature: "register(string)",
+                            abiParameters: ["ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5i25j66itxvsoei"],
+                            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                        });
+                        identityTxId = mintResp?.data?.transaction?.id;
+                        console.log(`>> Identity Registered for ${agentName} on attempt ${attempt}: ${identityTxId}`);
+                        break; // Success
+                    } catch (e) {
+                        const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+                        if (errBody.includes("insufficient") && attempt < 10) {
+                            console.log(`>> Attempt ${attempt}: Gas not arrived yet. Retrying in 3s...`);
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                        } else {
+                            hubError = errBody;
+                            console.error(`>> Registration Final Failure (Attempt ${attempt}):`, hubError);
+                            break;
+                        }
+                    }
+                }
             } catch(e) {
-                // Log but don't crash - some transactions might be pending
                 hubError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-                console.log(">> Onboarding Status:", hubError);
+                console.error(">> Onboarding Logic Failed:", hubError);
             }
         }
         res.json({ 
