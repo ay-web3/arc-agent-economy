@@ -87,7 +87,7 @@ async function saveWalletId(agentName, walletId) {
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
-        const response = await client.getWalletTokenBalance({ walletId });
+        const response = await client.getWalletTokenBalance({ id: walletId }); // Fix: use id
         const balances = response.data.tokenBalances;
         const usdc = balances.find(b => b.token.symbol === "USDC");
         return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
@@ -101,7 +101,7 @@ app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
         const wallet = await client.getWallet({ id: process.env.MASTER_WALLET_ID });
-        const bResp = await client.getWalletTokenBalance({ walletId: process.env.MASTER_WALLET_ID });
+        const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID }); // Fix: use id
         
         res.json({
             address: wallet.data.wallet.address,
@@ -136,7 +136,7 @@ app.post('/onboard', async (req, res) => {
         if (process.env.MASTER_WALLET_ID) {
             try {
                 // 1. Get USDC Token ID for sponsorship
-                const bResp = await client.getWalletTokenBalance({ walletId: process.env.MASTER_WALLET_ID });
+                const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID }); // Fix: use id
                 const usdc = bResp.data.tokenBalances.find(b => b.token.symbol === "USDC");
                 const tokenId = usdc ? usdc.token.id : null;
 
