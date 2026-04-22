@@ -16,14 +16,14 @@ contract DeployBalancedEconomy is Script {
         vm.startBroadcast(pk);
 
         // 1. Deploy AgentRegistry
-        // Min Seller Stake: 50 USDC (18 decimals for ARC Testnet native)
-        // Min Verifier Stake: 20 USDC
-        // Withdraw Cooldown: 24 Hours
+        // Min Seller Stake: 0.1 USDC (18 decimals for ARC Testnet native)
+        // Min Verifier Stake: 0.1 USDC
+        // Withdraw Cooldown: 1 Hour
         AgentRegistry registry = new AgentRegistry(
             deployer,
-            50 ether,
-            20 ether,
-            86400
+            0.1 ether,
+            0.1 ether,
+            3600
         );
 
         // 2. Deploy TaskEscrow

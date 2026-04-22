@@ -377,8 +377,8 @@ app.post('/execute/:action', async (req, res) => {
         };
 
         const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
-        const REGISTRY = process.env.REGISTRY_CA || "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
-        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+        const REGISTRY = process.env.REGISTRY_CA || "0xACB9a6b4eba5c569efa6A800BE1e12192fA260bF";
+        const ESCROW = process.env.ESCROW_CA || "0x561d560012225932Bd8175C53FAeAb2C3B6C0d43";
         const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
         const SDK_LOAD_ERROR = null;
 
@@ -409,7 +409,7 @@ app.post('/execute/:action', async (req, res) => {
                 const { encodeFunctionData, parseAbi } = await import('viem');
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
                 const taskAbi = parseAbi([
-                    'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM, bool isNano) external payable returns (uint256 taskId)'
+                    'function createOpenTask(uint256 _amount, uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM, bool isNano) external payable returns (uint256 taskId)'
                 ]);
                 payload.callData = encodeFunctionData({
                     abi: taskAbi,
