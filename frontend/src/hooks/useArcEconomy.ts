@@ -8,8 +8,8 @@ declare global {
 }
 
 // Balanced Economy V1-Pro Addresses
-const REGISTRY_ADDR = "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
-const ESCROW_ADDR   = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+const REGISTRY_ADDR = "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
+const ESCROW_ADDR   = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
 const IDENTITY_PROTOCOL_ADDR   = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; // ERC-8004 official
 const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; // ERC-8004 official
 const RPC_URL = "https://rpc.testnet.arc.network";
@@ -76,7 +76,7 @@ export function useArcEconomy() {
         
         // Hard-coded role hash for GOVERNANCE_ROLE
         const GOV_ROLE_HASH = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
-        const ADMIN_ADDRESS = "0x401faf90c2b08c88914b630bfbcaf4b10ce1965d";
+        const ADMIN_ADDRESS = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D";
         
         const escrow = new ethers.Contract(ESCROW_ADDR, ["function hasRole(bytes32 role, address account) public view returns (bool)"], browserProvider);
         

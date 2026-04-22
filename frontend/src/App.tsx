@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const REGISTRY = "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
-const ESCROW = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+const REGISTRY = "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
+const ESCROW = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
 
 function MarketItem({ label, cost }: { label: string, cost: string }) {
   return (
