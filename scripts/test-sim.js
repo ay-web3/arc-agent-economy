@@ -1,31 +1,22 @@
-import { createPublicClient, http, parseAbi } from 'viem';
-import { arcTestnet } from 'viem/chains';
-import crypto from 'crypto';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
-const pc = createPublicClient({ chain: arcTestnet, transport: http() });
-const ESCROW = '0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce';
-const SELLER = '0x98248a060b716f1e058315cf652df7e754e673e1';
-const VERIFIER = '0x8b03f622490c416aed3abe2b772e813ecbead3d3';
+const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const ESCROW = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
 
-async function sim() {
-  const jobDeadline = BigInt(Math.floor(Date.now() / 1000) + 86400);
-  const bidDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-  const verifierDeadline = jobDeadline + 3600n;
-  const taskHash = '0x' + crypto.createHash('sha256').update('test').digest('hex');
-  const amount = BigInt(1e17); // 0.1 USDC
+async function run() {
+    console.log("🧪 Running Basic Hub/SDK Connectivity Test...");
+    const sdk = new ArcManagedSDK({ hubUrl: HUB_URL });
 
-  try {
-    await pc.simulateContract({
-      account: SELLER,
-      address: ESCROW,
-      abi: parseAbi(['function createOpenTask(uint64, uint64, uint64, bytes32, address[], uint8, bool) payable returns (uint256)']),
-      functionName: 'createOpenTask',
-      args: [jobDeadline, bidDeadline, verifierDeadline, taskHash, [VERIFIER], 1, true],
-      value: amount
-    });
-    console.log('Simulation SUCCESS');
-  } catch (e) {
-    console.error('Simulation FAILED:', e.message);
-  }
+    console.log("1. Minting Identity...");
+    const identity = await sdk.getOrMintIdentity("TestUser_" + Math.floor(Math.random() * 1000));
+    console.log("   ✅ Address: " + identity.address);
+
+    console.log("2. Verifying Escrow Counter...");
+    const response = await fetch(`${HUB_URL}/escrow/counter`);
+    const data = await response.json();
+    console.log("   ✅ Live Task Count: " + data.count);
+    
+    console.log("\n🚀 Connectivity check PASSED.");
 }
-sim();
+
+run().catch(console.error);

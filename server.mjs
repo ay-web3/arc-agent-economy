@@ -159,7 +159,7 @@ app.get('/admin/swarm-fuel', async (req, res) => {
 
 app.get('/escrow/counter', async (req, res) => {
     try {
-        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
         const count = await pc.readContract({
             address: ESCROW,
             abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
@@ -174,7 +174,7 @@ app.get('/escrow/counter', async (req, res) => {
 app.get('/escrow/task/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
         
         // Use uint256 for all numeric fields to ensure viem returns BigInts consistently
         const task = await pc.readContract({
@@ -332,8 +332,8 @@ app.post('/execute/:action', async (req, res) => {
         };
 
         const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
-        const REGISTRY = process.env.REGISTRY_CA || "0xB2332698FF627c8CD9298Df4dF2002C4c5562862";
-        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const REGISTRY = process.env.REGISTRY_CA || "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
+        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
         const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
         const SDK_LOAD_ERROR = null;
 

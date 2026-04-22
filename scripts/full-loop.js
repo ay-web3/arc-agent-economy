@@ -1,159 +1,95 @@
-import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
-import crypto from 'crypto';
-import fs from 'fs';
 import readline from 'readline';
-import { createPublicClient, http } from 'viem';
+import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
+import { createPublicClient, http, parseAbi } from 'viem';
 import { arcTestnet } from 'viem/chains';
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
-const ESCROW = "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+const ESCROW = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+const REGISTRY = "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
 const SECRET_PATH = ".agent_secret";
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const waitManual = (msg) => new Promise(resolve => rl.question(`\n⚠️  ${msg}\n>> Press Enter when done...`, () => resolve()));
-
-const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
-
-async function getTaskCounter() {
-    const raw = await publicClient.readContract({
-        address: ESCROW,
-        abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
-        functionName: 'taskCounter'
-    });
-    return Number(raw);
-}
-
-// Helper to swap agent identities
-function saveIdentity(id, secret) {
-    fs.writeFileSync(SECRET_PATH, JSON.stringify({ agentId: id, agentSecret: secret }, null, 2));
-}
-function loadIdentity() {
-    return JSON.parse(fs.readFileSync(SECRET_PATH, 'utf8'));
-}
+const question = (query) => new Promise((resolve) => rl.question(query, resolve));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function run() {
-    console.log("🔄 FULL LIFECYCLE LOOP — Create → Bid → Select → Submit → Verify → Finalize\n");
+    console.log("🚀 STARTING FULL AGENT LIFECYCLE SIMULATION...");
 
-    // ── Step 1: Birth/Recover agents ──────────────────────────────
-    console.log("🐣 Step 1: Recovering Funded Agents...");
-
-    const sellerSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
-    const seller = await sellerSDK.selfOnboard(`LoopSeller_9681`);
-    const sellerCreds = loadIdentity();
-    console.log(`   Seller RECOVERED: ${seller.address}`);
-
-    const verifierSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
-    const verifier = await verifierSDK.selfOnboard(`LoopVerifier_9681`);
-    const verifierCreds = loadIdentity();
-    console.log(`   Verifier RECOVERED: ${verifier.address}`);
-
-    // ── Step 2: Fund ──────────────────────────────────────────────
-    console.log("\n💰 Step 2: Verifying Funds...");
-    console.log("--------------------------------------------------");
-    console.log(`   Seller  (${seller.address}):  7.1 USDC`);
-    console.log(`   Verifier (${verifier.address}): 3.1 USDC`);
-    console.log("--------------------------------------------------");
-    // User already confirmed funding
-    // await waitManual("Fund both agents, then press Enter.");
-
-    // ── Step 3: Register ──────────────────────────────────────────
-    console.log("\n🛡️  Step 3: Registering agents on-chain...");
-
-    // Switch to seller identity
-    saveIdentity(sellerCreds.agentId, sellerCreds.agentSecret);
-    const sellerSDK2 = new ArcManagedSDK({ hubUrl: HUB_URL });
-    await sellerSDK2.registerAgent({ asSeller: true, asVerifier: false, capabilities: "Full-Stack AI", amount: "5" });
-    console.log("   ✅ Seller REGISTERED");
-
-    // Switch to verifier identity
-    saveIdentity(verifierCreds.agentId, verifierCreds.agentSecret);
-    const verifierSDK2 = new ArcManagedSDK({ hubUrl: HUB_URL });
-    await verifierSDK2.registerAgent({ asSeller: false, asVerifier: true, capabilities: "Quality Assurance", amount: "3" });
-    console.log("   ✅ Verifier REGISTERED");
-
-    // ── Step 4: Create Task (Seller is also Buyer here) ───────────
-    console.log("\n📋 Step 4: Creating Task on Escrow...");
-    saveIdentity(sellerCreds.agentId, sellerCreds.agentSecret);
-    const buyerSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
-
-    const jobDeadline = Math.floor(Date.now() / 1000) + 86400;
-    const bidDeadline = Math.floor(Date.now() / 1000) + 3600;
-    const verifierDeadline = jobDeadline + 3600;
+    const sdk = new ArcManagedSDK({ hubUrl: HUB_URL });
     
-    // ⚔️ SKILL.MD COMPLIANCE: Use a real JSON manifest for the Task Hash
-    const manifest = {
-        type: "Analysis",
-        topic: "Market Sentiment Audit",
-        requirements: ["EMA Audit", "RSI Thresholds"],
-        format: "Markdown/Plaintext"
+    console.log("\n🔐 Onboarding Agent...");
+    const identity = await sdk.getOrMintIdentity("AgentSimulation_123");
+    console.log(`   ✅ Identity: ${identity.address}`);
+
+    // Check stake
+    const pc = createPublicClient({ chain: arcTestnet, transport: http() });
+    const regAbi = parseAbi(['function isSeller(address) view returns (bool)', 'function isVerifier(address) view returns (bool)']);
+    
+    const isSeller = await pc.readContract({ address: REGISTRY, abi: regAbi, functionName: 'isSeller', args: [identity.address] });
+    if (!isSeller) {
+        console.log("   ⚠️ Agent not registered. Please fund and register manually if needed.");
+    }
+
+    console.log("\n📋 Step 1: Creating Task...");
+    const jobDeadline = Math.floor(Date.now() / 1000) + 3600;
+    const bidDeadline = Math.floor(Date.now() / 1000) + 600;
+    const verifierDeadline = jobDeadline + 1800;
+    const taskHash = "0x" + "1".repeat(64);
+
+    const taskParams = {
+        jobDeadline,
+        bidDeadline,
+        verifierDeadline,
+        taskHash,
+        verifiers: [], // Open to all
+        quorumM: 1,
+        amount: "2.0"
     };
-    const taskHash = buyerSDK.generateMetadataHash(manifest);
 
-    const taskRes = await buyerSDK.createOpenTask({
-        jobDeadline, bidDeadline, verifierDeadline, taskHash,
-        verifiers: [verifier.address],
-        quorumM: 1, isNano: false, amount: "2.0"
+    const res1 = await sdk.createOpenTask(taskParams);
+    console.log(`   ✅ Task Created. Tx: ${res1.txId}`);
+    
+    const countRaw = await pc.readContract({
+        address: ESCROW,
+        abi: parseAbi(['function taskCounter() view returns (uint256)']),
+        functionName: 'taskCounter'
     });
-    const taskId = await getTaskCounter();
-    console.log(`   ✅ Task #${taskId} CREATED (Tx: ${taskRes.txId})`);
+    const taskId = Number(countRaw);
+    console.log(`   📌 Task ID: ${taskId}`);
 
-    // ── Step 5: Place Bid ─────────────────────────────────────────
-    console.log("\n🤝 Step 5: Seller placing bid...");
-    // Seller identity is already loaded
-    // ⚔️ SKILL.MD COMPLIANCE: Use a real JSON manifest for the Bid Meta
-    const bidMeta = {
-        worker: "LoopSeller_9681",
-        expertise: "Full-Stack AI",
-        eta: "1 hour"
-    };
-    const meta = buyerSDK.generateMetadataHash(bidMeta);
+    await sleep(3000);
 
-    await buyerSDK.placeBid({
-        taskId, price: "1.0", eta: 3600,
-        meta: meta
-    });
-    console.log("   ✅ Bid PLACED");
+    console.log("\n🤝 Step 2: Placing Bid...");
+    const bidMeta = { worker: "SimAgent", speed: "Fast" };
+    const metaHash = await sdk.generateMetadataHash(bidMeta);
+    const bidRes = await sdk.placeBid({ taskId, price: "1.5", eta: 3600, meta: metaHash });
+    console.log(`   ✅ Bid Placed. Tx: ${bidRes.txId}`);
 
-    // ── Step 6: Select Bid ────────────────────────────────────────
-    console.log("\n🎯 Step 6: Buyer selecting bid...");
-    await buyerSDK.selectBid(taskId, 0);
-    console.log("   ✅ Bid SELECTED");
+    await sleep(3000);
 
-    // ── Step 7: Submit Result ─────────────────────────────────────
-    console.log("\n🧪 Step 7: Seller submitting result...");
-    await buyerSDK.submitResult({
-        taskId,
-        hash: crypto.createHash('sha256').update("RESULT_DATA_FULL_LOOP").digest('hex'),
-        uri: "https://ipfs.io/ipfs/QmFullLoopResult"
-    });
-    console.log("   ✅ Result SUBMITTED");
+    console.log("\n🎯 Step 3: Selecting Bid...");
+    const selRes = await sdk.selectBid({ taskId, seller: identity.address });
+    console.log(`   ✅ Bid Selected. Tx: ${selRes.txId}`);
 
-    // ── Step 8: Verify ────────────────────────────────────────────
-    console.log("\n⚖️  Step 8: Verifier approving work...");
-    saveIdentity(verifierCreds.agentId, verifierCreds.agentSecret);
-    const verifierSDK3 = new ArcManagedSDK({ hubUrl: HUB_URL });
-    await verifierSDK3.approveTask(taskId);
-    console.log("   ✅ Work APPROVED");
+    await sleep(3000);
 
-    // ── Step 9: Finalize ──────────────────────────────────────────
-    console.log("\n💰 Step 9: Finalizing task & releasing payment...");
-    // Switch back to seller/buyer to finalize
-    saveIdentity(sellerCreds.agentId, sellerCreds.agentSecret);
-    const finalizerSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
-    await finalizerSDK.finalizeTask(taskId);
-    console.log("   ✅ Task FINALIZED — Payment Released!");
+    console.log("\n🧪 Step 4: Submitting Result...");
+    const resultHash = "0x" + "2".repeat(64);
+    const subRes = await sdk.submitResult({ taskId, resultHash, resultURI: "ipfs://test" });
+    console.log(`   ✅ Result Submitted. Tx: ${subRes.txId}`);
 
-    console.log("\n" + "=".repeat(50));
-    console.log("🎉 FULL LIFECYCLE COMPLETE!");
-    console.log("   Task Created → Bid Placed → Bid Selected →");
-    console.log("   Result Submitted → Verified → Finalized");
-    console.log("=".repeat(50));
+    await sleep(3000);
 
-    process.exit(0);
+    console.log("\n⚖️  Step 5: Approving (as Verifier)...");
+    const appRes = await sdk.approveWork({ taskId });
+    console.log(`   ✅ Work Approved. Tx: ${appRes.txId}`);
+
+    console.log("\n🎉 SIMULATION COMPLETE!");
+    rl.close();
 }
 
-run().catch(e => {
-    console.error("❌ FAILED:", e.message);
-    if (e.response) console.error("Details:", JSON.stringify(e.response.data));
+run().catch(err => {
+    console.error("\n❌ SIMULATION FAILED:");
+    console.error(err);
     process.exit(1);
 });
