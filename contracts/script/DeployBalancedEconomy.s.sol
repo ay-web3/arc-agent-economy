@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // script/DeployBalancedEconomy.s.sol
 pragma solidity ^0.8.20;
 
@@ -38,11 +39,24 @@ contract DeployBalancedEconomy is Script {
         // Grant Escrow the SLASHER_ROLE on the Registry
         registry.grantRole(registry.SLASHER_ROLE(), address(escrow));
 
+        // 4. Option B: Lower the verifier fee floor to enable micro-payment tasks
+        //    Standard tasks keep high floors (0.5 USDC default in constructor).
+        //    This allows nano tasks to work with tiny verifier pools (0.001 USDC).
+        escrow.setMinVerifierFee(0.001 ether);
+
+        // 5. Option C: Nano price floor is already set to 0.01 ether in constructor.
+        //    Explicitly set here for visibility / auditability.
+        escrow.setMinNanoPrice(0.01 ether);
+
         vm.stopBroadcast();
 
         console2.log("=== DEPLOYMENT SUCCESSFUL ===");
         console2.log("AgentRegistry:", address(registry));
-        console2.log("TaskEscrow:", address(escrow));
+        console2.log("TaskEscrow:   ", address(escrow));
         console2.log("Admin/Treasury:", deployer);
+        console2.log("--- Nano Config ---");
+        console2.log("minNanoPrice   : 0.01 USDC");
+        console2.log("minVerifierFee : 0.001 USDC");
+        console2.log("Standard minDerivedPrice: 1.0 USDC (unchanged)");
     }
 }

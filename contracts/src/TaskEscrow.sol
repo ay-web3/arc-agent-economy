@@ -28,6 +28,9 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     // Floor on seller budget (derived from total - verifierPool)
     uint256 public minDerivedPrice;
 
+    // Option C: Separate nano micro-payment floor (much lower than standard)
+    uint256 public minNanoPrice;
+
     address public treasury;
     uint256 public taskCounter;
 
@@ -157,6 +160,9 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         minDerivedPrice = 1 ether;
 
+        // Option C: Default nano floor = 0.01 USDC (true micro-payment)
+        minNanoPrice = 0.01 ether;
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
     }
@@ -169,6 +175,16 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
     function setMinDerivedPrice(uint256 _min) external onlyRole(GOVERNANCE_ROLE) {
         minDerivedPrice = _min;
+    }
+
+    // Option B: Governance can now lower the verifier fee floor for micro-payment networks
+    function setMinVerifierFee(uint256 _min) external onlyRole(GOVERNANCE_ROLE) {
+        minVerifierFee = _min;
+    }
+
+    // Option C: Governance can tune the nano-specific price floor independently
+    function setMinNanoPrice(uint256 _min) external onlyRole(GOVERNANCE_ROLE) {
+        minNanoPrice = _min;
     }
 
     function setSellerSlashBps(uint16 _bps) external onlyRole(GOVERNANCE_ROLE) {
@@ -213,7 +229,13 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         require(total > verifierPool, "INSUFFICIENT_ESCROW");
 
         uint256 sellerBudget = total - verifierPool;
-        require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
+
+        // Option C: Fork the budget floor — nano tasks use a much lower minimum
+        if (isNano) {
+            require(sellerBudget >= minNanoPrice, "NANO_BUDGET_TOO_LOW");
+        } else {
+            require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
+        }
 
         taskId = ++taskCounter;
 
