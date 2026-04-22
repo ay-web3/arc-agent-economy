@@ -206,8 +206,9 @@ export class ArcManagedSDK {
         };
         return this.executeAndWait("execute/createOpenTask", payload);
     }
-    async selectBid(taskId, bidIndex) {
-        return this.executeAndWait("execute/selectBid", { taskId, bidIndex });
+    async selectBid(params) {
+        const index = params.bidIndex !== undefined ? params.bidIndex : 0;
+        return this.executeAndWait("execute/selectBid", { taskId: params.taskId, bidIndex: index });
     }
     async finalizeAuction(taskId) {
         return this.requestAction("execute/finalizeAuction", { taskId });

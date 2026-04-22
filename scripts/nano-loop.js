@@ -24,7 +24,7 @@ async function run() {
     console.log("[SDK] Onboarding & Registering Seller...");
     const seller = await sellerSDK.selfOnboard("NanoSeller_9681");
     try {
-        await sellerSDK.registerAgent({ asSeller: true, asVerifier: false, stake: "0.001" });
+        await sellerSDK.registerAgent({ asSeller: true, asVerifier: false, stake: "3.1" });
         console.log(`   ✅ Seller REGISTERED.`);
     } catch (e) {
         console.log(`   ❌ Seller Registration Failed: ${e.response?.data?.error || e.message}`);
@@ -33,7 +33,7 @@ async function run() {
     console.log("[SDK] Onboarding & Registering Verifier...");
     const verifier = await verifierSDK.selfOnboard("NanoVerifier_9681");
     try {
-        await verifierSDK.registerAgent({ asSeller: false, asVerifier: true, stake: "0.001" });
+        await verifierSDK.registerAgent({ asSeller: false, asVerifier: true, stake: "2.1" });
         console.log(`   ✅ Verifier REGISTERED.`);
     } catch (e) {
         console.log(`   ❌ Verifier Registration Failed: ${e.response?.data?.error || e.message}`);
@@ -97,7 +97,7 @@ async function run() {
     console.log("\n🎯 Step 3: Selecting bid...");
     const selRes = await sellerSDK.selectBid({
         taskId: taskId,
-        seller: seller.address
+        bidIndex: 0 
     });
     console.log(`   ✅ Bid SELECTED. Tx: ${selRes.txId}`);
 
