@@ -176,9 +176,10 @@ app.get('/escrow/task/:id', async (req, res) => {
         const { id } = req.params;
         const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
         
+        // Use uint256 for all numeric fields to ensure viem returns BigInts consistently
         const task = await pc.readContract({
             address: ESCROW,
-            abi: parseAbi(['function tasks(uint256) view returns (address, address, uint256, uint8, uint256)']),
+            abi: parseAbi(['function tasks(uint256) view returns (address, address, uint256, uint256, uint256)']),
             functionName: 'tasks',
             args: [BigInt(id)]
         });
@@ -189,10 +190,11 @@ app.get('/escrow/task/:id', async (req, res) => {
             buyer: task[0],
             worker: task[1],
             amount: task[2].toString(),
-            status: STATUS_MAP[task[3]],
+            status: STATUS_MAP[Number(task[3])],
             approvalTimestamp: Number(task[4])
         });
     } catch (e) {
+        console.error(`>> [ESCROW_QUERY_ERROR] Task #${req.params.id}:`, e.message);
         res.status(500).json({ error: e.message });
     }
 });
