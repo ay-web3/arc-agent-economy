@@ -242,8 +242,12 @@ export class ArcManagedSDK {
         return this.executeAndWait("execute/submitResult", payload);
     }
     // --- VERIFIER ACTIONS ---
-    async approveTask(taskId) {
-        return this.executeAndWait("execute/approve", { taskId });
+    async approveTask(params) {
+        const id = typeof params === 'object' ? params.taskId : params;
+        return this.executeAndWait("execute/approve", { taskId: id });
+    }
+    async approveWork(params) {
+        return this.approveTask(params);
     }
     async rejectTask(taskId) {
         return this.requestAction("execute/reject", { taskId });

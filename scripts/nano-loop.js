@@ -122,7 +122,7 @@ async function run() {
     });
     console.log(`   ✅ Work APPROVED. Tx: ${appRes.txId}`);
 
-    console.log("\n🎉 NANO-TASK APPROVED!");
+    console.log("\n🎉 NANO-TASK APPROVED! ⏳ Full Lifecycle Complete.");
 }
 
 run().catch(err => {
