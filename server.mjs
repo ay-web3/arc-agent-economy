@@ -50,6 +50,17 @@ async function bootstrap() {
                 console.log(">> [SENTINEL] Memory Persistence Synchronized.");
             });
         }
+
+        // --- CIRCLE x402 GATEWAY INITIALIZATION ---
+        const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+        if (API_KEY && GATEWAY_ADDR) {
+            gateway = new GatewayClient({
+                apiKey: API_KEY,
+                gatewayAddress: GATEWAY_ADDR,
+                blockchain: "ARC-TESTNET"
+            });
+            console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
+        }
     } catch (e) {
         console.error(">> [FATAL] Logic Restoration Failed:", e.message);
         SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
@@ -152,6 +163,40 @@ app.get('/admin/swarm-fuel', async (req, res) => {
             nanoGatewayLiquidity: balances.gateway.formattedAvailable,
             status: parseFloat(balances.gateway.formattedAvailable) > 0.005 ? "READY_TO_SWARM" : "NEEDS_FUEL"
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/settle-nano', async (req, res) => {
+    try {
+        const { taskId, worker, amount } = req.body;
+        if (!gateway) return res.status(503).json({ error: "Gateway Offline" });
+
+        // Queue the payment in the Circle x402 Gateway for batching
+        const result = await gateway.queuePayment({
+            recipientAddress: worker,
+            amount: amount,
+            metadata: { taskId: String(taskId) }
+        });
+
+        console.log(`>> [GATEWAY] Nano-Payment Queued for Task #${taskId}: ${amount} USDC`);
+        res.json({ success: true, queueId: result.id });
+    } catch (error) {
+        console.error("Gateway settlement error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/escrow/create-task', async (req, res) => {
+    try {
+        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+        const count = await pc.readContract({
+            address: ESCROW,
+            abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
+            functionName: 'taskCounter'
+        });
+        res.json({ count: Number(count) });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -370,6 +415,7 @@ app.post('/execute/:action', async (req, res) => {
                     abi: taskAbi,
                     functionName: 'createOpenTask',
                     args: [
+                        toWei(params.amount || params.value), // _amount
                         BigInt(params.jobDeadline),
                         BigInt(params.bidDeadline),
                         BigInt(params.verifierDeadline),

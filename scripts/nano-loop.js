@@ -51,13 +51,13 @@ async function run() {
     const taskHash = "0x" + "a".repeat(64);
 
     const taskParams = {
+        amount: "0.0001", 
         jobDeadline,
         bidDeadline,
         verifierDeadline,
         taskHash,
         verifiers: [verifier.address],
         quorumM: 1,
-        amount: "0.0001", 
         isNano: true   
     };
 

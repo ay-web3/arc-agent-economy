@@ -200,13 +200,14 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
     // ================= OPEN TASK (AUCTION) =================
     function createOpenTask(
+        uint256 _amount, // Added: Explicit amount for nano-authorization
         uint64 jobDeadline,
         uint64 bidDeadline,
         uint64 verifierDeadline, 
         bytes32 taskHash,
         address[] calldata _verifiers,
         uint8 quorumM,
-        bool isNano // Added: Track settlement type
+        bool isNano 
     ) external payable nonReentrant returns (uint256 taskId) {
         require(jobDeadline > block.timestamp, "BAD_JOB_DEADLINE");
         require(bidDeadline > block.timestamp, "BAD_BID_DEADLINE");
@@ -215,7 +216,13 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         require(_verifiers.length > 0, "NO_VERIFIERS");
         require(quorumM > 0 && quorumM <= _verifiers.length, "BAD_QUORUM");
 
-        uint256 total = msg.value;
+        taskId = ++taskCounter;
+        Task storage t = tasks[taskId];
+        t.buyer = msg.sender;
+
+        uint256 total = isNano ? _amount : msg.value;
+        require(total >= _amount, "INSUFFICIENT_ESCROW");
+        t.amount = total;
 
         uint256 percentFee = (total * verifierFeeBps) / 10_000;
         uint256 basePool = percentFee > minVerifierFee ? percentFee : minVerifierFee;
@@ -225,9 +232,6 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
             10_000 + (uint256(difficultyAlphaBps) * difficultyBps) / 10_000;
 
         uint256 verifierPool = (basePool * multiplierBps) / 10_000;
-
-        require(total > verifierPool, "INSUFFICIENT_ESCROW");
-
         uint256 sellerBudget = total - verifierPool;
 
         // Option C: Fork the budget floor — nano tasks use a much lower minimum
@@ -236,11 +240,6 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         } else {
             require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
         }
-
-        taskId = ++taskCounter;
-
-        Task storage t = tasks[taskId];
-        t.buyer = msg.sender;
         t.seller = address(0);
         t.price = 0;
         t.verifierPool = verifierPool;
