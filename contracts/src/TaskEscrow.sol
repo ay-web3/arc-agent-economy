@@ -160,8 +160,8 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         minDerivedPrice = 1 ether;
 
-        // Option C: Default nano floor = 0.01 USDC (true micro-payment)
-        minNanoPrice = 0.01 ether;
+        // Option C: Default nano floor = 0.00001 USDC (ultra micro-payment)
+        minNanoPrice = 0.00001 ether;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);

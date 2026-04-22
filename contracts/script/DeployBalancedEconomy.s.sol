@@ -41,12 +41,12 @@ contract DeployBalancedEconomy is Script {
 
         // 4. Option B: Lower the verifier fee floor to enable micro-payment tasks
         //    Standard tasks keep high floors (0.5 USDC default in constructor).
-        //    This allows nano tasks to work with tiny verifier pools (0.001 USDC).
-        escrow.setMinVerifierFee(0.001 ether);
+        //    This allows nano tasks to work with tiny verifier pools (0.00001 USDC).
+        escrow.setMinVerifierFee(0.00001 ether);
 
-        // 5. Option C: Nano price floor is already set to 0.01 ether in constructor.
+        // 5. Option C: Nano price floor is already set to 0.00001 ether in constructor.
         //    Explicitly set here for visibility / auditability.
-        escrow.setMinNanoPrice(0.01 ether);
+        escrow.setMinNanoPrice(0.00001 ether);
 
         vm.stopBroadcast();
 
