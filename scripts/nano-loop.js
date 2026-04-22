@@ -6,6 +6,7 @@ import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
  * Demonstrates Option B & C:
  * - isNano: true (Skips native transfers, emits events)
  * - Ultra-low 0.0001 USDC amount
+ * - Automatic Agent Registration (Staking)
  */
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
@@ -17,16 +18,29 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function run() {
     console.log("⚡ NANO-PAYMENT LIFECYCLE SIMULATION ⚡\n");
 
-    const sellerSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
-    const verifierSDK = new ArcManagedSDK({ hubUrl: HUB_URL });
+    const sellerSDK = new ArcManagedSDK({ hubUrl: HUB_URL, secretPath: './.seller_secret' });
+    const verifierSDK = new ArcManagedSDK({ hubUrl: HUB_URL, secretPath: './.verifier_secret' });
 
-    console.log("[SDK] Secure Onboarding & Identity Minting for: LoopSeller_9681");
-    const seller = await sellerSDK.getOrMintIdentity("LoopSeller_9681");
+    console.log("[SDK] Onboarding & Registering Seller...");
+    const seller = await sellerSDK.selfOnboard("NanoSeller_9681");
+    // Register with tiny stake (assumes Governor lowered the floors)
+    try {
+        await sellerSDK.register({ asSeller: true, asVerifier: false, stake: "0.001" });
+        console.log(`   ✅ Seller REGISTERED.`);
+    } catch (e) {
+        console.log(`   ℹ️ Seller already registered or registration skipped.`);
+    }
     
-    console.log("[SDK] Secure Onboarding & Identity Minting for: LoopVerifier_9681");
-    const verifier = await verifierSDK.getOrMintIdentity("LoopVerifier_9681");
+    console.log("[SDK] Onboarding & Registering Verifier...");
+    const verifier = await verifierSDK.selfOnboard("NanoVerifier_9681");
+    try {
+        await verifierSDK.register({ asSeller: false, asVerifier: true, stake: "0.001" });
+        console.log(`   ✅ Verifier REGISTERED.`);
+    } catch (e) {
+        console.log(`   ℹ️ Verifier already registered or registration skipped.`);
+    }
 
-    console.log("🐣 Agents Recovered...");
+    console.log("🐣 Agents Ready...");
     console.log(`   Seller:   ${seller.address}`);
     console.log(`   Verifier: ${verifier.address}`);
 
@@ -44,7 +58,7 @@ async function run() {
         taskHash,
         verifiers: [verifier.address],
         quorumM: 1,
-        amount: "0.0001", // ⚡ TRUE MICRO-PAYMENT ⚡
+        amount: "0.0001", 
         isNano: true   
     };
 
@@ -67,28 +81,21 @@ async function run() {
 
     // ── Step 2: Place Bid ───────────
     console.log("\n🤝 Step 2: Seller placing bid...");
-    const bidMeta = {
-        worker: "LoopSeller_9681",
-        expertise: "Data Analysis",
-        eta: "1 hour"
-    };
+    const bidMeta = { worker: "NanoSeller_9681", eta: "1 hour" };
     const metaHash = await sellerSDK.generateMetadataHash(bidMeta);
 
-    const bidParams = {
+    const bidRes = await sellerSDK.placeBid({
         taskId: taskId,
-        price: "0.00005", // Half of total (rest is verifier pool)
+        price: "0.00005", 
         eta: 3600,
         meta: metaHash
-    };
-
-    const bidRes = await sellerSDK.placeBid(bidParams);
+    });
     console.log(`   ✅ Bid PLACED. Tx: ${bidRes.txId}`);
 
     await sleep(3000);
 
     // ── Step 3: Select Bid ──────────
     console.log("\n🎯 Step 3: Selecting bid...");
-    // In this simulation, the sellerSDK acts as the buyer for step 1 & 3
     const selRes = await sellerSDK.selectBid({
         taskId: taskId,
         seller: seller.address
@@ -116,12 +123,11 @@ async function run() {
     });
     console.log(`   ✅ Work APPROVED. Tx: ${appRes.txId}`);
 
-    console.log("\n🎉 NANO-TASK APPROVED! ⏳ Now entering 1-hour cooling-off period.");
-    console.log("After 1 hour, calling finalize() will emit NanoSettlementAuthorized events instead of native transfers.");
-    console.log("These events will trigger the off-chain Keeper to call Hub's /payout/nano endpoint.");
+    console.log("\n🎉 NANO-TASK APPROVED!");
 }
 
 run().catch(err => {
-    console.error(err);
+    console.error("\n❌ SIMULATION FAILED:");
+    console.error(err.response?.data || err.message);
     process.exit(1);
 });

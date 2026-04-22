@@ -124,6 +124,16 @@ export class ArcManagedSDK {
         }
         return data;
     }
+    async register(params) {
+        console.log(`[SDK] Registering Agent in Protocol...`);
+        return await this.executeAndWait("register", {
+            asSeller: params.asSeller !== false,
+            asVerifier: params.asVerifier !== false,
+            stake: params.stake || "0",
+            capHash: params.capHash || keccak256(toBytes("default")),
+            pubKey: params.pubKey || keccak256(toBytes("default"))
+        });
+    }
     async syncArcIdentity(address) {
         try {
             const logs = await this.publicClient.getLogs({
