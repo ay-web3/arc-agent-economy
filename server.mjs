@@ -315,7 +315,7 @@ app.post('/execute/:action', async (req, res) => {
                 payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
                 payload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
                 // FIX: Circle SDK expects human-readable strings (e.g. "8"), it handles wei conversion internally!
-                payload.amount = params.amount || params.stake || "0"; 
+                payload.amount = toWei(params.amount || params.stake || "0"); 
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
@@ -341,7 +341,7 @@ app.post('/execute/:action', async (req, res) => {
                 // callData is mutually exclusive with abiFunctionSignature/abiParameters
                 delete payload.abiFunctionSignature;
                 delete payload.abiParameters;
-                payload.amount = params.amount || params.value || "0";
+                payload.amount = toWei(params.amount || params.value || "0");
                 break;
             case "placeBid":
                 payload.contractAddress = ESCROW;
@@ -380,7 +380,7 @@ app.post('/execute/:action', async (req, res) => {
                 delete payload.abiFunctionSignature;
                 delete payload.abiParameters;
                 payload.destinationAddress = params.recipient || params.to;
-                payload.amounts = [String(params.amount || params.value)];
+                payload.amounts = [toWei(params.amount || params.value || "0")];
                 // Circle SDK createTransaction uses different structure than contract execution
                 console.log(">> [DEBUG] Executing Transfer...");
                 const txResp = await client.createTransaction(payload);
