@@ -319,9 +319,28 @@ app.post('/execute/:action', async (req, res) => {
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
+                // Bypass Circle's ABI packer — encode calldata ourselves with viem
+                const { encodeFunctionData, parseAbi } = await import('viem');
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
-                payload.abiParameters = [String(params.jobDeadline), String(params.bidDeadline), String(params.verifierDeadline), pad32(params.taskHash), JSON.stringify(vArr), String(params.quorumM), String(params.isNano)];
+                const taskAbi = parseAbi([
+                    'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM, bool isNano) external payable returns (uint256 taskId)'
+                ]);
+                payload.callData = encodeFunctionData({
+                    abi: taskAbi,
+                    functionName: 'createOpenTask',
+                    args: [
+                        BigInt(params.jobDeadline),
+                        BigInt(params.bidDeadline),
+                        BigInt(params.verifierDeadline),
+                        pad32(params.taskHash),
+                        vArr,
+                        Number(params.quorumM),
+                        params.isNano === true || params.isNano === "true"
+                    ]
+                });
+                // callData is mutually exclusive with abiFunctionSignature/abiParameters
+                delete payload.abiFunctionSignature;
+                delete payload.abiParameters;
                 payload.amount = params.amount || params.value || "0";
                 break;
             case "placeBid":
@@ -355,15 +374,44 @@ app.post('/execute/:action', async (req, res) => {
                 payload.abiParameters = [];
                 payload.amount = params.amount || "0";
                 break;
+            case "transfer":
+                // Standard Native Token Transfer (USDC on ARC)
+                delete payload.contractAddress;
+                delete payload.abiFunctionSignature;
+                delete payload.abiParameters;
+                payload.destinationAddress = params.recipient || params.to;
+                payload.amounts = [String(params.amount || params.value)];
+                // Circle SDK createTransaction uses different structure than contract execution
+                console.log(">> [DEBUG] Executing Transfer...");
+                const txResp = await client.createTransaction(payload);
+                return res.json({ success: true, txId: txResp.data.transaction?.id });
             default:
                 return res.status(400).json({ error: "Unknown action" });
         }
+        console.log(">> [DEBUG] Circle Payload:", JSON.stringify(payload, null, 2));
         const resp = await client.createContractExecutionTransaction(payload);
-        res.json({ success: true, txId: resp.data.transaction?.id || resp.data?.id });
+        const txId = resp.data.transaction?.id || resp.data?.id;
+        res.json({ success: true, txId });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(">> [FATAL] Contract Execution Failed:", errorDetail);
         res.status(500).json({ error: errorDetail });
+    }
+});
+
+// --- TRANSACTION STATUS POLLING ---
+app.get('/tx-status/:id', async (req, res) => {
+    try {
+        const resp = await client.getTransaction({ id: req.params.id });
+        const tx = resp.data?.transaction;
+        res.json({
+            id: tx?.id,
+            state: tx?.state,
+            errorReason: tx?.errorReason || null,
+            txHash: tx?.txHash || null
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 

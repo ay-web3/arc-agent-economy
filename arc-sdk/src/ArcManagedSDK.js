@@ -70,6 +70,45 @@ export class ArcManagedSDK {
         return response.data;
     }
     /**
+     * @dev Polls the Hub for the real on-chain status of a transaction.
+     * Circle returns 200 OK immediately, but the tx can fail asynchronously.
+     * This method waits until the tx reaches a terminal state (COMPLETE or FAILED).
+     */
+    async waitForTx(txId, maxAttempts = 15, intervalMs = 4000) {
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                const resp = await axios.get(`${this.orchestratorUrl}/tx-status/${txId}`);
+                const { state, errorReason, txHash } = resp.data;
+                if (state === 'COMPLETE' || state === 'CONFIRMED') {
+                    return { success: true, state, txHash };
+                }
+                if (state === 'FAILED' || state === 'CANCELLED' || state === 'DENIED') {
+                    throw new Error(`Transaction FAILED on-chain: ${errorReason || state}`);
+                }
+                // Still pending, wait and retry
+                await new Promise(r => setTimeout(r, intervalMs));
+            } catch (e) {
+                if (e.message.startsWith('Transaction FAILED')) throw e;
+                // Network error, retry
+                await new Promise(r => setTimeout(r, intervalMs));
+            }
+        }
+        throw new Error(`Transaction ${txId} timed out after ${maxAttempts * intervalMs / 1000}s`);
+    }
+    /**
+     * @dev Execute a contract action and wait for on-chain confirmation.
+     * Returns only when the transaction has been confirmed or throws on failure.
+     */
+    async executeAndWait(endpoint, params) {
+        const result = await this.requestAction(endpoint, params);
+        const txId = result.txId;
+        if (!txId) return result;
+        console.log(`[SDK] Tx submitted: ${txId}. Polling for on-chain result...`);
+        const status = await this.waitForTx(txId);
+        console.log(`[SDK] ✅ Tx CONFIRMED on-chain: ${status.txHash || txId}`);
+        return { ...result, ...status };
+    }
+    /**
      * @dev Onboards the agent, mints an ARC Identity NFT, and secures the wallet.
      */
     async selfOnboard(agentName, metadataURI) {
@@ -137,7 +176,7 @@ export class ArcManagedSDK {
             payload.pubKey = crypto.randomBytes(32).toString('hex');
         }
 
-        return this.requestAction("execute/register", payload);
+        return this.executeAndWait("execute/register", payload);
     }
     async updateProfile(params) {
         return this.requestAction("execute/updateProfile", params);
@@ -165,10 +204,10 @@ export class ArcManagedSDK {
             amount: amount,
             value: amount
         };
-        return this.requestAction("execute/createOpenTask", payload);
+        return this.executeAndWait("execute/createOpenTask", payload);
     }
     async selectBid(taskId, bidIndex) {
-        return this.requestAction("execute/selectBid", { taskId, bidIndex });
+        return this.executeAndWait("execute/selectBid", { taskId, bidIndex });
     }
     async finalizeAuction(taskId) {
         return this.requestAction("execute/finalizeAuction", { taskId });
@@ -187,7 +226,7 @@ export class ArcManagedSDK {
     }
     // --- SELLER ACTIONS ---
     async placeBid(params) {
-        return this.requestAction("execute/placeBid", params);
+        return this.executeAndWait("execute/placeBid", params);
     }
     async submitResult(params) {
         const hash = params.hash || params.resultHash;
@@ -199,18 +238,18 @@ export class ArcManagedSDK {
             uri: uri,
             resultURI: uri
         };
-        return this.requestAction("execute/submitResult", payload);
+        return this.executeAndWait("execute/submitResult", payload);
     }
     // --- VERIFIER ACTIONS ---
     async approveTask(taskId) {
-        return this.requestAction("execute/approve", { taskId });
+        return this.executeAndWait("execute/approve", { taskId });
     }
     async rejectTask(taskId) {
         return this.requestAction("execute/reject", { taskId });
     }
     // --- KEEPER / SYSTEM ACTIONS ---
     async finalizeTask(taskId) {
-        return this.requestAction("execute/finalize", { taskId });
+        return this.executeAndWait("execute/finalize", { taskId });
     }
     // --- GOVERNANCE ACTIONS ---
     async setSellerSlashBps(bps) {

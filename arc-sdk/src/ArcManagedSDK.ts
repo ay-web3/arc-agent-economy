@@ -183,10 +183,23 @@ export class ArcManagedSDK {
         isNano?: boolean
     }) {
         const amount = params.amount || params.value;
+        const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
+        // Circle SDK bug: Requires array strings WITHOUT internal quotes for addresses
+        const vArrStr = `[${vArr.join(',')}]`;
+
         const payload = {
-            ...params,
-            amount: amount,
-            value: amount
+            contractAddress: ESCROW,
+            abiFunctionSignature: "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)",
+            abiParameters: [
+                String(params.jobDeadline), 
+                String(params.bidDeadline), 
+                String(params.verifierDeadline), 
+                this.pad32(params.taskHash), 
+                vArrStr, 
+                String(params.quorumM), 
+                String(params.isNano)
+            ],
+            amount: amount
         };
         return this.requestAction("execute/createOpenTask", payload);
     }
