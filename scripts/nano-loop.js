@@ -23,21 +23,20 @@ async function run() {
 
     console.log("[SDK] Onboarding & Registering Seller...");
     const seller = await sellerSDK.selfOnboard("NanoSeller_9681");
-    // Register with tiny stake (assumes Governor lowered the floors)
     try {
-        await sellerSDK.register({ asSeller: true, asVerifier: false, stake: "0.001" });
+        await sellerSDK.registerAgent({ asSeller: true, asVerifier: false, stake: "0.001" });
         console.log(`   ✅ Seller REGISTERED.`);
     } catch (e) {
-        console.log(`   ℹ️ Seller already registered or registration skipped.`);
+        console.log(`   ❌ Seller Registration Failed: ${e.response?.data?.error || e.message}`);
     }
     
     console.log("[SDK] Onboarding & Registering Verifier...");
     const verifier = await verifierSDK.selfOnboard("NanoVerifier_9681");
     try {
-        await verifierSDK.register({ asSeller: false, asVerifier: true, stake: "0.001" });
+        await verifierSDK.registerAgent({ asSeller: false, asVerifier: true, stake: "0.001" });
         console.log(`   ✅ Verifier REGISTERED.`);
     } catch (e) {
-        console.log(`   ℹ️ Verifier already registered or registration skipped.`);
+        console.log(`   ❌ Verifier Registration Failed: ${e.response?.data?.error || e.message}`);
     }
 
     console.log("🐣 Agents Ready...");
