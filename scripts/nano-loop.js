@@ -10,8 +10,8 @@ import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
  */
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
-const ESCROW = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
-const REGISTRY = "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
+const ESCROW = "0x561d560012225932Bd8175C53FAeAb2C3B6C0d43";
+const REGISTRY = "0xACB9a6b4eba5c569efa6A800BE1e12192fA260bF";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

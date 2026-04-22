@@ -8,15 +8,15 @@ declare global {
 }
 
 // Balanced Economy V1-Pro Addresses
-const REGISTRY_ADDR = "0xcC95C81656c588ADbB1929ec42991124d746Ad21";
-const ESCROW_ADDR   = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+const REGISTRY_ADDR = "0xACB9a6b4eba5c569efa6A800BE1e12192fA260bF";
+const ESCROW_ADDR   = "0x561d560012225932Bd8175C53FAeAb2C3B6C0d43";
 const IDENTITY_PROTOCOL_ADDR   = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; // ERC-8004 official
 const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; // ERC-8004 official
 const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [
   "function taskCounter() external view returns (uint256)",
-  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
+  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN, bool isNano)",
   "event TaskOpen(uint256 indexed taskId, uint256 totalEscrow, uint256 sellerBudget, uint256 verifierPool, uint64 bidDeadline)",
   "event BidPlaced(uint256 indexed taskId, address indexed bidder, uint256 bidPrice, uint64 etaSeconds)",
   "event BidSelected(uint256 indexed taskId, address indexed seller, uint256 bidPrice, uint256 refundToBuyer)",
