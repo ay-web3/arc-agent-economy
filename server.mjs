@@ -18,6 +18,14 @@ let SDK_LOAD_ERROR = null;
 let mongoClient = null;
 let mongoPromise = null;
 
+// --- ARC NETWORK CONFIG ---
+const arcTestnet = {
+    id: 10247,
+    name: 'Arc Testnet',
+    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    rpcUrls: { default: { http: ['https://rpc-testnet.arc.io'] } }
+};
+
 // --- DUAL-RESOLUTION ENGINE ---
 async function bootstrap() {
     try {
@@ -146,13 +154,45 @@ app.get('/admin/swarm-fuel', async (req, res) => {
     }
 });
 
-app.get('/agents', async (req, res) => {
-    if (mongoPromise) await mongoPromise;
-    if (!mongoClient) return res.status(503).json({ error: "Persistence Offline" });
+app.get('/escrow/counter', async (req, res) => {
     try {
-        const db = mongoClient.db("arc_swarm");
-        const agents = await db.collection("agents").find({}).toArray();
-        res.json(agents);
+        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const { createPublicClient, http } = await import('viem');
+        const pc = createPublicClient({ chain: arcTestnet, transport: http() });
+        const count = await pc.readContract({
+            address: ESCROW,
+            abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
+            functionName: 'taskCounter'
+        });
+        res.json({ count: Number(count) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/escrow/task/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
+        const { createPublicClient, http, parseAbi } = await import('viem');
+        const pc = createPublicClient({ chain: arcTestnet, transport: http() });
+        
+        const task = await pc.readContract({
+            address: ESCROW,
+            abi: parseAbi(['function tasks(uint256) view returns (address, address, uint256, uint8, uint256)']),
+            functionName: 'tasks',
+            args: [BigInt(id)]
+        });
+
+        const STATUS_MAP = ["None", "Active", "Hired", "Submitted", "Approved", "Finalized", "Disputed", "Cancelled"];
+        res.json({
+            id,
+            buyer: task[0],
+            worker: task[1],
+            amount: task[2].toString(),
+            status: STATUS_MAP[task[3]],
+            approvalTimestamp: Number(task[4])
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
