@@ -216,13 +216,8 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         require(_verifiers.length > 0, "NO_VERIFIERS");
         require(quorumM > 0 && quorumM <= _verifiers.length, "BAD_QUORUM");
 
-        taskId = ++taskCounter;
-        Task storage t = tasks[taskId];
-        t.buyer = msg.sender;
-
         uint256 total = isNano ? _amount : msg.value;
         require(total >= _amount, "INSUFFICIENT_ESCROW");
-        t.amount = total;
 
         uint256 percentFee = (total * verifierFeeBps) / 10_000;
         uint256 basePool = percentFee > minVerifierFee ? percentFee : minVerifierFee;
@@ -232,7 +227,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
             10_000 + (uint256(difficultyAlphaBps) * difficultyBps) / 10_000;
 
         uint256 verifierPool = (basePool * multiplierBps) / 10_000;
-        uint256 sellerBudget = total - verifierPool;
+        uint256 sellerBudget = total > verifierPool ? total - verifierPool : 0;
 
         // Option C: Fork the budget floor — nano tasks use a much lower minimum
         if (isNano) {
@@ -240,28 +235,30 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         } else {
             require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
         }
+
+        taskId = ++taskCounter;
+        Task storage t = tasks[taskId];
+        t.buyer = msg.sender;
         t.seller = address(0);
         t.price = 0;
         t.verifierPool = verifierPool;
         t.sellerBudget = sellerBudget;
         t.deadline = jobDeadline;
         t.bidDeadline = bidDeadline;
-        t.verifierDeadline = verifierDeadline; 
+        t.verifierDeadline = verifierDeadline;
         t.taskHash = taskHash;
         t.state = State.CREATED;
         t.quorumM = quorumM;
         t.quorumN = uint8(_verifiers.length);
         t.isNano = isNano;
 
-        verifiers[taskId] = _verifiers;
         for (uint256 i = 0; i < _verifiers.length; i++) {
-            address v = _verifiers[i];
-            require(v != address(0), "BAD_VERIFIER");
-            require(!isVerifierForTask[taskId][v], "DUP_VERIFIER");
-            isVerifierForTask[taskId][v] = true;
+            verifiers[taskId].push(_verifiers[i]);
+            isVerifierForTask[taskId][_verifiers[i]] = true;
         }
 
         emit TaskOpen(taskId, total, sellerBudget, verifierPool, bidDeadline);
+    }
     }
 
     function placeBid(
