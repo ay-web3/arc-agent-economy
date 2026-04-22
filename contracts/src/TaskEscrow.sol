@@ -259,7 +259,6 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         emit TaskOpen(taskId, total, sellerBudget, verifierPool, bidDeadline);
     }
-    }
 
     function placeBid(
         uint256 taskId,
