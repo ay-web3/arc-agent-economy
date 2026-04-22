@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
+import { createPublicClient, http, parseAbi } from 'viem';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -25,6 +26,8 @@ const arcTestnet = {
     nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
     rpcUrls: { default: { http: ['https://rpc-testnet.arc.io'] } }
 };
+
+const pc = createPublicClient({ chain: arcTestnet, transport: http() });
 
 // --- DUAL-RESOLUTION ENGINE ---
 async function bootstrap() {
@@ -157,8 +160,6 @@ app.get('/admin/swarm-fuel', async (req, res) => {
 app.get('/escrow/counter', async (req, res) => {
     try {
         const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
-        const { createPublicClient, http } = await import('viem');
-        const pc = createPublicClient({ chain: arcTestnet, transport: http() });
         const count = await pc.readContract({
             address: ESCROW,
             abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
@@ -174,8 +175,6 @@ app.get('/escrow/task/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const ESCROW = process.env.ESCROW_CA || "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce";
-        const { createPublicClient, http, parseAbi } = await import('viem');
-        const pc = createPublicClient({ chain: arcTestnet, transport: http() });
         
         const task = await pc.readContract({
             address: ESCROW,
