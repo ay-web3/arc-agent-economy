@@ -28,9 +28,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     // Floor on seller budget (derived from total - verifierPool)
     uint256 public minDerivedPrice;
 
-    // Option C: Separate nano micro-payment floor (much lower than standard)
-    uint256 public minNanoPrice;
-
+    
     address public treasury;
     uint256 public taskCounter;
 
@@ -65,8 +63,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         State   state;
         uint8   quorumM;
         uint8   quorumN;
-        bool    isNano; // New: Flag for Circle x402 Batching
-    }
+            }
 
     struct Bid {
         address bidder;
@@ -211,9 +208,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
         minDerivedPrice = 1 ether;
 
-        // Option C: Default nano floor = 0.00001 USDC (ultra micro-payment)
-        minNanoPrice = 0.00001 ether;
-
+        
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
     }
@@ -233,11 +228,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         minVerifierFee = _min;
     }
 
-    // Option C: Governance can tune the nano-specific price floor independently
-    function setMinNanoPrice(uint256 _min) external onlyRole(GOVERNANCE_ROLE) {
-        minNanoPrice = _min;
-    }
-
+    
     function setSellerSlashBps(uint16 _bps) external onlyRole(GOVERNANCE_ROLE) {
         require(_bps <= 10000, "BPS_TOO_HIGH");
         sellerSlashBps = _bps;
@@ -301,8 +292,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         t.state = State.CREATED;
         t.quorumM = quorumM;
         t.quorumN = uint8(_verifiers.length);
-        t.isNano = isNano;
-
+        
         for (uint256 i = 0; i < _verifiers.length; i++) {
             verifiers[taskId].push(_verifiers[i]);
             isVerifierForTask[taskId][_verifiers[i]] = true;
@@ -540,31 +530,21 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint256 treasuryShare = (fee * treasuryShareBps) / 10_000;
         uint256 finalizerShare = fee - treasuryShare;
 
-        if (t.isNano) {
-            emit NanoSettlementAuthorized(taskId, t.seller, sellerPayout);
-            emit NanoSettlementAuthorized(taskId, treasury, treasuryShare);
-            emit NanoSettlementAuthorized(taskId, msg.sender, finalizerShare);
-        } else {
-            (bool ok1,) = payable(t.seller).call{value: sellerPayout}("");
-            require(ok1, "SELLER_PAY_FAIL");
+        (bool ok1,) = payable(t.seller).call{value: sellerPayout}("");
+        require(ok1, "SELLER_PAY_FAIL");
 
-            (bool ok2,) = payable(treasury).call{value: treasuryShare}("");
-            require(ok2, "TREASURY_PAY_FAIL");
+        (bool ok2,) = payable(treasury).call{value: treasuryShare}("");
+        require(ok2, "TREASURY_PAY_FAIL");
 
-            (bool ok3,) = payable(msg.sender).call{value: finalizerShare}("");
-            require(ok3, "FINALIZER_PAY_FAIL");
-        }
+        (bool ok3,) = payable(msg.sender).call{value: finalizerShare}("");
+        require(ok3, "FINALIZER_PAY_FAIL");
 
         uint256 count = approvalCount[taskId];
         if (count > 0 && t.verifierPool > 0) {
             uint256 per = t.verifierPool / count;
             for (uint256 i = 0; i < approvers[taskId].length; i++) {
-                if (t.isNano) {
-                    emit NanoSettlementAuthorized(taskId, approvers[taskId][i], per);
-                } else {
-                    (bool okv,) = payable(approvers[taskId][i]).call{value: per}("");
-                    require(okv, "VERIFIER_PAY_FAIL");
-                }
+                (bool okv,) = payable(approvers[taskId][i]).call{value: per}("");
+                require(okv, "VERIFIER_PAY_FAIL");
             }
         }
 
