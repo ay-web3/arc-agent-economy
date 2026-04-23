@@ -298,7 +298,7 @@ async function linkArcIdentity(agentId, tokenId) {
 app.get('/registry/profile/:address', async (req, res) => {
     if (mongoPromise) await mongoPromise;
     const { address } = req.params;
-    if (!mongoClient) return res.status(404).json({ error: "Persistence Offline" });
+    if (!mongoClient) return res.status(503).json({ error: "Persistence Offline" });
     const db = mongoClient.db("arc_swarm");
     const agents = db.collection("agents");
     const profile = await agents.findOne({ address: address.toLowerCase() });
@@ -333,6 +333,8 @@ app.post('/onboard', async (req, res) => {
         
         if (existingAgent) {
             console.log(`>> [RECOVERY] Identity restored for: ${agentName} (${existingAgent.address})`);
+            // Note: We don't store raw secrets. If recovery is needed, the client should provide it or we reset.
+            // For the hackathon demo, we'll return a placeholder if missing to satisfy the SDK's check.
             return res.json({ 
                 success: true, 
                 agentId: agentName, 
@@ -354,12 +356,14 @@ app.post('/onboard', async (req, res) => {
         const newWallet = response.data.wallets[0];
         const agentSecret = crypto.randomBytes(32).toString('hex');
         
+        // PERSISTENCE_SYNC: Securely save the identity and hash the secret for verifyAgent
         await saveWalletId(agentName, newWallet.id, agentSecret, newWallet.address);
 
         let txId = null;
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
+                // 1. Hub Sponsors Gas (USDC is Native Gas on ARC)
                 console.log(`>> Sponsoring Gas for ${agentName}...`);
                 const txResp = await client.createTransaction({
                     idempotencyKey: uuidv4(),
@@ -394,6 +398,8 @@ app.post('/onboard', async (req, res) => {
 app.post('/execute/:action', async (req, res) => {
     if (!client) return res.status(503).json({ error: "Initializing Hub" });
     const { action } = req.params;
+    
+    // Aligns with ArcManagedSDK top-level spread pattern (...params)
     const payload = req.body;
     const effectiveName = payload.agentId || payload.agentName;
     
@@ -401,10 +407,10 @@ app.post('/execute/:action', async (req, res) => {
     if (!auth.success) return res.status(401).json({ error: auth.error });
 
     const walletId = auth.walletId;
-    const params = payload;
+    const params = payload; // Redirect params to top-level payload
 
     try {
-        let dcwPayload = {
+        let payload = {
             idempotencyKey: uuidv4(),
             walletId: walletId,
             blockchain: "ARC-TESTNET",
@@ -415,8 +421,11 @@ app.post('/execute/:action', async (req, res) => {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         };
 
+        const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
         const REGISTRY = process.env.REGISTRY_CA || "0xACB9a6b4eba5c569efa6A800BE1e12192fA260bF";
         const ESCROW = process.env.ESCROW_CA || "0x561d560012225932Bd8175C53FAeAb2C3B6C0d43";
+        const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
+        const SDK_LOAD_ERROR = null;
 
         const toWei = (val) => {
             if (!val || val === "0") return "0";
@@ -433,85 +442,113 @@ app.post('/execute/:action', async (req, res) => {
 
         switch(action) {
             case "register":
-                dcwPayload.contractAddress = REGISTRY;
-                dcwPayload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
-                dcwPayload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
-                dcwPayload.amount = params.amount || params.stake || "0"; 
+                payload.contractAddress = REGISTRY;
+                payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
+                payload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
+                // FIX: Circle SDK expects human-readable strings (e.g. "8"), it handles wei conversion internally!
+                payload.amount = params.amount || params.stake || "0"; 
                 break;
             case "createOpenTask":
-                dcwPayload.contractAddress = ESCROW;
+                payload.contractAddress = ESCROW;
+                // Bypass Circle's ABI packer — encode calldata ourselves with viem
                 const { encodeFunctionData, parseAbi } = await import('viem');
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
                 const taskAbi = parseAbi([
-                    'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM) external payable returns (uint256 taskId)'
+                    'function createOpenTask(uint256 _amount, uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM, bool isNano) external payable returns (uint256 taskId)'
                 ]);
-                dcwPayload.callData = encodeFunctionData({
+                payload.callData = encodeFunctionData({
                     abi: taskAbi,
                     functionName: 'createOpenTask',
                     args: [
+                        toWei(params.amount || params.value), // _amount
                         BigInt(params.jobDeadline),
                         BigInt(params.bidDeadline),
                         BigInt(params.verifierDeadline),
                         pad32(params.taskHash),
                         vArr,
-                        Number(params.quorumM)
+                        Number(params.quorumM),
+                        params.isNano === true || params.isNano === "true"
                     ]
                 });
-                delete dcwPayload.abiFunctionSignature;
-                delete dcwPayload.abiParameters;
-                dcwPayload.amount = params.amount || params.value || "0";
+                // callData is mutually exclusive with abiFunctionSignature/abiParameters
+                delete payload.abiFunctionSignature;
+                delete payload.abiParameters;
+                payload.amount = params.amount || params.value || "0";
                 break;
             case "placeBid":
-                dcwPayload.contractAddress = ESCROW;
-                dcwPayload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
-                dcwPayload.abiParameters = [String(params.taskId), toWei(params.bidPrice || params.price || "0"), String(params.etaSeconds || params.eta || "0"), pad32(params.metaHash || params.meta || "0x0")];
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
+                // Resilient parameter mapping
+                const bidPrice = params.bidPrice || params.price || "0";
+                const eta = params.etaSeconds || params.eta || "0";
+                const meta = params.metaHash || params.meta || "0x0";
+                payload.abiParameters = [String(params.taskId), toWei(bidPrice), String(eta), pad32(meta)];
                 break;
             case "selectBid":
-                dcwPayload.contractAddress = ESCROW;
-                dcwPayload.abiFunctionSignature = "selectBid(uint256,uint256)";
-                dcwPayload.abiParameters = [String(params.taskId), String(params.bidIndex)];
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "selectBid(uint256,uint256)";
+                payload.abiParameters = [String(params.taskId), String(params.bidIndex)];
                 break;
             case "submitWork":
             case "submitResult":
-                dcwPayload.contractAddress = ESCROW;
-                dcwPayload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
-                dcwPayload.abiParameters = [String(params.taskId), pad32(params.resultHash || params.hash || "0x0"), params.resultURI || params.uri || ""];
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
+                const rHash = params.resultHash || params.hash || "0x0";
+                const rUri = params.resultURI || params.uri || "";
+                payload.abiParameters = [String(params.taskId), pad32(rHash), rUri];
                 break;
             case "approve":
-                dcwPayload.contractAddress = ESCROW;
-                dcwPayload.abiFunctionSignature = "approve(uint256)";
-                dcwPayload.abiParameters = [String(params.taskId)];
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "approve(uint256)";
+                payload.abiParameters = [String(params.taskId)];
                 break;
             case "finalize":
-                dcwPayload.contractAddress = params.contractAddress || ESCROW;
-                dcwPayload.abiFunctionSignature = "finalize(uint256)";
-                dcwPayload.abiParameters = [String(params.taskId)];
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "finalize(uint256)";
+                payload.abiParameters = [String(params.taskId)];
+                break;
+            case "topUpStake":
+                payload.contractAddress = REGISTRY;
+                payload.abiFunctionSignature = "topUpStake()";
+                payload.abiParameters = [];
+                payload.amount = params.amount || "0";
                 break;
             case "transfer":
-                delete dcwPayload.contractAddress;
-                delete dcwPayload.abiFunctionSignature;
-                delete dcwPayload.abiParameters;
-                dcwPayload.destinationAddress = params.recipient || params.to;
-                dcwPayload.amounts = [String(params.amount || params.value)];
-                const txResp = await client.createTransaction(dcwPayload);
+                // Standard Native Token Transfer (USDC on ARC)
+                delete payload.contractAddress;
+                delete payload.abiFunctionSignature;
+                delete payload.abiParameters;
+                payload.destinationAddress = params.recipient || params.to;
+                payload.amounts = [String(params.amount || params.value)];
+                // Circle SDK createTransaction uses different structure than contract execution
+                console.log(">> [DEBUG] Executing Transfer...");
+                const txResp = await client.createTransaction(payload);
                 return res.json({ success: true, txId: txResp.data.transaction?.id });
             default:
                 return res.status(400).json({ error: "Unknown action" });
         }
-        
-        const resp = await client.createContractExecutionTransaction(dcwPayload);
-        res.json({ success: true, txId: resp.data.transaction?.id || resp.data?.id });
+        console.log(">> [DEBUG] Circle Payload:", JSON.stringify(payload, null, 2));
+        const resp = await client.createContractExecutionTransaction(payload);
+        const txId = resp.data.transaction?.id || resp.data?.id;
+        res.json({ success: true, txId });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [FATAL] Contract Execution Failed:", errorDetail);
         res.status(500).json({ error: errorDetail });
     }
 });
 
+// --- TRANSACTION STATUS POLLING ---
 app.get('/tx-status/:id', async (req, res) => {
     try {
         const resp = await client.getTransaction({ id: req.params.id });
         const tx = resp.data?.transaction;
-        res.json({ id: tx?.id, state: tx?.state, errorReason: tx?.errorReason, txHash: tx?.txHash });
+        res.json({
+            id: tx?.id,
+            state: tx?.state,
+            errorReason: tx?.errorReason || null,
+            txHash: tx?.txHash || null
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -522,24 +559,45 @@ app.post('/payout/nano', async (req, res) => {
     if (adminSecret !== process.env.HUB_ADMIN_SECRET) return res.status(401).json({ error: "Unauthorized" });
 
     try {
-        const masterWalletId = process.env.MASTER_WALLET_ID;
-        const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
-        const usdcToken = balancesResp.data?.tokenBalances.find(t => t.token?.symbol === 'USDC');
+        console.log(`>> [X402] Executing Sovereign Nano-Payout to ${recipient} (Amount: ${amount} USDC)...`);
         
-        const payoutResp = await client.createTransaction({
+        const masterWalletId = process.env.MASTER_WALLET_ID;
+        if (!masterWalletId) {
+            throw new Error("MASTER_WALLET_ID is not configured in the Sovereign environment.");
+        }
+
+        // Auto-resolve USDC Token ID
+        const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
+        const tokens = balancesResp.data?.tokenBalances || [];
+        const usdcToken = tokens.find(t => t.token?.symbol === 'USDC');
+        
+        if (!usdcToken) {
+            throw new Error("No USDC token balance found in the Hub Treasury (MASTER_WALLET_ID).");
+        }
+
+        // Execute Nano-Settlement via Circle SDK
+        const payoutPayload = {
             walletId: masterWalletId,
             tokenId: usdcToken.token.id,
             destinationAddress: recipient,
             amounts: [String(amount)],
-            fee: { type: "SPONSORED" },
+            fee: { type: "SPONSORED" }, // Hub sponsors the nano-settlement gas
             idempotencyKey: uuidv4()
-        });
+        };
+
+        const payoutResp = await client.createTransaction(payoutPayload);
+        
         res.json({ success: true, transaction: payoutResp.data });
     } catch (e) {
+        console.error(">> [FATAL] Nano-Payout Failed:", e.message);
         res.status(500).json({ error: e.message });
     }
 });
+// --- FINAL LISTENER: Bind only after all routes are registered ---
 
+// ================= OFF-CHAIN NANO STATE CHANNEL =================
+
+// In-memory state channel for the Hackathon (Zero Gas)
 const nanoState = {
     tasks: {},
     taskCounter: 1000,
@@ -549,57 +607,122 @@ const nanoState = {
 };
 
 app.post('/nano/create', async (req, res) => {
-    const { buyerAddress, amount, manifestHash } = req.body;
-    const taskId = ++nanoState.taskCounter;
-    nanoState.tasks[taskId] = { taskId, buyer: buyerAddress, amount, manifestHash, bids: [], selectedBid: null, status: 'CREATED' };
-    res.json({ success: true, taskId });
+    try {
+        const { buyerAddress, amount, manifestHash } = req.body;
+        const taskId = ++nanoState.taskCounter;
+        
+        nanoState.tasks[taskId] = {
+            taskId,
+            buyer: buyerAddress,
+            amount,
+            manifestHash,
+            bids: [],
+            selectedBid: null,
+            resultUri: null,
+            status: 'CREATED'
+        };
+
+        console.log(`>> [NANO CHANNEL] Off-chain Task ${taskId} Created by ${buyerAddress}. Gas: $0.00`);
+        res.json({ success: true, taskId });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/nano/bid', async (req, res) => {
-    const { taskId, sellerAddress, bidPrice } = req.body;
-    const task = nanoState.tasks[taskId];
-    task.bids.push({ seller: sellerAddress, bidPrice });
-    res.json({ success: true });
+    try {
+        const { taskId, sellerAddress, bidPrice } = req.body;
+        const task = nanoState.tasks[taskId];
+        if (!task) throw new Error("Task not found");
+
+        task.bids.push({ seller: sellerAddress, bidPrice });
+        console.log(`>> [NANO CHANNEL] Off-chain Bid received for Task ${taskId}. Gas: $0.00`);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/nano/select', async (req, res) => {
-    const { taskId, bidIndex } = req.body;
-    const task = nanoState.tasks[taskId];
-    task.selectedBid = task.bids[bidIndex];
-    task.status = 'ACCEPTED';
-    res.json({ success: true });
+    try {
+        const { taskId, bidIndex } = req.body;
+        const task = nanoState.tasks[taskId];
+        task.selectedBid = task.bids[bidIndex];
+        task.status = 'ACCEPTED';
+        console.log(`>> [NANO CHANNEL] Bid Selected off-chain. Gas: $0.00`);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/nano/submit', async (req, res) => {
-    const { taskId, resultURI } = req.body;
-    const task = nanoState.tasks[taskId];
-    task.resultUri = resultURI;
-    task.status = 'SUBMITTED';
-    res.json({ success: true });
+    try {
+        const { taskId, resultURI } = req.body;
+        const task = nanoState.tasks[taskId];
+        task.resultUri = resultURI;
+        task.status = 'SUBMITTED';
+        console.log(`>> [NANO CHANNEL] Work Submitted off-chain: ${resultURI}. Gas: $0.00`);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/nano/approve', async (req, res) => {
-    const { taskId, verifierAddress } = req.body;
-    const task = nanoState.tasks[taskId];
-    task.status = 'COMPLETED';
-    const price = parseFloat(task.selectedBid.bidPrice);
-    nanoState.buyersToDeduct[task.buyer] = (nanoState.buyersToDeduct[task.buyer] || 0) + price;
-    nanoState.earnersToCredit[task.selectedBid.seller] = (nanoState.earnersToCredit[task.selectedBid.seller] || 0) + (price * 0.9);
-    nanoState.earnersToCredit[verifierAddress] = (nanoState.earnersToCredit[verifierAddress] || 0) + (price * 0.1);
-    nanoState.completedCount++;
+    try {
+        const { taskId, verifierAddress } = req.body;
+        const task = nanoState.tasks[taskId];
+        task.status = 'COMPLETED';
+        console.log(`>> [NANO CHANNEL] Verification Approved off-chain. Gas: $0.00`);
 
-    if (nanoState.completedCount >= 3) {
-        if (gateway) {
-            for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
-                await gateway.queuePayment({ recipientAddress: address, amount: String(amount), metadata: { batchId: "NANO_" + Date.now() } });
+        // Tally balances
+        const price = parseFloat(task.selectedBid.bidPrice);
+        nanoState.buyersToDeduct[task.buyer] = (nanoState.buyersToDeduct[task.buyer] || 0) + price;
+        nanoState.earnersToCredit[task.selectedBid.seller] = (nanoState.earnersToCredit[task.selectedBid.seller] || 0) + (price * 0.9);
+        nanoState.earnersToCredit[verifierAddress] = (nanoState.earnersToCredit[verifierAddress] || 0) + (price * 0.1);
+
+        nanoState.completedCount++;
+
+        // BATCH TRIGGER
+        if (nanoState.completedCount >= 3) {
+            console.log(`\n>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
+            console.log(`>> Aggregating off-chain balances for Circle x402 Gateway Settlement...`);
+            console.log(`>> Earners to Credit: `, nanoState.earnersToCredit);
+            
+            try {
+                if (gateway) {
+                    for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
+                        await gateway.queuePayment({
+                            recipientAddress: address,
+                            amount: String(amount),
+                            metadata: { batchId: "NANO_BATCH_" + Date.now() }
+                        });
+                        console.log(`>> [GATEWAY] Queued ${amount} USDC for ${address}`);
+                    }
+                    console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle Infrastructure!`);
+                } else {
+                    console.log(`>> [WARNING] Gateway Offline. Simulating Batch Settlement...`);
+                }
+            } catch (err) {
+                console.error(">> [GATEWAY ERROR] Failed to push batch:", err.message);
             }
+
+            // Reset
+            nanoState.completedCount = 0;
+            nanoState.buyersToDeduct = {};
+            nanoState.earnersToCredit = {};
         }
-        nanoState.completedCount = 0;
-        nanoState.buyersToDeduct = {};
-        nanoState.earnersToCredit = {};
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-    res.json({ success: true });
 });
 
+// --- BOOTSTRAP INITIATION ---
 bootstrap();
-app.listen(PORT, "0.0.0.0", () => console.log(`>> Hub online on :${PORT}`));
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
+});
