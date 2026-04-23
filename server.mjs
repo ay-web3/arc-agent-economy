@@ -80,10 +80,9 @@ async function bootstrap() {
         const GATEWAY_KEY = process.env.CIRCLE_GATEWAY_PRIVATE_KEY || ("0x" + crypto.randomBytes(32).toString('hex'));
         if (API_KEY && GATEWAY_ADDR) {
             gateway = new GatewayClient({
-                apiKey: API_KEY,
                 gatewayAddress: GATEWAY_ADDR,
                 privateKey: GATEWAY_KEY,
-                blockchain: "arcTestnet"
+                chain: "arcTestnet"
             });
             console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
         } else {
