@@ -242,14 +242,12 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
 
     // ================= OPEN TASK (AUCTION) =================
     function createOpenTask(
-        uint256 _amount, // Added: Explicit amount for nano-authorization
         uint64 jobDeadline,
         uint64 bidDeadline,
         uint64 verifierDeadline, 
         bytes32 taskHash,
         address[] calldata _verifiers,
-        uint8 quorumM,
-        bool isNano 
+        uint8 quorumM
     ) external payable nonReentrant returns (uint256 taskId) {
         require(jobDeadline > block.timestamp, "BAD_JOB_DEADLINE");
         require(bidDeadline > block.timestamp, "BAD_BID_DEADLINE");
@@ -258,8 +256,8 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         require(_verifiers.length > 0, "NO_VERIFIERS");
         require(quorumM > 0 && quorumM <= _verifiers.length, "BAD_QUORUM");
 
-        uint256 total = isNano ? _amount : msg.value;
-        require(total >= _amount, "INSUFFICIENT_ESCROW");
+        uint256 total = msg.value;
+        require(total > 0, "ZERO_ESCROW");
 
         uint256 percentFee = (total * verifierFeeBps) / 10_000;
         uint256 basePool = percentFee > minVerifierFee ? percentFee : minVerifierFee;
@@ -271,12 +269,7 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
         uint256 verifierPool = (basePool * multiplierBps) / 10_000;
         uint256 sellerBudget = total > verifierPool ? total - verifierPool : 0;
 
-        // Option C: Fork the budget floor — nano tasks use a much lower minimum
-        if (isNano) {
-            require(sellerBudget >= minNanoPrice, "NANO_BUDGET_TOO_LOW");
-        } else {
-            require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
-        }
+        require(sellerBudget >= minDerivedPrice, "BUDGET_TOO_LOW");
 
         taskId = ++taskCounter;
         Task storage t = tasks[taskId];
