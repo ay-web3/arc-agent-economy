@@ -687,15 +687,26 @@ app.post('/nano/approve', async (req, res) => {
         // BATCH TRIGGER
         if (nanoState.completedCount >= 3) {
             console.log(`\n>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-            console.log(`>> Aggregating off-chain balances for Circle Smart Contract Settlement...`);
-            console.log(`>> Buyers to Deduct: `, nanoState.buyersToDeduct);
+            console.log(`>> Aggregating off-chain balances for Circle x402 Gateway Settlement...`);
             console.log(`>> Earners to Credit: `, nanoState.earnersToCredit);
             
-            // Simulating the execution of the settleNanoBatch smart contract call via Circle Developer Wallets
-            console.log(`>> Executing single settleNanoBatch() transaction... Gas Savings: ~99%`);
-            setTimeout(() => {
-                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Confirmed on ARC Testnet!`);
-            }, 3000);
+            try {
+                if (gateway) {
+                    for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
+                        await gateway.queuePayment({
+                            recipientAddress: address,
+                            amount: String(amount),
+                            metadata: { batchId: "NANO_BATCH_" + Date.now() }
+                        });
+                        console.log(`>> [GATEWAY] Queued ${amount} USDC for ${address}`);
+                    }
+                    console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle Infrastructure!`);
+                } else {
+                    console.log(`>> [WARNING] Gateway Offline. Simulating Batch Settlement...`);
+                }
+            } catch (err) {
+                console.error(">> [GATEWAY ERROR] Failed to push batch:", err.message);
+            }
 
             // Reset
             nanoState.completedCount = 0;
