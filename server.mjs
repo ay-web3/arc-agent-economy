@@ -454,20 +454,18 @@ app.post('/execute/:action', async (req, res) => {
                 const { encodeFunctionData, parseAbi } = await import('viem');
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
                 const taskAbi = parseAbi([
-                    'function createOpenTask(uint256 _amount, uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM, bool isNano) external payable returns (uint256 taskId)'
+                    'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM) external payable returns (uint256 taskId)'
                 ]);
                 payload.callData = encodeFunctionData({
                     abi: taskAbi,
                     functionName: 'createOpenTask',
                     args: [
-                        toWei(params.amount || params.value), // _amount
                         BigInt(params.jobDeadline),
                         BigInt(params.bidDeadline),
                         BigInt(params.verifierDeadline),
                         pad32(params.taskHash),
                         vArr,
-                        Number(params.quorumM),
-                        params.isNano === true || params.isNano === "true"
+                        Number(params.quorumM)
                     ]
                 });
                 // callData is mutually exclusive with abiFunctionSignature/abiParameters
