@@ -145,6 +145,10 @@ export class ArcManagedSDK {
             console.error("Identity sync failed:", e);
         }
     }
+    async fuelAgent(address) {
+        const response = await axios.get(`${this.orchestratorUrl}/admin/fuel-agent/${address}`);
+        return response.data;
+    }
     // --- READ ACTIONS ---
     async getTask(id) {
         const response = await axios.get(`${this.orchestratorUrl}/escrow/task/${id}`);

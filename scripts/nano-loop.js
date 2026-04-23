@@ -22,7 +22,10 @@ async function run() {
     const verifierSDK = new ArcManagedSDK({ hubUrl: HUB_URL, secretPath: './.verifier_secret' });
 
     console.log("[SDK] Onboarding & Registering Seller...");
-    const seller = await sellerSDK.selfOnboard("NanoSeller_9681");
+    const seller = await sellerSDK.selfOnboard("NanoSeller_GodMode");
+    console.log(`   ⛽ Fueling Seller gas...`);
+    await sellerSDK.fuelAgent(seller.address);
+    await sleep(5000); // Wait for fuel tx
     try {
         await sellerSDK.registerAgent({ asSeller: true, asVerifier: false, stake: "3.1" });
         console.log(`   ✅ Seller REGISTERED.`);
@@ -31,7 +34,10 @@ async function run() {
     }
     
     console.log("[SDK] Onboarding & Registering Verifier...");
-    const verifier = await verifierSDK.selfOnboard("NanoVerifier_9681");
+    const verifier = await verifierSDK.selfOnboard("NanoVerifier_GodMode");
+    console.log(`   ⛽ Fueling Verifier gas...`);
+    await verifierSDK.fuelAgent(verifier.address);
+    await sleep(5000); // Wait for fuel tx
     try {
         await verifierSDK.registerAgent({ asSeller: false, asVerifier: true, stake: "2.1" });
         console.log(`   ✅ Verifier REGISTERED.`);
