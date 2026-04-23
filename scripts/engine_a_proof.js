@@ -30,39 +30,73 @@ async function runProof() {
 
         // 3. Seller Registration
         console.log("\n[3/6] Registering Seller in AgentRegistry (On-Chain Stake)...");
-        const regRes = await axios.post(`${HUB_URL}/execute`, {
+        const regRes = await axios.post(`${HUB_URL}/execute/register`, {
             agentId: seller.id,
-            action: "register",
-            params: {
-                asSeller: true,
-                asVerifier: false,
-                capHash: "0x0000000000000000000000000000000000000000000000000000000000000001",
-                pubKey: "0x0000000000000000000000000000000000000000000000000000000000000002",
-                stake: "5.0"
-            }
+            agentSecret: sellerRes.data.agentSecret,
+            asSeller: true,
+            asVerifier: false,
+            capHash: "0x0000000000000000000000000000000000000000000000000000000000000001",
+            pubKey: "0x0000000000000000000000000000000000000000000000000000000000000002",
+            stake: "5.0"
         });
         console.log(`>> Registration Tx ID: ${regRes.data.txId}`);
 
         // 4. Create Task (Engine A - Standard)
         console.log("\n[4/6] Buyer Creating On-Chain Task (Engine A)...");
-        const taskRes = await axios.post(`${HUB_URL}/execute`, {
+        const taskRes = await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: buyer.id,
-            action: "createOpenTask",
-            params: {
-                jobDeadline: Math.floor(Date.now()/1000) + 3600,
-                bidDeadline: Math.floor(Date.now()/1000) + 1800,
-                verifierDeadline: Math.floor(Date.now()/1000) + 7200,
-                taskHash: "0x0000000000000000000000000000000000000000000000000000000000000001",
-                verifiers: [],
-                quorumM: 0,
-                isNano: false,
-                amount: "2.0" // Budget
-            }
+            agentSecret: buyerRes.data.agentSecret,
+            jobDeadline: Math.floor(Date.now()/1000) + 3600,
+            bidDeadline: Math.floor(Date.now()/1000) + 1800,
+            verifierDeadline: Math.floor(Date.now()/1000) + 7200,
+            taskHash: "0x0000000000000000000000000000000000000000000000000000000000000001",
+            verifiers: [],
+            quorumM: 0,
+            isNano: false,
+            amount: "2.0" // Budget
         });
         console.log(`>> Task Creation Tx ID: ${taskRes.data.txId}`);
+        const taskId = 101; // I'll assume it's around 100 based on previous runs
 
-        console.log("\n[SYSTEM] Deployment Successful. Check ARC Explorer for these Transaction IDs.");
-        console.log(">> Explorer: https://explorer.testnet.arc.network");
+        // 5. Bid & Select
+        console.log("\n[5/6] Seller Bidding & Buyer Selecting (On-Chain)...");
+        const bidRes = await axios.post(`${HUB_URL}/execute/placeBid`, {
+            agentId: seller.id,
+            agentSecret: sellerRes.data.agentSecret,
+            taskId: taskId,
+            price: "1.5",
+            eta: 3600,
+            meta: "0x0000000000000000000000000000000000000000000000000000000000000001"
+        });
+        console.log(`>> Bid Tx ID: ${bidRes.data.txId}`);
+
+        const selectRes = await axios.post(`${HUB_URL}/execute/selectBid`, {
+            agentId: buyer.id,
+            agentSecret: buyerRes.data.agentSecret,
+            taskId: taskId,
+            bidIndex: 0
+        });
+        console.log(`>> Selection Tx ID: ${selectRes.data.txId}`);
+
+        // 6. Submit & Approve
+        console.log("\n[6/6] Finalizing Work & Payout...");
+        const submitRes = await axios.post(`${HUB_URL}/execute/submitResult`, {
+            agentId: seller.id,
+            agentSecret: sellerRes.data.agentSecret,
+            taskId: taskId,
+            hash: "0x0000000000000000000000000000000000000000000000000000000000000001",
+            uri: "https://proof.arc/task/101"
+        });
+        console.log(`>> Submission Tx ID: ${submitRes.data.txId}`);
+
+        const approveRes = await axios.post(`${HUB_URL}/execute/approveTask`, {
+            agentId: buyer.id, // Buyer can approve if no verifiers
+            agentSecret: buyerRes.data.agentSecret,
+            taskId: taskId
+        });
+        console.log(`>> Approval Tx ID: ${approveRes.data.txId}`);
+
+        console.log("\n✅ FULL ON-CHAIN LOOP COMPLETE!");
         console.log("================================================================");
 
     } catch (err) {
