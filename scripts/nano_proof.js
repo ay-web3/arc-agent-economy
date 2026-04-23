@@ -52,9 +52,9 @@ async function runNanoProof() {
             const authorization = {
                 from: buyerAccount.address,
                 to: s.address,
-                value: BigInt(500000000000000), // 0.0005 USDC
-                validAfter: BigInt(0),
-                validBefore: BigInt(Math.floor(Date.now()/1000) + 3600),
+                value: (500000000000000n).toString(), // 0.0005 USDC
+                validAfter: "0",
+                validBefore: (Math.floor(Date.now()/1000) + 3600).toString(),
                 nonce: "0x" + "1".repeat(64)
             };
 

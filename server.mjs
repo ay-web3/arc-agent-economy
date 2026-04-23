@@ -681,12 +681,21 @@ app.post('/nano/authorize', async (req, res) => {
 
         // VERIFY CRYPTOGRAPHIC SIGNATURE (EIP-3009)
         const { verifyTypedData } = await import('viem');
+        
+        // Ensure values are BigInts for the cryptographic check
+        const message = {
+            ...authorization,
+            value: BigInt(authorization.value),
+            validAfter: BigInt(authorization.validAfter),
+            validBefore: BigInt(authorization.validBefore)
+        };
+
         const isValid = await verifyTypedData({
             address: authorization.from,
             domain: { ...EIP3009_DOMAIN, verifyingContract: process.env.USDC_CA || EIP3009_DOMAIN.verifyingContract },
             types: TRANSFER_WITH_AUTHORIZATION_TYPE,
             primaryType: 'TransferWithAuthorization',
-            message: authorization,
+            message: message,
             signature
         });
 
