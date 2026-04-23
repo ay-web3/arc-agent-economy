@@ -13,7 +13,7 @@ const abi = parseAbi(['function taskCounter() view returns (uint256)']);
 
 async function runUltimateProof() {
     console.log("================================================================");
-    console.log("   ARC AGENT ECONOMY - THE ULTIMATE ON-CHAIN PROOF (V4)");
+    console.log("   ARC AGENT ECONOMY - THE ULTIMATE ON-CHAIN PROOF (FINAL)");
     console.log("================================================================");
 
     try {
@@ -25,21 +25,21 @@ async function runUltimateProof() {
         
         console.log(`>> Buyer: ${b.address}\n>> Seller: ${s.address}\n>> Verifier: ${v.address}`);
 
-        console.log("\n[2/8] Fueling Agents (2.0 USDC each)...");
+        console.log("\n[2/8] Fueling Agents (0.4 USDC each)...");
         await axios.get(`${HUB_URL}/admin/fuel-agent/${b.address}`);
         await axios.get(`${HUB_URL}/admin/fuel-agent/${s.address}`);
         await axios.get(`${HUB_URL}/admin/fuel-agent/${v.address}`);
         await new Promise(r => setTimeout(r, 25000));
 
-        console.log("\n[3/8] Registering Seller & Verifier...");
+        console.log("\n[3/8] Registering Seller & Verifier (Stake: 0.15 USDC)...");
         await axios.post(`${HUB_URL}/execute/register`, {
             agentId: s.agentId, agentSecret: s.agentSecret,
-            asSeller: true, asVerifier: false, stake: "0.2",
+            asSeller: true, asVerifier: false, stake: "0.15",
             capHash: "0x" + "1".repeat(64), pubKey: "0x" + "2".repeat(64)
         });
         await axios.post(`${HUB_URL}/execute/register`, {
             agentId: v.agentId, agentSecret: v.agentSecret,
-            asSeller: false, asVerifier: true, stake: "0.2",
+            asSeller: false, asVerifier: true, stake: "0.15",
             capHash: "0x" + "3".repeat(64), pubKey: "0x" + "4".repeat(64)
         });
         await new Promise(r => setTimeout(r, 20000));
@@ -47,10 +47,10 @@ async function runUltimateProof() {
         const currentCounter = await client.readContract({ address: ESCROW, abi, functionName: 'taskCounter' });
         const taskId = Number(currentCounter) + 1;
 
-        console.log(`\n[4/8] Creating On-Chain Task ID: ${taskId} (Budget: 1.0 USDC)...`);
+        console.log(`\n[4/8] Creating On-Chain Task ID: ${taskId} (Budget: 0.1 USDC)...`);
         await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: b.agentId, agentSecret: b.agentSecret,
-            amount: "1.0",
+            amount: "0.1",
             jobDeadline: Math.floor(Date.now()/1000) + 3600,
             bidDeadline: Math.floor(Date.now()/1000) + 1800,
             verifierDeadline: Math.floor(Date.now()/1000) + 7200,
@@ -59,10 +59,10 @@ async function runUltimateProof() {
         });
         await new Promise(r => setTimeout(r, 20000));
 
-        console.log("\n[5/8] Seller Bidding (0.5 USDC)...");
+        console.log("\n[5/8] Seller Bidding (0.05 USDC)...");
         await axios.post(`${HUB_URL}/execute/placeBid`, {
             agentId: s.agentId, agentSecret: s.agentSecret,
-            taskId: taskId, price: "0.5", eta: 3600, meta: "0x" + "6".repeat(64)
+            taskId: taskId, price: "0.05", eta: 3600, meta: "0x" + "6".repeat(64)
         });
         await new Promise(r => setTimeout(r, 20000));
 

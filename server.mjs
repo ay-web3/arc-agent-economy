@@ -191,6 +191,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.status(503).json({ error: "Engines Offline" });
     try {
         const { address } = req.params;
+        const amount = req.query.amount || "2.0"; // Default to 2.0 if not specified
         const usdcId = await getUsdcTokenId(process.env.MASTER_WALLET_ID) || "0x00000000-0000-0000-0000-000000000000";
 
         console.log(`>> [FUEL] Introspecting client keys: ${Object.keys(client).join(', ')}`);
@@ -202,7 +203,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                 idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: ["0.4"], // Micro-fueling
+                amounts: [amount], // Dynamic
                 destinationAddress: address,
                 fee: { type: "level", config: { feeLevel: "MEDIUM" } }
             });
@@ -214,7 +215,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
-                    amounts: ["0.4"],
+                    amounts: [amount],
                     destinationAddress: address,
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
