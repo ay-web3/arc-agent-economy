@@ -134,7 +134,58 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount);
     event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount); 
 
-    event NanoSettlementAuthorized(uint256 indexed taskId, address indexed seller, uint256 amount);
+    // ================= PREPAID NANO LEDGER =================
+    mapping(address => uint256) public nanoBalances;
+    
+    struct NanoPayout {
+        address agent;
+        uint256 amount;
+    }
+
+    event NanoDeposited(address indexed user, uint256 amount);
+    event NanoWithdrawn(address indexed user, uint256 amount);
+    event NanoBatchSettled(uint256 totalTasks, uint256 totalAmount);
+
+    function depositNanoBalance() external payable {
+        require(msg.value > 0, "ZERO_DEPOSIT");
+        nanoBalances[msg.sender] += msg.value;
+        emit NanoDeposited(msg.sender, msg.value);
+    }
+
+    function withdrawNanoBalance(uint256 amount) external nonReentrant {
+        require(nanoBalances[msg.sender] >= amount, "INSUFFICIENT_NANO_BALANCE");
+        nanoBalances[msg.sender] -= amount;
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
+        require(ok, "WITHDRAW_FAIL");
+        emit NanoWithdrawn(msg.sender, amount);
+    }
+
+    // Hub calls this to settle aggregated off-chain tasks
+    function settleNanoBatch(
+        NanoPayout[] calldata buyers,
+        NanoPayout[] calldata earners
+    ) external onlyRole(GOVERNANCE_ROLE) {
+        uint256 totalDeducted = 0;
+        uint256 totalCredited = 0;
+
+        // Deduct from buyers
+        for (uint256 i = 0; i < buyers.length; i++) {
+            require(nanoBalances[buyers[i].agent] >= buyers[i].amount, "BUYER_DEFICIT");
+            nanoBalances[buyers[i].agent] -= buyers[i].amount;
+            totalDeducted += buyers[i].amount;
+        }
+
+        // Credit to sellers and verifiers
+        for (uint256 i = 0; i < earners.length; i++) {
+            nanoBalances[earners[i].agent] += earners[i].amount;
+            totalCredited += earners[i].amount;
+        }
+
+        // The total deducted must equal total credited to prevent protocol inflation/deflation
+        require(totalDeducted == totalCredited, "BALANCE_MISMATCH");
+
+        emit NanoBatchSettled(buyers.length, totalDeducted);
+    }
 
     event DisputeOpened(uint256 indexed taskId, address indexed opener);
     event DisputeResolved(uint256 indexed taskId, DisputeRuling ruling);

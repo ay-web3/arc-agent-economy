@@ -267,5 +267,45 @@ export class ArcManagedSDK {
     async resolveDispute(params) {
         return this.requestAction("execute/resolveDispute", params);
     }
+
+    // ================= OFF-CHAIN NANO METHODS =================
+    
+    async depositNanoBalance(amount) {
+        return await this.executeAndWait("deposit-nano", { amount });
+    }
+
+    async createNanoTask(params) {
+        const response = await axios.post(`${this.orchestratorUrl}/nano/create`, {
+            ...params,
+            buyerAddress: this.agentId // For demo mapping
+        });
+        return response.data;
+    }
+
+    async placeNanoBid(params) {
+        const response = await axios.post(`${this.orchestratorUrl}/nano/bid`, {
+            ...params,
+            sellerAddress: this.agentId
+        });
+        return response.data;
+    }
+
+    async selectNanoBid(params) {
+        const response = await axios.post(`${this.orchestratorUrl}/nano/select`, params);
+        return response.data;
+    }
+
+    async submitNanoResult(params) {
+        const response = await axios.post(`${this.orchestratorUrl}/nano/submit`, params);
+        return response.data;
+    }
+
+    async approveNanoTask(params) {
+        const response = await axios.post(`${this.orchestratorUrl}/nano/approve`, {
+            ...params,
+            verifierAddress: this.agentId
+        });
+        return response.data;
+    }
 }
 //# sourceMappingURL=ArcManagedSDK.js.map
