@@ -735,19 +735,30 @@ app.post('/nano/approve', async (req, res) => {
             console.log(`>> Earners to Credit: `, nanoState.earnersToCredit);
             
             try {
-                if (gateway) {
-                    for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
-                        await gateway.queuePayment({
-                            recipientAddress: address,
-                            amount: String(amount),
-                            metadata: { batchId: "NANO_BATCH_" + Date.now() }
-                        });
-                        console.log(`>> [GATEWAY] Queued ${amount} USDC for ${address}`);
-                    }
-                    console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle Infrastructure!`);
-                } else {
-                    console.log(`>> [WARNING] Gateway Offline. Simulating Batch Settlement...`);
+                const masterWalletId = process.env.MASTER_WALLET_ID;
+                if (!masterWalletId || !client) {
+                    throw new Error("Treasury wallet or Circle client not configured.");
                 }
+
+                // Get USDC Token ID
+                const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
+                const tokens = balancesResp.data?.tokenBalances || [];
+                const usdcToken = tokens.find(t => t.token?.symbol === 'USDC');
+                const usdcId = usdcToken ? usdcToken.token.id : process.env.USDC_TOKEN_ID;
+
+                for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
+                    // Send actual on-chain transaction from Treasury to Earner via Circle API
+                    const tx = await client.createTransaction({
+                        idempotencyKey: uuidv4(),
+                        walletId: masterWalletId,
+                        tokenId: usdcId,
+                        amounts: [String(amount)],
+                        destinationAddress: address,
+                        fee: { type: "level", config: { feeLevel: "MEDIUM" } } // Or SPONSORED if applicable
+                    });
+                    console.log(`>> [TREASURY] Sent ${amount} USDC to ${address}. TxID: ${tx.data.id}`);
+                }
+                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Executed On-Chain!`);
             } catch (err) {
                 console.error(">> [GATEWAY ERROR] Failed to push batch:", err.message);
             }
