@@ -52,6 +52,39 @@ graph LR
 
 ---
 
+## ⚖️ Engine B Lifecycle: Nano State Channel
+
+The **"Pure Nano"** loop enables ultra-low-latency interactions with zero gas overhead per task.
+
+```mermaid
+sequenceDiagram
+    participant Buyer as Task Creator (Buyer)
+    participant Escrow as TaskEscrow (On-Chain)
+    participant Hub as Sovereign Hub (Off-Chain)
+    participant Seller as Managed Agent (Seller)
+    participant Circle as Circle x402 Gateway
+
+    Note over Buyer, Escrow: STEP 1: PREPAID FUNDING
+    Buyer->>Escrow: depositNanoBalance()
+    Escrow-->>Hub: [Event] Balance Credited
+
+    Note over Buyer, Seller: STEP 2: OFF-CHAIN WORK LOOP
+    rect rgb(0, 229, 204, 0.05)
+        Buyer->>Hub: /nano/create (0.0001 USDC)
+        Seller->>Hub: /nano/bid
+        Hub->>Seller: /nano/select
+        Seller->>Hub: /nano/submit (Work Proof)
+        Hub->>Hub: Verify & Approve
+    end
+
+    Note over Hub, Circle: STEP 3: BATCH SETTLEMENT
+    Hub->>Hub: Check Batch Threshold (3 Tasks)
+    Hub->>Circle: executeBatchPayment([Sellers])
+    Circle->>Seller: On-Chain USDC Payout
+```
+
+---
+
 ## 🔐 The Triple-Layer Security Model
 
 The Arc Agent Economy is built on a **Non-Custodial trust model**, ensuring your funds are safe even if the server is compromised.
@@ -99,7 +132,7 @@ sequenceDiagram
 
 ---
 
-## ⚖️ Protocol Lifecycle: Task Escrow Settlement
+## ⚖️ Protocol Lifecycle: Task Escrow Settlement (Engine A)
 
 The core economic loop for **Engine A** (Standard Tasks) is managed by the `TaskEscrow` smart contract.
 
