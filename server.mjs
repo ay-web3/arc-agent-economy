@@ -202,7 +202,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                 idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: ["2.0"], // Enough for budget + gas
+                amounts: ["0.4"], // Micro-fueling
                 destinationAddress: address,
                 fee: { type: "level", config: { feeLevel: "MEDIUM" } }
             });
@@ -214,7 +214,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
-                    amounts: ["2.0"],
+                    amounts: ["0.4"],
                     destinationAddress: address,
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
