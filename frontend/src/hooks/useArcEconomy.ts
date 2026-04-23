@@ -16,7 +16,7 @@ const RPC_URL = "https://rpc.testnet.arc.network";
 
 const ESCROW_ABI = [
   "function taskCounter() external view returns (uint256)",
-  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN, bool isNano)",
+  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
   "event TaskOpen(uint256 indexed taskId, uint256 totalEscrow, uint256 sellerBudget, uint256 verifierPool, uint64 bidDeadline)",
   "event BidPlaced(uint256 indexed taskId, address indexed bidder, uint256 bidPrice, uint64 etaSeconds)",
   "event BidSelected(uint256 indexed taskId, address indexed seller, uint256 bidPrice, uint256 refundToBuyer)",
@@ -391,7 +391,7 @@ export function useArcEconomy() {
           revenue: ethers.formatUnits(personalRevenue, 18),
           costs: (personalSupplyChainTasks * 0.001).toFixed(3), // 0.001 USDC per Paymind call
           globalSupplyTasks: globalSupplyChainTasks,
-          protocolRevenue: ethers.formatUnits((totalVolume * 4n) / 100n, 18) // 4% Protocol Fee
+          protocolRevenue: ethers.formatUnits((totalVolume * 2n) / 100n, 18) // 2% Protocol Fee
         });
         setHistoricalEvents(fetchedHistorical);
       } catch (err) {
