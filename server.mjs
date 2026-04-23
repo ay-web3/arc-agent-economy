@@ -199,22 +199,24 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
         try {
             // Pattern 1: Direct method
             tx = await client.createTransaction({
+                idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: ["0.1"],
+                amounts: ["5.0"], // Give more for stake
                 destinationAddress: address,
-                feeLevel: "MEDIUM"
+                fee: { type: "level", config: { feeLevel: "MEDIUM" } }
             });
         } catch (e1) {
             console.log(`>> [FUEL] Pattern 1 failed: ${e1.message}. Trying Pattern 2...`);
             // Pattern 2: Nested method
             if (client.developerControlledWallets) {
                 tx = await client.developerControlledWallets.createTransaction({
+                    idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
-                    amounts: ["0.1"],
+                    amounts: ["5.0"],
                     destinationAddress: address,
-                    feeLevel: "MEDIUM"
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
             } else {
                 throw e1;
