@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
 import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
-import { GatewayClient } from '@circle-fin/x402-batching';
+import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createPublicClient, http, parseAbi } from 'viem';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
@@ -457,7 +457,6 @@ app.post('/execute/:action', async (req, res) => {
         const REGISTRY = process.env.REGISTRY_CA || "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
         const ESCROW = process.env.ESCROW_CA || "0xd3f6fc0d6E083C98d24eEc7140Ca49e897819B1d";
         const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
-        const SDK_LOAD_ERROR = null;
 
         const toWei = (val) => {
             if (!val || val === "0") return "0";
