@@ -421,9 +421,9 @@ app.post('/execute/:action', async (req, res) => {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         };
 
-        const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
-        const REGISTRY = process.env.REGISTRY_CA || "0xACB9a6b4eba5c569efa6A800BE1e12192fA260bF";
-        const ESCROW = process.env.ESCROW_CA || "0x561d560012225932Bd8175C53FAeAb2C3B6C0d43";
+        const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
+        const REGISTRY = process.env.REGISTRY_CA || "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
+        const ESCROW = process.env.ESCROW_CA || "0xd3f6fc0d6E083C98d24eEc7140Ca49e897819B1d";
         const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
         const SDK_LOAD_ERROR = null;
 

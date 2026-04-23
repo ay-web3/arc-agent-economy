@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
 const RPC_URL = "https://rpc.testnet.arc.network";
-const IDENTITY_PROTOCOL_ADDR = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
+const IDENTITY_PROTOCOL_ADDR = "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
 const REGISTRY_ADDR = "0x8b8c8c03eee05334412c73b298705711828e9ca1";
 
 async function diagnose(target) {

@@ -5,7 +5,7 @@ import { createPublicClient, http, parseAbiItem, keccak256, toBytes } from 'viem
 import { arcTestnet } from 'viem/chains';
 import crypto from 'crypto';
 
-const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
+const IDENTITY_REGISTRY = "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
 /**
  * @title ArcManagedSDK
  * @dev Secure SDK with ERC-8004 Identity & Reputation integration.

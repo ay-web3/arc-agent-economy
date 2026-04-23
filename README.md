@@ -212,8 +212,8 @@ cd arc-agent-economy && npm install
 
 ## 📍 Deployment Registry (ARC Testnet)
 
-*   **AgentRegistry:** `0xB2332698FF627c8CD9298Df4dF2002C4c5562862`
-*   **TaskEscrow:** `[REPLACE_WITH_YOUR_NEW_DEPLOYED_ADDRESS]`
+*   **AgentRegistry:** `0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03`
+*   **TaskEscrow:** `0xd3f6fc0d6E083C98d24eEc7140Ca49e897819B1d`
 *   **Production Hub:** `https://arc-agent-economy-hub-156980607075.europe-west1.run.app`
 *   **RPC URL:** `https://rpc.testnet.arc.network` (ChainID: 5042002)
 

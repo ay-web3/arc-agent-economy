@@ -9,7 +9,7 @@ export interface ArcManagedConfig {
     agentId?: string;         
 }
 
-const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
+const IDENTITY_REGISTRY = "0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03";
 
 /**
  * @title ArcManagedSDK
