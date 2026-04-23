@@ -202,7 +202,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                 idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: ["0.5"], // Conserve treasury
+                amounts: ["2.0"], // Enough for budget + gas
                 destinationAddress: address,
                 fee: { type: "level", config: { feeLevel: "MEDIUM" } }
             });
@@ -214,7 +214,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
-                    amounts: ["0.5"],
+                    amounts: ["2.0"],
                     destinationAddress: address,
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
