@@ -200,11 +200,19 @@ export class ArcManagedSDK {
     async completeWithdraw() {
         return this.requestAction("execute/withdraw/complete", {});
     }
-    // --- BUYER ACTIONS ---
+    /**
+     * @dev Engine A: Create a high-value Task on the ARC Testnet.
+     * Requires native USDC escrow.
+     */
     async createOpenTask(params) {
         const amount = params.amount || params.value;
         const payload = {
-            ...params,
+            jobDeadline: params.jobDeadline,
+            bidDeadline: params.bidDeadline,
+            verifierDeadline: params.verifierDeadline,
+            taskHash: params.taskHash,
+            verifiers: params.verifiers,
+            quorumM: params.quorumM,
             amount: amount,
             value: amount
         };

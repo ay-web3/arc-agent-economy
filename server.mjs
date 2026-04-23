@@ -511,6 +511,17 @@ app.post('/execute/:action', async (req, res) => {
                 payload.abiParameters = [];
                 payload.amount = params.amount || "0";
                 break;
+            case "deposit-nano":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "depositNanoBalance()";
+                payload.abiParameters = [];
+                payload.amount = params.amount || params.value || "0";
+                break;
+            case "settle-nano":
+                payload.contractAddress = ESCROW;
+                payload.abiFunctionSignature = "settleNanoBatch((address,uint256)[],(address,uint256)[])";
+                payload.abiParameters = [params.buyers, params.earners];
+                break;
             case "transfer":
                 // Standard Native Token Transfer (USDC on ARC)
                 delete payload.contractAddress;
