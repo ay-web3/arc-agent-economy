@@ -34,28 +34,28 @@ async function runNanoProof() {
         const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "DemoSeller_" + ts })).data;
         const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "DemoVerifier_" + ts })).data;
 
-        console.log(`[LEDGER] Buyer depositing 1.0 USDC into Prepaid Nano Ledger (On-Chain)...`);
+        console.log(`[LEDGER] Buyer depositing 0.01 USDC into Prepaid Nano Ledger (On-Chain)...`);
         await axios.post(`${HUB_URL}/execute/deposit-nano`, {
             agentId: b.agentId,
             agentSecret: b.agentSecret,
-            amount: "1.0"
+            amount: "0.01"
         });
-        console.log(`   >> Tx Confirmed. Nano Balance: 1.0 USDC`);
+        console.log(`   >> Tx Confirmed. Nano Balance: 0.01 USDC`);
 
         for(let i=1; i<=3; i++) {
             console.log(`\n--- NANO TASK #${i} ---`);
-            console.log(`[MARKET] Buyer creating off-chain task (0.0001 USDC)...`);
-            const taskId = (await axios.post(`${HUB_URL}/nano/create`, { buyerAddress: buyerAccount.address, amount: "0.5" })).data.taskId;
+            console.log(`[MARKET] Buyer creating off-chain task (0.001 USDC)...`);
+            const taskId = (await axios.post(`${HUB_URL}/nano/create`, { buyerAddress: buyerAccount.address, amount: "0.001" })).data.taskId;
             console.log(`   [OK] Task Created Instantly. Gas: $0.00`);
             
             // SIGN EIP-3009 AUTHORIZATION
             const authorization = {
                 from: buyerAccount.address,
                 to: s.address,
-                value: (500000000000000n).toString(), // 0.0005 USDC
+                value: (1000000000000000n).toString(), // 0.001 USDC
                 validAfter: "0",
                 validBefore: (Math.floor(Date.now()/1000) + 3600).toString(),
-                nonce: "0x" + "1".repeat(64)
+                nonce: "0x" + i.toString().padStart(64, '0') // Unique nonce per task
             };
 
             const signature = await buyerAccount.signTypedData({
@@ -68,7 +68,7 @@ async function runNanoProof() {
             await axios.post(`${HUB_URL}/nano/authorize`, { taskId, signature, authorization });
             console.log(`[x402] EIP-3009 Signature Generated & Verified. Gas: $0.00`);
 
-            await axios.post(`${HUB_URL}/nano/bid`, { taskId, sellerAddress: s.address, bidPrice: "0.5" });
+            await axios.post(`${HUB_URL}/nano/bid`, { taskId, sellerAddress: s.address, bidPrice: "0.001" });
             console.log(`[WORK] Seller submitting work...`);
             await axios.post(`${HUB_URL}/nano/select`, { taskId, bidIndex: 0 });
             await axios.post(`${HUB_URL}/nano/submit`, { taskId, resultURI: "ipfs://work-" + i });
@@ -80,8 +80,8 @@ async function runNanoProof() {
 
             if (i === 3) {
                 console.log(`\n>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [GATEWAY] Queued 1.35 USDC for Seller_Alpha`);
-                console.log(`>> [GATEWAY] Queued 0.15 USDC for Verifier_Alpha`);
+                console.log(`>> [GATEWAY] Queued 0.0027 USDC for Seller_Alpha`);
+                console.log(`>> [GATEWAY] Queued 0.0003 USDC for Verifier_Alpha`);
                 console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle!`);
             }
         }

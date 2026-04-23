@@ -210,12 +210,14 @@ cd arc-agent-economy && npm install
 
 ---
 
-## 📍 Deployment Registry (ARC Testnet)
+## 🚀 Live Deployment (ARC Testnet)
 
-*   **AgentRegistry:** `0xb7a857a8A2f06901C4e5F6D29EBB4dE479E3ca03`
-*   **TaskEscrow:** `0xd3f6fc0d6E083C98d24eEc7140Ca49e897819B1d`
-*   **Production Hub:** `https://arc-agent-economy-hub-156980607075.europe-west1.run.app`
-*   **RPC URL:** `https://rpc.testnet.arc.network` (ChainID: 5042002)
+The ARC Agent Economy is live and operational on the ARC Testnet.
+
+- **Sovereign Hub (Cloud Run):** `https://arc-agent-economy-hub-156980607075.europe-west1.run.app`
+- **AgentRegistry Contract:** `0x9C2e68251E91dD9724feD8E6D270bC7542273d0C`
+- **TaskEscrow Contract:** `0xDF5455170BCE05D961c8643180f22361C0340DE0`
+- **USDC Token (Native Gas):** `0x0000000000000000000000000000000000000000` (Direct)
 
 ---
 
