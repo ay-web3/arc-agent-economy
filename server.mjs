@@ -654,6 +654,57 @@ const nanoState = {
     earnersToCredit: {}
 };
 
+// --- EIP-3009 CONFIG (CIRCLE x402) ---
+const EIP3009_DOMAIN = {
+    name: "USD Coin",
+    version: "2",
+    chainId: 10247, // ARC Testnet
+    verifyingContract: "0x0000000000000000000000000000000000000000" // To be replaced with USDC address
+};
+
+const TRANSFER_WITH_AUTHORIZATION_TYPE = {
+    TransferWithAuthorization: [
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "value", type: "uint256" },
+        { name: "validAfter", type: "uint256" },
+        { name: "validBefore", type: "uint256" },
+        { name: "nonce", type: "bytes32" }
+    ]
+};
+
+app.post('/nano/authorize', async (req, res) => {
+    try {
+        const { taskId, signature, authorization } = req.body;
+        const task = nanoState.tasks[taskId];
+        if (!task) return res.status(404).json({ error: "Task not found" });
+
+        // VERIFY CRYPTOGRAPHIC SIGNATURE (EIP-3009)
+        const { verifyTypedData } = await import('viem');
+        const isValid = await verifyTypedData({
+            address: authorization.from,
+            domain: { ...EIP3009_DOMAIN, verifyingContract: process.env.USDC_CA || EIP3009_DOMAIN.verifyingContract },
+            types: TRANSFER_WITH_AUTHORIZATION_TYPE,
+            primaryType: 'TransferWithAuthorization',
+            message: authorization,
+            signature
+        });
+
+        if (!isValid) {
+            console.error(`>> [x402] Invalid EIP-3009 Signature for Task #${taskId}`);
+            return res.status(401).json({ error: "Invalid payment authorization" });
+        }
+
+        task.authorization = { signature, ...authorization };
+        task.status = 'AUTHORIZED';
+        
+        console.log(`>> [x402] Task #${taskId} CRYPTOGRAPHICALLY AUTHORIZED by ${authorization.from}. Gas: $0.00`);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/nano/create', async (req, res) => {
     try {
         const { buyerAddress, amount, manifestHash } = req.body;
