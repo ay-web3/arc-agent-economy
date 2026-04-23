@@ -13,9 +13,9 @@ async function run() {
     console.log("[SYSTEM] Connecting to Sovereign Hub State Channel...");
     await sleep(1000);
 
-    const buyerSDK = new ArcManagedSDK({ orchestratorUrl: LOCAL_HUB, secretPath: './.buyer_secret' });
-    const sellerSDK = new ArcManagedSDK({ orchestratorUrl: LOCAL_HUB, secretPath: './.seller_secret' });
-    const verifierSDK = new ArcManagedSDK({ orchestratorUrl: LOCAL_HUB, secretPath: './.verifier_secret' });
+    const buyerSDK = new ArcManagedSDK({ orchestratorUrl: HUB_URL, secretPath: './.buyer_secret' });
+    const sellerSDK = new ArcManagedSDK({ orchestratorUrl: HUB_URL, secretPath: './.seller_secret' });
+    const verifierSDK = new ArcManagedSDK({ orchestratorUrl: HUB_URL, secretPath: './.verifier_secret' });
 
     console.log("[PROTOCOL] Syncing Off-Chain Identities...");
     const buyer = await buyerSDK.selfOnboard("Buyer_Alpha");

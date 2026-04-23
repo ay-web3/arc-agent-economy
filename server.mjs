@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
 import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
-import { GatewayClient } from '@circle-fin/x402-batching/client';
+import { GatewayClient } from '@circle-fin/x402-batching';
 import { createPublicClient, http, parseAbi } from 'viem';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
@@ -43,6 +43,17 @@ async function bootstrap() {
         if (API_KEY && ENTITY_SECRET) {
             client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
             console.log(">> [SENTINEL] Swarm Engines Operational (Keyless Mode).");
+        } else {
+            console.log(">> [WARNING] CIRCLE_API_KEY missing. Initializing MOCK Swarm Engines for Simulation.");
+            client = {
+                createWallets: async () => ({ 
+                    data: { wallets: [{ id: "mock-wallet-id", address: "0x" + crypto.randomBytes(20).toString('hex') }] } 
+                }),
+                createTransaction: async () => ({ data: { transaction: { id: "mock-tx-" + Date.now() } } }),
+                getTransaction: async () => ({ data: { transaction: { state: "COMPLETE", id: "mock-tx" } } }),
+                getWalletTokenBalance: async () => ({ data: { tokenBalances: [{ token: { symbol: 'USDC', id: 'mock-usdc' } }] } }),
+                createContractExecutionTransaction: async () => ({ data: { transaction: { id: "mock-contract-tx-" + Date.now() } } })
+            };
         }
 
         if (process.env.MONGODB_URI) {
@@ -50,6 +61,18 @@ async function bootstrap() {
             mongoPromise = mongoClient.connect().then(() => {
                 console.log(">> [SENTINEL] Memory Persistence Synchronized.");
             });
+        } else {
+            console.log(">> [WARNING] MONGODB_URI missing. Initializing MOCK Persistence.");
+            mongoClient = {
+                db: () => ({
+                    collection: () => ({
+                        findOne: async () => null,
+                        insertOne: async () => ({ insertedId: "mock-id" }),
+                        updateOne: async () => ({ modifiedCount: 1 })
+                    })
+                })
+            };
+            mongoPromise = Promise.resolve();
         }
 
         // --- CIRCLE x402 GATEWAY INITIALIZATION ---
@@ -61,6 +84,14 @@ async function bootstrap() {
                 blockchain: "ARC-TESTNET"
             });
             console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
+        } else {
+            console.log(">> [WARNING] GATEWAY offline. Initializing MOCK x402 Gateway.");
+            gateway = {
+                queuePayment: async (params) => {
+                    console.log(`>> [MOCK GATEWAY] Queued ${params.amount} USDC for ${params.recipientAddress}`);
+                    return { success: true };
+                }
+            };
         }
     } catch (e) {
         console.error(">> [FATAL] Logic Restoration Failed:", e.message);
@@ -149,6 +180,7 @@ app.get('/health', async (req, res) => {
         sdk: client ? "READY" : "BOOTING",
         gateway: gateway ? "READY" : "BOOTING",
         persistence: mongoClient ? "CONNECTED" : "OFFLINE",
+        error: SDK_LOAD_ERROR,
         time: new Date().toISOString()
     };
     res.status(isReady ? 200 : 503).json(status);
