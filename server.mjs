@@ -554,8 +554,12 @@ app.post('/execute/:action', async (req, res) => {
                 break;
             case "settle-nano":
                 payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "settleNanoBatch((address,uint256)[],(address,uint256)[])";
-                payload.abiParameters = [params.buyers, params.earners];
+                payload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
+                payload.abiParameters = [
+                    String(params.batchId || Date.now()),
+                    params.buyers.map(b => [b.agent, b.amount]),
+                    params.earners.map(e => [e.agent, e.amount])
+                ];
                 break;
             case "transfer":
                 // Standard Native Token Transfer (USDC on ARC)
@@ -730,37 +734,34 @@ app.post('/nano/approve', async (req, res) => {
 
         // BATCH TRIGGER
         if (nanoState.completedCount >= 3) {
-            console.log(`\n>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-            console.log(`>> Aggregating off-chain balances for Circle x402 Gateway Settlement...`);
-            console.log(`>> Earners to Credit: `, nanoState.earnersToCredit);
-            
             try {
-                const masterWalletId = process.env.MASTER_WALLET_ID;
-                if (!masterWalletId || !client) {
-                    throw new Error("Treasury wallet or Circle client not configured.");
-                }
+                // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
+                const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => ({
+                    agent: addr,
+                    amount: (BigInt(Math.floor(val * 1e9)) * BigInt(1e9)).toString()
+                }));
+                
+                const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => ({
+                    agent: addr,
+                    amount: (BigInt(Math.floor(val * 1e9)) * BigInt(1e9)).toString()
+                }));
 
-                // Get USDC Token ID
-                const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
-                const tokens = balancesResp.data?.tokenBalances || [];
-                const usdcToken = tokens.find(t => t.token?.symbol === 'USDC');
-                const usdcId = usdcToken ? usdcToken.token.id : process.env.USDC_TOKEN_ID;
+                console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
+                console.log(`>> [GATEWAY] Deduting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
+                
+                const settlePayload = {
+                    agentId: "Admin", 
+                    agentSecret: process.env.HUB_ADMIN_SECRET,
+                    batchId: Date.now(),
+                    buyers,
+                    earners
+                };
 
-                for (const [address, amount] of Object.entries(nanoState.earnersToCredit)) {
-                    // Send actual on-chain transaction from Treasury to Earner via Circle API
-                    const tx = await client.createTransaction({
-                        idempotencyKey: uuidv4(),
-                        walletId: masterWalletId,
-                        tokenId: usdcId,
-                        amounts: [String(amount)],
-                        destinationAddress: address,
-                        fee: { type: "level", config: { feeLevel: "MEDIUM" } } // Or SPONSORED if applicable
-                    });
-                    console.log(`>> [TREASURY] Sent ${amount} USDC to ${address}. TxID: ${tx.data.id}`);
-                }
-                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Executed On-Chain!`);
+                const settleResp = await axios.post(`http://localhost:${PORT}/execute/settle-nano`, settlePayload);
+
+                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${settleResp.data.txId}`);
             } catch (err) {
-                console.error(">> [GATEWAY ERROR] Failed to push batch:", err.message);
+                console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", err.message);
             }
 
             // Reset

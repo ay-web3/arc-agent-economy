@@ -43,7 +43,7 @@ contract DeployBalancedEconomy is Script {
         console2.log("TaskEscrow    :", address(escrow));
         console2.log("Admin/Treasury:", deployer);
         console2.log("--- Hybrid Economy Config ---");
-        console2.log("Engine A (Standard) Floor: 1.0 USDC");
-        console2.log("Engine B (Nano)         : HANDLED OFF-CHAIN VIA HUB");
+        console2.log("Engine A (Standard)   : Full On-Chain Escrow");
+        console2.log("Engine B (Nano/x402)  : On-Chain Ledger + Batch Settlement");
     }
 }

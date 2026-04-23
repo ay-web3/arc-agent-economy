@@ -32,6 +32,74 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     address public treasury;
     uint256 public taskCounter;
 
+    // --- ENGINE B: NANO STATE CHANNEL (CIRCLE x402 PATTERN) ---
+    mapping(address => uint256) public nanoDeposits;
+    
+    struct NanoPayout {
+        address agent;
+        uint256 amount;
+    }
+
+    event NanoDeposited(address indexed user, uint256 amount);
+    event NanoWithdrawn(address indexed user, uint256 amount);
+    event NanoBatchSettled(uint256 batchId, uint256 totalAmount);
+
+    /**
+     * @dev Buyers deposit native USDC into the contract to fund their off-chain nano-tasks.
+     * This is the "Prepaid Ledger" on-chain.
+     */
+    function depositNanoBalance() external payable {
+        require(msg.value > 0, "ZERO_DEPOSIT");
+        nanoDeposits[msg.sender] += msg.value;
+        emit NanoDeposited(msg.sender, msg.value);
+    }
+
+    /**
+     * @dev Hub calls this to settle a batch of off-chain tasks.
+     * This moves funds from the buyer's prepaid ledger to the earners' wallets.
+     */
+    function settleNanoBatch(
+        uint256 batchId,
+        NanoPayout[] calldata buyers,
+        NanoPayout[] calldata earners
+    ) external onlyRole(GOVERNANCE_ROLE) nonReentrant {
+        uint256 totalDeducted = 0;
+        uint256 totalCredited = 0;
+
+        // 1. Deduct from buyers' prepaid balances
+        for (uint256 i = 0; i < buyers.length; i++) {
+            require(nanoDeposits[buyers[i].agent] >= buyers[i].amount, "BUYER_DEFICIT");
+            nanoDeposits[buyers[i].agent] -= buyers[i].amount;
+            totalDeducted += buyers[i].amount;
+        }
+
+        // 2. Pay out earners (Sellers and Verifiers) directly to their wallets
+        for (uint256 i = 0; i < earners.length; i++) {
+            (bool ok,) = payable(earners[i].agent).call{value: earners[i].amount}("");
+            require(ok, "NANO_PAYOUT_FAIL");
+            totalCredited += earners[i].amount;
+        }
+
+        // 3. Send protocol fees (if any) to the treasury
+        if (totalDeducted > totalCredited) {
+            (bool okT,) = payable(treasury).call{value: totalDeducted - totalCredited}("");
+            require(okT, "TREASURY_FEE_FAIL");
+        }
+
+        emit NanoBatchSettled(batchId, totalDeducted);
+    }
+
+    function withdrawNanoBalance(uint256 amount) external nonReentrant {
+        require(nanoDeposits[msg.sender] >= amount, "INSUFFICIENT_NANO_BALANCE");
+        nanoDeposits[msg.sender] -= amount;
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
+        require(ok, "WITHDRAW_FAIL");
+        emit NanoWithdrawn(msg.sender, amount);
+    }
+
+    event DisputeOpened(uint256 indexed taskId, address indexed opener);
+    event DisputeResolved(uint256 indexed taskId, DisputeRuling ruling);
+
     enum State {
         NONE,
         CREATED,         
@@ -130,62 +198,6 @@ contract TaskEscrow is AccessControl, ReentrancyGuard {
     event TaskFinalized(uint256 indexed taskId);
     event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount);
     event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount); 
-
-    // ================= PREPAID NANO LEDGER =================
-    mapping(address => uint256) public nanoBalances;
-    
-    struct NanoPayout {
-        address agent;
-        uint256 amount;
-    }
-
-    event NanoDeposited(address indexed user, uint256 amount);
-    event NanoWithdrawn(address indexed user, uint256 amount);
-    event NanoBatchSettled(uint256 totalTasks, uint256 totalAmount);
-
-    function depositNanoBalance() external payable {
-        require(msg.value > 0, "ZERO_DEPOSIT");
-        nanoBalances[msg.sender] += msg.value;
-        emit NanoDeposited(msg.sender, msg.value);
-    }
-
-    function withdrawNanoBalance(uint256 amount) external nonReentrant {
-        require(nanoBalances[msg.sender] >= amount, "INSUFFICIENT_NANO_BALANCE");
-        nanoBalances[msg.sender] -= amount;
-        (bool ok,) = payable(msg.sender).call{value: amount}("");
-        require(ok, "WITHDRAW_FAIL");
-        emit NanoWithdrawn(msg.sender, amount);
-    }
-
-    // Hub calls this to settle aggregated off-chain tasks
-    function settleNanoBatch(
-        NanoPayout[] calldata buyers,
-        NanoPayout[] calldata earners
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        uint256 totalDeducted = 0;
-        uint256 totalCredited = 0;
-
-        // Deduct from buyers
-        for (uint256 i = 0; i < buyers.length; i++) {
-            require(nanoBalances[buyers[i].agent] >= buyers[i].amount, "BUYER_DEFICIT");
-            nanoBalances[buyers[i].agent] -= buyers[i].amount;
-            totalDeducted += buyers[i].amount;
-        }
-
-        // Credit to sellers and verifiers
-        for (uint256 i = 0; i < earners.length; i++) {
-            nanoBalances[earners[i].agent] += earners[i].amount;
-            totalCredited += earners[i].amount;
-        }
-
-        // The total deducted must equal total credited to prevent protocol inflation/deflation
-        require(totalDeducted == totalCredited, "BALANCE_MISMATCH");
-
-        emit NanoBatchSettled(buyers.length, totalDeducted);
-    }
-
-    event DisputeOpened(uint256 indexed taskId, address indexed opener);
-    event DisputeResolved(uint256 indexed taskId, DisputeRuling ruling);
 
     constructor(address registryAddress, address _treasury, uint256 _protocolFeeBps) {
         require(registryAddress != address(0), "BAD_REGISTRY");
