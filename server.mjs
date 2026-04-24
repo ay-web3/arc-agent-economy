@@ -22,10 +22,10 @@ let mongoPromise = null;
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
-    id: 10247,
+    id: 5042002,
     name: 'Arc Testnet',
     nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-    rpcUrls: { default: { http: ['https://rpc-testnet.arc.io'] } }
+    rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } }
 };
 
 const pc = createPublicClient({ chain: arcTestnet, transport: http() });
@@ -658,8 +658,8 @@ const nanoState = {
 const EIP3009_DOMAIN = {
     name: "USD Coin",
     version: "2",
-    chainId: 10247, // ARC Testnet
-    verifyingContract: "0x0000000000000000000000000000000000000000" // To be replaced with USDC address
+    chainId: 5042002, // ARC Testnet (Updated)
+    verifyingContract: "0x3600000000000000000000000000000000000000" // Official Native USDC
 };
 
 const TRANSFER_WITH_AUTHORIZATION_TYPE = {
