@@ -18,7 +18,9 @@ async function check() {
             functionName: 'balanceOf',
             args: [addr]
         });
-        console.log(`Balance of ${addr}: ${formatUnits(bal, 18)} USDC`);
+        console.log(`RAW Balance of ${addr}: ${bal.toString()}`);
+        console.log(`18-Decimal: ${formatUnits(bal, 18)} USDC`);
+        console.log(`6-Decimal: ${formatUnits(bal, 6)} USDC`);
     } catch (e) {
         console.error("Failed:", e.message);
     }

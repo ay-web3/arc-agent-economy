@@ -235,8 +235,9 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                 idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: [amount], // Dynamic
+                amounts: [amount.toString()], 
                 destinationAddress: address,
+                blockchain: "ARC-TESTNET",
                 fee: { type: "level", config: { feeLevel: "MEDIUM" } }
             });
         } catch (e1) {
@@ -247,8 +248,9 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
-                    amounts: [amount],
+                    amounts: [amount.toString()],
                     destinationAddress: address,
+                    blockchain: "ARC-TESTNET",
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 });
             } else {
