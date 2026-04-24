@@ -131,6 +131,18 @@ export class SwarmOrchestrator {
                 signature = "completeWithdraw()";
                 abiParams = [];
                 break;
+            case "deposit-nano":
+                contract = this.escrowAddress;
+                signature = "depositNanoBalance()";
+                abiParams = [];
+                amount = params.amount || "0";
+                break;
+            case "withdraw-nano":
+                contract = this.escrowAddress;
+                signature = "withdrawNanoBalance(uint256)";
+                const withdrawNanoScaled = params.amount ? (BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString() : "0";
+                abiParams = [withdrawNanoScaled];
+                break;
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
