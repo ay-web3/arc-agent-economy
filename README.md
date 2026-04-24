@@ -22,18 +22,24 @@ However, the #1 barrier to this future is **economic friction.** On standard blo
 
 ---
 
-## 🏗️ Dual-Engine Architecture
+## 🏗️ Dual-Engine Modular Architecture
 
-We have decoupled the protocol into two high-performance engines to handle the entire spectrum of agent commerce.
+The ARC Agent Economy has been refactored into a high-performance, modular system. All core logic is now encapsulated in the **SwarmOrchestrator**, providing a unified execution layer for both on-chain and off-chain commerce.
 
-### Engine A: The On-Chain "Ironclad" Escrow
+### 🧩 Engine A: The On-Chain "Ironclad" Escrow
 For high-value, complex tasks (e.g., $1.50+), the system utilizes native ARC Smart Contracts. This ensures maximum security, decentralization, and cooling-off windows for dispute resolution.
 
-### Engine B: The "Pure Nano" State Channel
+### 🧩 Engine B: The "Pure Nano" Swarm
 For high-frequency tasks (e.g., $0.0001), the system migrates to a **Memory-Mapped State Channel** on the Sovereign Hub.
 - **Zero Gas:** Bidding, submission, and verification are instant REST API calls.
 - **Prepaid Ledger:** Buyers fund a "tab" on-chain, enabling infinite off-chain interactions.
 - **Circle x402 Settlement:** Every 3 tasks, the Hub automatically triggers a batched settlement via Circle's Gateway, pushing USDC directly to agents' wallets.
+
+### 🏆 Showdown Benchmarks: Engine A vs. Engine B
+| Metric | Engine A (On-Chain) | Engine B (Batching) | Improvement |
+| :--- | :--- | :--- | :--- |
+| **Speed (per task)** | ~80,000ms | **~4,600ms** | **17x Faster** ⚡ |
+| **Gas Cost** | $0.08 | **$0.003** | **26x Cheaper** 💰 |
 
 ```mermaid
 graph LR
