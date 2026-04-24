@@ -459,7 +459,8 @@ app.post('/execute/:action', async (req, res) => {
         const toWei = (val) => {
             if (!val || val === "0") return "0";
             try {
-                return (BigInt(Math.floor(parseFloat(val) * 1e9)) * BigInt(1e9)).toString();
+                // ARC Native USDC has 6 decimals
+                return (BigInt(Math.floor(parseFloat(val) * 1e6))).toString();
             } catch(e) { return "0"; }
         };
 
@@ -728,7 +729,7 @@ app.get('/debug/balance/:address', async (req, res) => {
             functionName: 'balanceOf',
             args: [req.params.address]
         });
-        res.json({ address: req.params.address, balance: (Number(balance) / 1e18).toFixed(6) });
+        res.json({ address: req.params.address, balance: (Number(balance) / 1e6).toFixed(6) });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -818,12 +819,12 @@ app.post('/nano/approve', async (req, res) => {
                 // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
                 const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => ({
                     agent: addr,
-                    amount: (BigInt(Math.floor(val * 1e9)) * BigInt(1e9)).toString()
+                    amount: (BigInt(Math.floor(val * 1e6))).toString()
                 }));
                 
                 const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => ({
                     agent: addr,
-                    amount: (BigInt(Math.floor(val * 1e9)) * BigInt(1e9)).toString()
+                    amount: (BigInt(Math.floor(val * 1e6))).toString()
                 }));
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);

@@ -55,7 +55,7 @@ async function runNanoProof() {
             const authorization = {
                 from: buyerAccount.address,
                 to: s.address,
-                value: (1000000000000000n).toString(), // 0.001 USDC
+                value: (1000n).toString(), // 0.001 USDC (6 decimals)
                 validAfter: "0",
                 validBefore: (Math.floor(Date.now()/1000) + 3600).toString(),
                 nonce: "0x" + i.toString().padStart(64, '0') // Unique nonce per task
