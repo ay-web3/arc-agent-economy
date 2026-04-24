@@ -827,7 +827,7 @@ app.post('/nano/approve', async (req, res) => {
                 }));
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [GATEWAY] Deduting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
+                console.log(`>> [GATEWAY] Deducting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
                 
                 const settlePayload = {
                     agentId: "Admin", 
@@ -837,11 +837,16 @@ app.post('/nano/approve', async (req, res) => {
                     earners
                 };
 
-                const settleResp = await axios.post(`http://localhost:${PORT}/execute/settle-nano`, settlePayload);
+                const settleResp = await axios.post(`http://127.0.0.1:${PORT}/execute/settle-nano`, settlePayload);
 
-                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${settleResp.data.txId}`);
+                if (settleResp.data && settleResp.data.txId) {
+                    console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${settleResp.data.txId}`);
+                } else {
+                    console.warn(`>> [x402 GATEWAY] ⚠️ Settlement pushed but no TxID returned:`, JSON.stringify(settleResp.data));
+                }
             } catch (err) {
-                console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", err.message);
+                const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+                console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", errMsg);
             }
 
             // Reset
