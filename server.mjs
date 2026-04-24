@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
-import { createPublicClient, http, parseAbi } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -591,7 +591,6 @@ app.post('/execute/:action', async (req, res) => {
                 payload.amount = params.amount || params.value || "0";
                 break;
             case "settle-nano":
-                const { encodeFunctionData } = await import('viem');
                 payload.contractAddress = ESCROW;
                 payload.callData = encodeFunctionData({
                     abi: [{
@@ -894,7 +893,6 @@ app.post('/nano/approve', async (req, res) => {
                 const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
                 
                 // CRITICAL FIX: Manually encode callData to bypass Circle SDK packing issues
-                const { encodeFunctionData } = await import('viem');
                 const callData = encodeFunctionData({
                     abi: [{
                         name: "settleNanoBatch",
