@@ -596,6 +596,31 @@ app.post('/payout/nano', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+app.post('/funding/fuel', async (req, res) => {
+    try {
+        const { address, amount } = req.body;
+        console.log(`>> [TREASURY] Sponsoring Gas for Agent ${address}: ${amount} USDC`);
+        const payoutResp = await orchestrator.executeNanoPayout(address, amount);
+        res.json({ success: true, txId: payoutResp.data.id });
+    } catch (e) {
+        console.error(">> [FATAL] Fueling Failed:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/funding/balance/:address', async (req, res) => {
+    try {
+        const balance = await pc.readContract({
+            address: "0x3600000000000000000000000000000000000000", // Native USDC
+            abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+            functionName: 'balanceOf',
+            args: [req.params.address]
+        });
+        res.json({ address: req.params.address, balance: (Number(balance) / 1e18).toFixed(6) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // --- FINAL LISTENER: Bind only after all routes are registered ---
 
 // ================= OFF-CHAIN NANO STATE CHANNEL =================
