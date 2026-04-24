@@ -21,14 +21,16 @@ export class SwarmOrchestrator {
             apiKey: config.apiKey, 
             entitySecret: config.entitySecret 
         });
-        this.gateway = new GatewayClient({ 
-            gatewayAddress: config.gatewayAddress,
-            privateKey: config.privateKey,
-            chain: "arcTestnet" 
-        });
+        if (config.gateway) {
+            this.gateway = config.gateway;
+        }
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
         this.treasuryAddress = config.treasuryAddress;
+    }
+
+    setGateway(gateway) {
+        this.gateway = gateway;
     }
 
     padBytes32(hex) {

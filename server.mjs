@@ -102,6 +102,7 @@ async function bootstrap() {
                 privateKey: GATEWAY_KEY,
                 chain: "arcTestnet"
             });
+            if (orchestrator) orchestrator.setGateway(gateway);
             console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
         } else {
             console.log(">> [WARNING] GATEWAY offline. Initializing MOCK x402 Gateway.");
@@ -111,6 +112,7 @@ async function bootstrap() {
                     return { success: true };
                 }
             };
+            if (orchestrator) orchestrator.setGateway(gateway);
         }
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
