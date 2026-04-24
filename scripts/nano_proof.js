@@ -22,6 +22,8 @@ const TYPES = {
 };
 
 async function runNanoProof() {
+    console.log("[SYSTEM] Resetting Hub State...");
+    await axios.post(`${HUB_URL}/nano/reset`);
     console.log("[SYSTEM] Connecting to Sovereign Hub State Channel...");
 
     try {

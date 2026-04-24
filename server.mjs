@@ -850,6 +850,17 @@ app.post('/nano/bid', async (req, res) => {
     }
 });
 
+app.post('/nano/reset', (req, res) => {
+    nanoState = {
+        tasks: {},
+        buyersToDeduct: {},
+        earnersToCredit: {},
+        completedCount: 0
+    };
+    console.log(">> [NANO CHANNEL] State Reset to Zero.");
+    res.json({ success: true });
+});
+
 app.post('/nano/select', async (req, res) => {
     try {
         const { taskId, bidIndex } = req.body;
@@ -897,12 +908,12 @@ app.post('/nano/approve', async (req, res) => {
                 // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
                 const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e6))).toString()
+                    (BigInt(Math.floor(val * 1e18))).toString()
                 ]);
                 
                 const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e6))).toString()
+                    (BigInt(Math.floor(val * 1e18))).toString()
                 ]);
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
