@@ -155,6 +155,16 @@ async function getUsdcTokenId(walletId) {
 }
 
 // --- ENDPOINTS ---
+app.get('/debug/wallet/:id', async (req, res) => {
+    if (!client) return res.json({ error: "Engines Offline" });
+    try {
+        const wallet = await client.getWallet({ id: req.params.id });
+        res.json({ id: req.params.id, address: wallet.data.wallet.address });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/debug/wallets', async (req, res) => {
     if (!client) return res.json({ error: "Engines Offline" });
     try {
