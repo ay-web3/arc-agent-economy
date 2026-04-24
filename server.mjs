@@ -815,12 +815,15 @@ app.get('/debug/balance/:address', async (req, res) => {
 
 app.post('/nano/create', async (req, res) => {
     try {
-        const { buyerAddress, amount, manifestHash } = req.body;
-        const taskId = ++nanoState.taskCounter;
+        const { agentName, agentSecret, amount, manifestHash } = req.body;
+        const auth = await verifyAgent(agentName, agentSecret);
         
+        const taskId = ++nanoState.taskCounter;
+        const buyerAddr = auth.address.toLowerCase();
+
         nanoState.tasks[taskId] = {
             taskId,
-            buyer: buyerAddress,
+            buyer: buyerAddr,
             amount,
             manifestHash,
             bids: [],
@@ -829,24 +832,27 @@ app.post('/nano/create', async (req, res) => {
             status: 'CREATED'
         };
 
-        console.log(`>> [NANO CHANNEL] Off-chain Task ${taskId} Created by ${buyerAddress}. Gas: $0.00`);
+        console.log(`>> [NANO CHANNEL] Off-chain Task ${taskId} Created by ${buyerAddr}. Gas: $0.00`);
         res.json({ success: true, taskId });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(401).json({ error: e.message });
     }
 });
 
 app.post('/nano/bid', async (req, res) => {
     try {
-        const { taskId, sellerAddress, bidPrice } = req.body;
+        const { agentName, agentSecret, taskId, bidPrice } = req.body;
+        const auth = await verifyAgent(agentName, agentSecret);
+        
         const task = nanoState.tasks[taskId];
         if (!task) throw new Error("Task not found");
 
-        task.bids.push({ seller: sellerAddress, bidPrice });
-        console.log(`>> [NANO CHANNEL] Off-chain Bid received for Task ${taskId}. Gas: $0.00`);
+        const sellerAddr = auth.address.toLowerCase();
+        task.bids.push({ seller: sellerAddr, bidPrice });
+        console.log(`>> [NANO CHANNEL] Off-chain Bid received for Task ${taskId} from ${sellerAddr}. Gas: $0.00`);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(401).json({ error: e.message });
     }
 });
 
@@ -864,36 +870,51 @@ app.post('/nano/reset', (req, res) => {
 
 app.post('/nano/select', async (req, res) => {
     try {
-        const { taskId, bidIndex } = req.body;
+        const { agentName, agentSecret, taskId, bidIndex } = req.body;
+        const auth = await verifyAgent(agentName, agentSecret);
+        
         const task = nanoState.tasks[taskId];
+        if (!task) throw new Error("Task not found");
+        if (task.buyer !== auth.address.toLowerCase()) throw new Error("Not authorized to select bids for this task");
+
         task.selectedBid = task.bids[bidIndex];
         task.status = 'ACCEPTED';
-        console.log(`>> [NANO CHANNEL] Bid Selected off-chain. Gas: $0.00`);
+        console.log(`>> [NANO CHANNEL] Bid Selected off-chain by ${auth.address}. Gas: $0.00`);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(401).json({ error: e.message });
     }
 });
 
 app.post('/nano/submit', async (req, res) => {
     try {
-        const { taskId, resultURI } = req.body;
+        const { agentName, agentSecret, taskId, resultURI } = req.body;
+        const auth = await verifyAgent(agentName, agentSecret);
+        
         const task = nanoState.tasks[taskId];
+        if (!task) throw new Error("Task not found");
+        if (task.selectedBid.seller !== auth.address.toLowerCase()) throw new Error("Not authorized to submit work for this task");
+
         task.resultUri = resultURI;
         task.status = 'SUBMITTED';
-        console.log(`>> [NANO CHANNEL] Work Submitted off-chain: ${resultURI}. Gas: $0.00`);
+        console.log(`>> [NANO CHANNEL] Work Submitted off-chain by ${auth.address}. Gas: $0.00`);
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(401).json({ error: e.message });
     }
 });
 
 app.post('/nano/approve', async (req, res) => {
     try {
-        const { taskId, verifierAddress } = req.body;
+        const { agentName, agentSecret, taskId, verifierAddress } = req.body;
+        const auth = await verifyAgent(agentName, agentSecret);
+        
         const task = nanoState.tasks[taskId];
+        if (!task) throw new Error("Task not found");
+        
+        // Verifier must be authorized (for demo, any valid agent can verify)
         task.status = 'COMPLETED';
-        console.log(`>> [NANO CHANNEL] Verification Approved off-chain. Gas: $0.00`);
+        console.log(`>> [NANO CHANNEL] Verification Approved off-chain by ${auth.address}. Gas: $0.00`);
 
         // Tally balances
         const price = parseFloat(task.selectedBid.bidPrice);

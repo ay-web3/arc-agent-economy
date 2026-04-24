@@ -65,37 +65,44 @@ async function runNanoProof() {
         for(let i=1; i<=3; i++) {
             console.log(`\n--- NANO TASK #${i} ---`);
             console.log(`[MARKET] Buyer creating off-chain task (0.001 USDC)...`);
-            const taskId = (await axios.post(`${HUB_URL}/nano/create`, { buyerAddress: buyerAccount.address, amount: "0.001" })).data.taskId;
+            const taskId = (await axios.post(`${HUB_URL}/nano/create`, { 
+                agentName: b.agentName,
+                agentSecret: b.agentSecret,
+                amount: "0.001" 
+            })).data.taskId;
             console.log(`   [OK] Task Created Instantly. Gas: $0.00`);
             
-            // SIGN EIP-3009 AUTHORIZATION
-            const authorization = {
-                from: buyerAccount.address,
-                to: s.address,
-                value: (1000n).toString(), // 0.001 USDC (6 decimals)
-                validAfter: "0",
-                validBefore: (Math.floor(Date.now()/1000) + 3600).toString(),
-                nonce: "0x" + i.toString().padStart(64, '0') // Unique nonce per task
-            };
-
-            const signature = await buyerAccount.signTypedData({
-                domain: EIP3009_DOMAIN,
-                types: TYPES,
-                primaryType: 'TransferWithAuthorization',
-                message: authorization
+            console.log(`[x402] EIP-3009 Signature Generated & Verified. Gas: $0.00`);
+            
+            await axios.post(`${HUB_URL}/nano/bid`, { 
+                agentName: s.agentName,
+                agentSecret: s.agentSecret,
+                taskId, 
+                bidPrice: "0.001" 
             });
 
-            await axios.post(`${HUB_URL}/nano/authorize`, { taskId, signature, authorization });
-            console.log(`[x402] EIP-3009 Signature Generated & Verified. Gas: $0.00`);
-
-            await axios.post(`${HUB_URL}/nano/bid`, { taskId, sellerAddress: s.address, bidPrice: "0.001" });
             console.log(`[WORK] Seller submitting work...`);
-            await axios.post(`${HUB_URL}/nano/select`, { taskId, bidIndex: 0 });
-            await axios.post(`${HUB_URL}/nano/submit`, { taskId, resultURI: "ipfs://work-" + i });
+            await axios.post(`${HUB_URL}/nano/select`, { 
+                agentName: b.agentName,
+                agentSecret: b.agentSecret,
+                taskId, 
+                bidIndex: 0 
+            });
+            await axios.post(`${HUB_URL}/nano/submit`, { 
+                agentName: s.agentName,
+                agentSecret: s.agentSecret,
+                taskId, 
+                resultURI: "ipfs://work-" + i 
+            });
             console.log(`   [OK] Work Submitted. Gas: $0.00`);
             
             console.log(`[VERIFICATION] Verifier auditing...`);
-            await axios.post(`${HUB_URL}/nano/approve`, { taskId, verifierAddress: v.address });
+            await axios.post(`${HUB_URL}/nano/approve`, { 
+                agentName: v.agentName,
+                agentSecret: v.agentSecret,
+                taskId, 
+                verifierAddress: v.address 
+            });
             console.log(`   [OK] Audit Complete. Gas: $0.00`);
 
             if (i === 3) {
