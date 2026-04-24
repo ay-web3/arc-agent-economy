@@ -6,7 +6,7 @@ const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app
 const ESCROW_ADDR = "0xDF5455170BCE05D961c8643180f22361C0340DE0"; 
 const EXPLORER_BASE = "https://explorer.testnet.arc.network/tx/";
 
-const client = createPublicClient({ 
+const pc = createPublicClient({ 
     chain: { id: 5042002, name: 'ARC', nativeCurrency: { decimals: 18, name: 'USDC', symbol: 'USDC' }, rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } } }, 
     transport: http() 
 });
@@ -32,9 +32,9 @@ async function runShowdown() {
         const v_a = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_A_" + ts })).data;
 
         console.log(">> Fueling Agents (Gas Sponsorship)...");
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=0.1`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=0.1`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=0.1`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=6.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=2.0`);
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");
@@ -44,14 +44,14 @@ async function runShowdown() {
         console.log(`   Verifier Registered: ${EXPLORER_BASE}${r2.data.txId}`);
         await sleep(15000);
 
-        const currentCounter = await client.readContract({ address: ESCROW_ADDR, abi, functionName: 'taskCounter' });
+        const currentCounter = await pc.readContract({ address: ESCROW_ADDR, abi: parseAbi(['function taskCounter() view returns (uint256)']), functionName: 'taskCounter' });
         const taskId = Number(currentCounter) + 1;
 
-        console.log(`>> Creating Task ${taskId} on-chain...`);
+        console.log(`>> Creating Task ${taskId} on-chain (5.0 USDC)...`);
         const t1 = Date.now();
         const r3 = await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: b_a.agentId, agentSecret: b_a.agentSecret,
-            amount: "1.0", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
+            amount: "5.0", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
             taskHash: "0x" + "1".repeat(64), verifiers: [v_a.address], quorumM: 1
         });
         console.log(`   Task Created: ${EXPLORER_BASE}${r3.data.txId}`);
@@ -89,9 +89,9 @@ async function runShowdown() {
         const b_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Buyer_B_" + ts })).data;
         const s_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Seller_B_" + ts })).data;
         const v_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_B_" + ts })).data;
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_b.address}?amount=1.2`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_b.address}?amount=1.2`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_b.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_b.address}?amount=1.3`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_b.address}?amount=1.3`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_b.address}?amount=1.3`);
         await sleep(20000);
 
         console.log(">> Registering & Staking Swarm Agents...");
@@ -100,7 +100,7 @@ async function runShowdown() {
         await sleep(15000);
 
         console.log(">> Pre-funding Engine B Escrow (1 On-Chain Deposit)...");
-        const r9 = await axios.post(`${HUB_URL}/execute/deposit-nano`, { agentId: b_b.agentId, agentSecret: b_b.agentSecret, amount: "0.1" });
+        const r9 = await axios.post(`${HUB_URL}/execute/deposit-nano`, { agentId: b_b.agentId, agentSecret: b_b.agentSecret, amount: "0.5" });
         console.log(`   Escrow Funded: ${EXPLORER_BASE}${r9.data.txId}`);
         await sleep(15000);
 
