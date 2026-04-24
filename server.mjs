@@ -489,7 +489,7 @@ app.post('/execute/:action', async (req, res) => {
         const auth = await verifyAgent(effectiveName, payload.agentSecret);
         const walletId = auth.walletId;
         const params = payload; 
-        let payload = {
+        let executionPayload = {
             idempotencyKey: uuidv4(),
             walletId: walletId,
             blockchain: "ARC-TESTNET",
@@ -521,28 +521,28 @@ app.post('/execute/:action', async (req, res) => {
 
         switch(action) {
             case "register":
-                payload.contractAddress = REGISTRY;
-                payload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
-                payload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
+                executionPayload.contractAddress = REGISTRY;
+                executionPayload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
+                executionPayload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
                 // FIX: Circle SDK expects human-readable strings (e.g. "8"), it handles wei conversion internally!
-                payload.amount = params.amount || params.stake || "0"; 
+                executionPayload.amount = params.amount || params.stake || "0"; 
                 break;
             case "settle-nano":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
-                payload.abiParameters = [
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
+                executionPayload.abiParameters = [
                     String(params.batchId),
                     params.buyers.map(b => [b.agent, b.amount]),
                     params.earners.map(e => [e.agent, e.amount])
                 ];
                 break;
             case "createOpenTask":
-                payload.contractAddress = ESCROW;
+                executionPayload.contractAddress = ESCROW;
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
                 const taskAbi = parseAbi([
                     'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM) external payable returns (uint256 taskId)'
                 ]);
-                payload.callData = encodeFunctionData({
+                executionPayload.callData = encodeFunctionData({
                     abi: taskAbi,
                     functionName: 'createOpenTask',
                     args: [
@@ -555,47 +555,47 @@ app.post('/execute/:action', async (req, res) => {
                     ]
                 });
                 // callData is mutually exclusive with abiFunctionSignature/abiParameters
-                delete payload.abiFunctionSignature;
-                delete payload.abiParameters;
-                payload.amount = params.amount || params.value || "0";
+                delete executionPayload.abiFunctionSignature;
+                delete executionPayload.abiParameters;
+                executionPayload.amount = params.amount || params.value || "0";
                 break;
             case "placeBid":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
                 // Resilient parameter mapping
                 const bidPrice = params.bidPrice || params.price || "0";
                 const eta = params.etaSeconds || params.eta || "0";
                 const meta = params.metaHash || params.meta || "0x0";
-                payload.abiParameters = [String(params.taskId), toWei(bidPrice), String(eta), pad32(meta)];
+                executionPayload.abiParameters = [String(params.taskId), toWei(bidPrice), String(eta), pad32(meta)];
                 break;
             case "selectBid":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "selectBid(uint256,uint256)";
-                payload.abiParameters = [String(params.taskId), String(params.bidIndex)];
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "selectBid(uint256,uint256)";
+                executionPayload.abiParameters = [String(params.taskId), String(params.bidIndex)];
                 break;
             case "submitWork":
             case "submitResult":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
                 const rHash = params.resultHash || params.hash || "0x0";
                 const rUri = params.resultURI || params.uri || "";
-                payload.abiParameters = [String(params.taskId), pad32(rHash), rUri];
+                executionPayload.abiParameters = [String(params.taskId), pad32(rHash), rUri];
                 break;
             case "approve":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "approve(uint256)";
-                payload.abiParameters = [String(params.taskId)];
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "approve(uint256)";
+                executionPayload.abiParameters = [String(params.taskId)];
                 break;
             case "finalize":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "finalize(uint256)";
-                payload.abiParameters = [String(params.taskId)];
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "finalize(uint256)";
+                executionPayload.abiParameters = [String(params.taskId)];
                 break;
             case "topUpStake":
-                payload.contractAddress = REGISTRY;
-                payload.abiFunctionSignature = "topUpStake()";
-                payload.abiParameters = [];
-                payload.amount = params.amount || "0";
+                executionPayload.contractAddress = REGISTRY;
+                executionPayload.abiFunctionSignature = "topUpStake()";
+                executionPayload.abiParameters = [];
+                executionPayload.amount = params.amount || "0";
                 break;
             case "list-wallets":
                 const listResp = await client.listWallets({ walletSetId: process.env.WALLET_SET_ID });
@@ -604,14 +604,14 @@ app.post('/execute/:action', async (req, res) => {
                 const setResp = await client.listWalletSets();
                 return res.json({ success: true, walletSets: setResp.data.walletSets });
             case "deposit-nano":
-                payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "depositNanoBalance()";
-                payload.abiParameters = [];
-                payload.amount = params.amount || params.value || "0";
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.abiFunctionSignature = "depositNanoBalance()";
+                executionPayload.abiParameters = [];
+                executionPayload.amount = params.amount || params.value || "0";
                 break;
             case "settle-nano":
-                payload.contractAddress = ESCROW;
-                payload.callData = encodeFunctionData({
+                executionPayload.contractAddress = ESCROW;
+                executionPayload.callData = encodeFunctionData({
                     abi: [{
                         name: "settleNanoBatch",
                         type: "function",
@@ -644,20 +644,20 @@ app.post('/execute/:action', async (req, res) => {
                 break;
             case "transfer":
                 // Standard Native Token Transfer (USDC on ARC)
-                delete payload.contractAddress;
-                delete payload.abiFunctionSignature;
-                delete payload.abiParameters;
-                payload.destinationAddress = params.recipient || params.to;
-                payload.amounts = [String(params.amount || params.value)];
+                delete executionPayload.contractAddress;
+                delete executionPayload.abiFunctionSignature;
+                delete executionPayload.abiParameters;
+                executionPayload.destinationAddress = params.recipient || params.to;
+                executionPayload.amounts = [String(params.amount || params.value)];
                 // Circle SDK createTransaction uses different structure than contract execution
                 console.log(">> [DEBUG] Executing Transfer...");
-                const txResp = await client.createTransaction(payload);
+                const txResp = await client.createTransaction(executionPayload);
                 return res.json({ success: true, txId: txResp.data.transaction?.id });
             default:
                 return res.status(400).json({ error: "Unknown action" });
         }
-        console.log(">> [DEBUG] Circle Payload:", JSON.stringify(payload, null, 2));
-        const resp = await client.createContractExecutionTransaction(payload);
+        console.log(">> [DEBUG] Circle Payload:", JSON.stringify(executionPayload, null, 2));
+        const resp = await client.createContractExecutionTransaction(executionPayload);
         console.log(">> [DEBUG] Circle Response:", JSON.stringify(resp.data, null, 2));
         
         const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
