@@ -24,7 +24,7 @@ let mongoPromise = null;
 const arcTestnet = {
     id: 5042002,
     name: 'Arc Testnet',
-    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
     rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } }
 };
 
@@ -95,8 +95,9 @@ async function bootstrap() {
             };
         }
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
-        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-        if (client && MASTER_WALLET_ID && ESCROW) {
+        const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+        const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
+        if (client && MASTER_WALLET_ID) {
             try {
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
                 const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
