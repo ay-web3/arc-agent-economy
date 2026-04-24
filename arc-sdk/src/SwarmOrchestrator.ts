@@ -1,4 +1,4 @@
-import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,8 +8,8 @@ export interface SwarmMasterConfig {
     privateKey: string;
     registryAddress: string;
     escrowAddress: string;
-    gatewayAddress: string; // New: Circle Gateway for Batching
-    treasuryAddress: string; // New: Destination for protocol fees
+    gatewayAddress: string; 
+    treasuryAddress: string; 
 }
 
 /**
@@ -19,14 +19,17 @@ export interface SwarmMasterConfig {
  * It listens to requests from "Zero-Secret" agents and executes them on their behalf.
  */
 export class SwarmOrchestrator {
-    private client: CircleDeveloperControlledWalletsClient;
+    private client: any;
     private gateway: GatewayClient;
     private registryAddress: string;
     private escrowAddress: string;
     private treasuryAddress: string;
 
     constructor(config: SwarmMasterConfig) {
-        this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
+        this.client = initiateDeveloperControlledWalletsClient({ 
+            apiKey: config.apiKey, 
+            entitySecret: config.entitySecret 
+        });
         this.gateway = new GatewayClient({ 
             gatewayAddress: config.gatewayAddress,
             privateKey: config.privateKey,
@@ -111,7 +114,7 @@ export class SwarmOrchestrator {
                 throw new Error("Unknown action");
         }
 
-        return (this.client as any).createContractExecutionTransaction({
+        return this.client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
             walletId: agentWalletId,
             blockchain: "ARC-TESTNET",

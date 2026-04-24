@@ -1,4 +1,4 @@
-import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,7 +16,10 @@ export class SwarmOrchestrator {
     treasuryAddress;
 
     constructor(config) {
-        this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
+        this.client = initiateDeveloperControlledWalletsClient({ 
+            apiKey: config.apiKey, 
+            entitySecret: config.entitySecret 
+        });
         this.gateway = new GatewayClient({ 
             gatewayAddress: config.gatewayAddress,
             privateKey: config.privateKey,
