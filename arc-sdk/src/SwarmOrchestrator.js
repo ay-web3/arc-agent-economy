@@ -62,13 +62,17 @@ export class SwarmOrchestrator {
             case "createOpenTask":
                 contract = this.escrowAddress;
                 signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)";
+                let verifiers = params.verifiers || [];
+                if (typeof verifiers === 'string') verifiers = [verifiers];
+                if (!Array.isArray(verifiers)) verifiers = [];
+                
                 abiParams = [
                     String(params.jobDeadline || 0), 
                     String(params.bidDeadline || 0), 
                     String(params.verifierDeadline || 0), 
                     params.taskHash || "0x" + "0".repeat(64), 
-                    params.verifiers || [], 
-                    Number(params.quorumM || 1)
+                    verifiers, 
+                    String(params.quorumM || 1)
                 ];
                 amount = params.value || params.amount || "0";
                 break;
