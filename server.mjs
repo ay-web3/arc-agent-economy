@@ -614,8 +614,10 @@ app.post('/execute/:action', async (req, res) => {
         }
         console.log(">> [DEBUG] Circle Payload:", JSON.stringify(payload, null, 2));
         const resp = await client.createContractExecutionTransaction(payload);
-        const txId = resp.data.transaction?.id || resp.data?.id;
-        res.json({ success: true, txId });
+        console.log(">> [DEBUG] Circle Response:", JSON.stringify(resp.data, null, 2));
+        
+        const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
+        res.json({ success: true, txId, raw: resp.data });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(">> [FATAL] Contract Execution Failed:", errorDetail);
