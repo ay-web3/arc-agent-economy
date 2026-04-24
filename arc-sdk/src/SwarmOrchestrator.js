@@ -1,26 +1,38 @@
 import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
+import { GatewayClient } from '@circle-fin/x402-batching';
 import { v4 as uuidv4 } from 'uuid';
+
 /**
  * @title SwarmOrchestrator
- * @dev The "Swarm Master" logic.
+ * @dev The "Swarm Master" logic. 
  * This is the ONLY component that holds the Circle API Key and Entity Secret.
  * It listens to requests from "Zero-Secret" agents and executes them on their behalf.
  */
 export class SwarmOrchestrator {
     client;
+    gateway;
     registryAddress;
     escrowAddress;
+    treasuryAddress;
+
     constructor(config) {
         this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
+        this.gateway = new GatewayClient({ 
+            gatewayAddress: config.gatewayAddress,
+            blockchain: "ARC-TESTNET" 
+        });
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
+        this.treasuryAddress = config.treasuryAddress;
     }
+
     async executeForAgent(agentWalletId, action, params) {
         let signature = "";
         let contract = "";
         let abiParams = [];
         let amount = "0";
-        switch (action) {
+
+        switch(action) {
             case "register":
                 contract = this.registryAddress;
                 signature = "register(bool,bool,bytes32,bytes32)";
@@ -41,7 +53,7 @@ export class SwarmOrchestrator {
             case "placeBid":
                 contract = this.escrowAddress;
                 signature = "placeBid(uint256,uint256,uint64,bytes32)";
-                abiParams = [params.taskId, (parseFloat(params.price) * 10 ** 18).toString(), params.eta.toString(), params.meta];
+                abiParams = [params.taskId, (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString(), params.eta.toString(), params.meta];
                 break;
             case "selectBid":
                 contract = this.escrowAddress;
@@ -71,7 +83,7 @@ export class SwarmOrchestrator {
             case "requestWithdraw":
                 contract = this.registryAddress;
                 signature = "requestWithdraw(uint256)";
-                abiParams = [(parseFloat(params.amount) * 10 ** 18).toString()];
+                abiParams = [(BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString()];
                 break;
             case "topUpStake":
                 contract = this.registryAddress;
@@ -87,6 +99,7 @@ export class SwarmOrchestrator {
             default:
                 throw new Error("Unknown action");
         }
+
         return this.client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
             walletId: agentWalletId,
@@ -98,5 +111,15 @@ export class SwarmOrchestrator {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
     }
+
+    /**
+     * @dev Fulfills a Nano-Payment authorization via the Circle Batcher.
+     */
+    async executeNanoPayout(recipient, amount) {
+        return this.gateway.pay({
+            amount: amount,
+            recipient: recipient,
+            currency: "USDC"
+        });
+    }
 }
-//# sourceMappingURL=SwarmOrchestrator.js.map

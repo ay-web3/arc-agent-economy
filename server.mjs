@@ -6,6 +6,7 @@ import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -22,6 +23,7 @@ let SDK_LOAD_ERROR = null;
 let mongoClient = null;
 let mongoPromise = null;
 let MASTER_ADDRESS = null;
+let orchestrator = null;
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -45,7 +47,18 @@ async function bootstrap() {
 
         if (API_KEY && ENTITY_SECRET) {
             client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
-            console.log(">> [SENTINEL] Swarm Engines Operational (Keyless Mode).");
+            
+            // Initialize Modular Orchestrator
+            orchestrator = new SwarmOrchestrator({
+                apiKey: API_KEY,
+                entitySecret: ENTITY_SECRET,
+                registryAddress: process.env.REGISTRY_CA || "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C",
+                escrowAddress: process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0",
+                gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+                treasuryAddress: MASTER_WALLET_ID
+            });
+
+            console.log(">> [SENTINEL] Swarm Engines Operational (Modular Mode).");
         } else {
             console.log(">> [WARNING] CIRCLE_API_KEY missing. Initializing MOCK Swarm Engines for Simulation.");
             client = {
@@ -492,7 +505,7 @@ app.post('/onboard', async (req, res) => {
 });
 
 app.post('/execute/:action', async (req, res) => {
-    if (!client) return res.status(503).json({ error: "Initializing Hub" });
+    if (!client || !orchestrator) return res.status(503).json({ error: "Initializing Hub" });
     const { action } = req.params;
     
     // Aligns with ArcManagedSDK top-level spread pattern (...params)
@@ -502,183 +515,16 @@ app.post('/execute/:action', async (req, res) => {
     try {
         const auth = await verifyAgent(effectiveName, payload.agentSecret);
         const walletId = auth.walletId;
-        const params = payload; 
-        let executionPayload = {
-            idempotencyKey: uuidv4(),
-            walletId: walletId,
-            blockchain: "ARC-TESTNET",
-            contractAddress: "",
-            abiFunctionSignature: "",
-            abiParameters: [],
-            amount: "0",
-            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        };
-
-        const IDENTITY_REGISTRY = process.env.IDENTITY_REGISTRY_CA || "0x8004A818BFB912233c491871b3d84c89A494BD9e";
-        const REGISTRY = process.env.REGISTRY_CA || "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C";
-        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-        const GATEWAY = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
-
-        const toWei = (val) => {
-            if (!val || val === "0") return "0";
-            try {
-                // ARC Native USDC has 6 decimals
-                return (BigInt(Math.floor(parseFloat(val) * 1e6))).toString();
-            } catch(e) { return "0"; }
-        };
-
-        const pad32 = (hex) => {
-            if (!hex) return "0x" + "0".repeat(64);
-            if (hex.startsWith("0x")) hex = hex.slice(2);
-            return "0x" + hex.padEnd(64, '0');
-        };
-
-        switch(action) {
-            case "register":
-                executionPayload.contractAddress = REGISTRY;
-                executionPayload.abiFunctionSignature = "register(bool,bool,bytes32,bytes32)";
-                executionPayload.abiParameters = [String(params.asSeller), String(params.asVerifier), pad32(params.capHash), pad32(params.pubKey)];
-                // FIX: Circle SDK expects human-readable strings (e.g. "8"), it handles wei conversion internally!
-                executionPayload.amount = params.amount || params.stake || "0"; 
-                break;
-            case "settle-nano":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
-                executionPayload.abiParameters = [
-                    String(params.batchId),
-                    params.buyers.map(b => [b.agent, b.amount]),
-                    params.earners.map(e => [e.agent, e.amount])
-                ];
-                break;
-            case "createOpenTask":
-                executionPayload.contractAddress = ESCROW;
-                const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
-                const taskAbi = parseAbi([
-                    'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM) external payable returns (uint256 taskId)'
-                ]);
-                executionPayload.callData = encodeFunctionData({
-                    abi: taskAbi,
-                    functionName: 'createOpenTask',
-                    args: [
-                        BigInt(params.jobDeadline),
-                        BigInt(params.bidDeadline),
-                        BigInt(params.verifierDeadline),
-                        pad32(params.taskHash),
-                        vArr,
-                        Number(params.quorumM)
-                    ]
-                });
-                // callData is mutually exclusive with abiFunctionSignature/abiParameters
-                delete executionPayload.abiFunctionSignature;
-                delete executionPayload.abiParameters;
-                executionPayload.amount = params.amount || params.value || "0";
-                break;
-            case "placeBid":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "placeBid(uint256,uint256,uint64,bytes32)";
-                // Resilient parameter mapping
-                const bidPrice = params.bidPrice || params.price || "0";
-                const eta = params.etaSeconds || params.eta || "0";
-                const meta = params.metaHash || params.meta || "0x0";
-                executionPayload.abiParameters = [String(params.taskId), toWei(bidPrice), String(eta), pad32(meta)];
-                break;
-            case "selectBid":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "selectBid(uint256,uint256)";
-                executionPayload.abiParameters = [String(params.taskId), String(params.bidIndex)];
-                break;
-            case "submitWork":
-            case "submitResult":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "submitResult(uint256,bytes32,string)";
-                const rHash = params.resultHash || params.hash || "0x0";
-                const rUri = params.resultURI || params.uri || "";
-                executionPayload.abiParameters = [String(params.taskId), pad32(rHash), rUri];
-                break;
-            case "approve":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "approve(uint256)";
-                executionPayload.abiParameters = [String(params.taskId)];
-                break;
-            case "finalize":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "finalize(uint256)";
-                executionPayload.abiParameters = [String(params.taskId)];
-                break;
-            case "topUpStake":
-                executionPayload.contractAddress = REGISTRY;
-                executionPayload.abiFunctionSignature = "topUpStake()";
-                executionPayload.abiParameters = [];
-                executionPayload.amount = params.amount || "0";
-                break;
-            case "list-wallets":
-                const listResp = await client.listWallets({ walletSetId: process.env.WALLET_SET_ID });
-                return res.json({ success: true, wallets: listResp.data.wallets.map(w => ({ id: w.id, address: w.address })) });
-            case "list-wallet-sets":
-                const setResp = await client.listWalletSets();
-                return res.json({ success: true, walletSets: setResp.data.walletSets });
-            case "deposit-nano":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.abiFunctionSignature = "depositNanoBalance()";
-                executionPayload.abiParameters = [];
-                executionPayload.amount = params.amount || params.value || "0";
-                break;
-            case "settle-nano":
-                executionPayload.contractAddress = ESCROW;
-                executionPayload.callData = encodeFunctionData({
-                    abi: [{
-                        name: "settleNanoBatch",
-                        type: "function",
-                        inputs: [
-                            { name: "batchId", type: "uint256" },
-                            {
-                                name: "buyers",
-                                type: "tuple[]",
-                                components: [
-                                    { name: "agent", type: "address" },
-                                    { name: "amount", type: "uint256" }
-                                ]
-                            },
-                            {
-                                name: "earners",
-                                type: "tuple[]",
-                                components: [
-                                    { name: "agent", type: "address" },
-                                    { name: "amount", type: "uint256" }
-                                ]
-                            }
-                        ]
-                    }],
-                    args: [
-                        BigInt(params.batchId || Math.floor(Date.now() / 1000)),
-                        params.buyers.map(b => ({ agent: b.agent, amount: BigInt(b.amount) })),
-                        params.earners.map(e => ({ agent: e.agent, amount: BigInt(e.amount) }))
-                    ]
-                });
-                break;
-            case "transfer":
-                // Standard Native Token Transfer (USDC on ARC)
-                delete executionPayload.contractAddress;
-                delete executionPayload.abiFunctionSignature;
-                delete executionPayload.abiParameters;
-                executionPayload.destinationAddress = params.recipient || params.to;
-                executionPayload.amounts = [String(params.amount || params.value)];
-                // Circle SDK createTransaction uses different structure than contract execution
-                console.log(">> [DEBUG] Executing Transfer...");
-                const txResp = await client.createTransaction(executionPayload);
-                return res.json({ success: true, txId: txResp.data.transaction?.id });
-            default:
-                return res.status(400).json({ error: "Unknown action" });
-        }
-        console.log(">> [DEBUG] Circle Payload:", JSON.stringify(executionPayload, null, 2));
-        const resp = await client.createContractExecutionTransaction(executionPayload);
-        console.log(">> [DEBUG] Circle Response:", JSON.stringify(resp.data, null, 2));
         
-        const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
-        res.json({ success: true, txId, raw: resp.data });
+        console.log(`>> [SENTINEL] Executing Modular Action: ${action} for ${effectiveName}...`);
+        
+        // DELEGATE TO ORCHESTRATOR
+        const tx = await orchestrator.executeForAgent(walletId, action, payload);
+        
+        res.json({ success: true, transaction: tx.data });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-        console.error(">> [FATAL] Contract Execution Failed:", errorDetail);
+        console.error(`>> [FATAL] Action ${action} Failed:`, errorDetail);
         res.status(500).json({ error: errorDetail });
     }
 });
@@ -720,17 +566,8 @@ app.post('/payout/nano', async (req, res) => {
             throw new Error("No USDC token balance found in the Hub Treasury (MASTER_WALLET_ID).");
         }
 
-        // Execute Nano-Settlement via Circle SDK
-        const payoutPayload = {
-            walletId: masterWalletId,
-            tokenId: usdcToken.token.id,
-            destinationAddress: recipient,
-            amounts: [String(amount)],
-            fee: { type: "SPONSORED" }, // Hub sponsors the nano-settlement gas
-            idempotencyKey: uuidv4()
-        };
-
-        const payoutResp = await client.createTransaction(payoutPayload);
+        // Execute Nano-Settlement via Modular Orchestrator
+        const payoutResp = await orchestrator.executeNanoPayout(recipient, amount);
         
         res.json({ success: true, transaction: payoutResp.data });
     } catch (e) {

@@ -62,7 +62,7 @@ export class SwarmOrchestrator {
             case "placeBid":
                 contract = this.escrowAddress;
                 signature = "placeBid(uint256,uint256,uint64,bytes32)";
-                abiParams = [params.taskId, (parseFloat(params.price) * 10**18).toString(), params.eta.toString(), params.meta];
+                abiParams = [params.taskId, (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString(), params.eta.toString(), params.meta];
                 break;
             case "selectBid":
                 contract = this.escrowAddress;
@@ -92,7 +92,7 @@ export class SwarmOrchestrator {
             case "requestWithdraw":
                 contract = this.registryAddress;
                 signature = "requestWithdraw(uint256)";
-                abiParams = [(parseFloat(params.amount) * 10**18).toString()];
+                abiParams = [(BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString()];
                 break;
             case "topUpStake":
                 contract = this.registryAddress;
