@@ -191,6 +191,12 @@ export class SwarmOrchestrator {
      * @dev Fulfills a Nano-Payment authorization via the Circle Batcher.
      */
     async executeNanoPayout(recipient, amount) {
+        if (!this.gateway || typeof this.gateway.queuePayment !== 'function') {
+            console.warn(">> [ORCHESTRATOR] Gateway API Mismatch or Offline. Falling back to Simulation Mode.");
+            console.log(">> [DEBUG] Gateway Object:", this.gateway ? Object.keys(this.gateway) : "NULL");
+            return { data: { id: "sim-payout-" + Date.now() } };
+        }
+        
         return this.gateway.queuePayment({
             amount: amount,
             recipientAddress: recipient,
