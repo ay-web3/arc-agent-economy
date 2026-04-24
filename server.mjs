@@ -872,7 +872,7 @@ app.post('/nano/approve', async (req, res) => {
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     contractAddress: ESCROW,
-                    abiFunctionSignature: "settleNanoBatch(uint256,tuple[],tuple[])",
+                    abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
                     abiParameters: [
                         String(Math.floor(Date.now() / 1000)),
                         buyers,
@@ -880,6 +880,31 @@ app.post('/nano/approve', async (req, res) => {
                     ],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
+
+                // CRITICAL FIX: Use explicit ABI for struct array packing
+                payload.abi = [{
+                    name: "settleNanoBatch",
+                    type: "function",
+                    inputs: [
+                        { name: "batchId", type: "uint256" },
+                        {
+                            name: "buyers",
+                            type: "tuple[]",
+                            components: [
+                                { name: "agent", type: "address" },
+                                { name: "amount", type: "uint256" }
+                            ]
+                        },
+                        {
+                            name: "earners",
+                            type: "tuple[]",
+                            components: [
+                                { name: "agent", type: "address" },
+                                { name: "amount", type: "uint256" }
+                            ]
+                        }
+                    ]
+                }];
 
                 const resp = await client.createContractExecutionTransaction(payload);
                 const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
