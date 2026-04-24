@@ -95,14 +95,15 @@ async function bootstrap() {
             };
         }
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
-        if (client && MASTER_WALLET_ID && process.env.ESCROW_CA) {
+        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+        if (client && MASTER_WALLET_ID && ESCROW) {
             try {
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
                 const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
                 const masterAddr = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"; // Treasury
                 
                 const hasRoleResp = await pc.readContract({
-                    address: process.env.ESCROW_CA,
+                    address: ESCROW,
                     abi: parseAbi(['function hasRole(bytes32,address) view returns (bool)']),
                     functionName: 'hasRole',
                     args: [GOV_ROLE, masterAddr]
@@ -114,7 +115,7 @@ async function bootstrap() {
                         idempotencyKey: uuidv4(),
                         walletId: MASTER_WALLET_ID,
                         blockchain: "ARC-TESTNET",
-                        contractAddress: process.env.ESCROW_CA,
+                        contractAddress: ESCROW,
                         abiFunctionSignature: "grantRole(bytes32,address)",
                         abiParameters: [GOV_ROLE, masterAddr],
                         fee: { type: "level", config: { feeLevel: "MEDIUM" } }
@@ -591,11 +592,11 @@ app.post('/execute/:action', async (req, res) => {
                 break;
             case "settle-nano":
                 payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
+                payload.abiFunctionSignature = "settleNanoBatch(uint256,tuple[],tuple[])";
                 payload.abiParameters = [
                     String(params.batchId || Math.floor(Date.now() / 1000)),
-                    params.buyers.map(b => ({ agent: b.agent, amount: b.amount })),
-                    params.earners.map(e => ({ agent: e.agent, amount: e.amount }))
+                    params.buyers.map(b => [b.agent, b.amount]),
+                    params.earners.map(e => [e.agent, e.amount])
                 ];
                 break;
             case "transfer":
@@ -852,15 +853,15 @@ app.post('/nano/approve', async (req, res) => {
         if (nanoState.completedCount >= 3) {
             try {
                 // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
-                const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => ({
-                    agent: addr,
-                    amount: (BigInt(Math.floor(val * 1e6))).toString()
-                }));
+                const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => [
+                    addr,
+                    (BigInt(Math.floor(val * 1e6))).toString()
+                ]);
                 
-                const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => ({
-                    agent: addr,
-                    amount: (BigInt(Math.floor(val * 1e6))).toString()
-                }));
+                const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => [
+                    addr,
+                    (BigInt(Math.floor(val * 1e6))).toString()
+                ]);
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
                 console.log(`>> [GATEWAY] Deducting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
@@ -871,11 +872,11 @@ app.post('/nano/approve', async (req, res) => {
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     contractAddress: ESCROW,
-                    abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
+                    abiFunctionSignature: "settleNanoBatch(uint256,tuple[],tuple[])",
                     abiParameters: [
                         String(Math.floor(Date.now() / 1000)),
-                        buyers.map(b => ({ agent: b.agent, amount: b.amount })),
-                        earners.map(e => ({ agent: e.agent, amount: e.amount }))
+                        buyers,
+                        earners
                     ],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
