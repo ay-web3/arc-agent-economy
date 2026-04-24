@@ -522,7 +522,7 @@ app.post('/execute/:action', async (req, res) => {
         // DELEGATE TO ORCHESTRATOR
         const tx = await orchestrator.executeForAgent(walletId, action, payload);
         
-        res.json({ success: true, transaction: tx.data });
+        res.json({ success: true, txId: tx.data.id });
     } catch (e) {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(`>> [FATAL] Action ${action} Failed:`, errorDetail);
@@ -851,9 +851,9 @@ app.post('/nano/approve', async (req, res) => {
                 };
 
                 const resp = await client.createContractExecutionTransaction(payload);
-                const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
+                const txIdNano = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
                 
-                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txId}`);
+                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txIdNano}`);
             } catch (err) {
                 const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
                 console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", errMsg);

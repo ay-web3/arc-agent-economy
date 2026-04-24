@@ -31,6 +31,8 @@ export class SwarmOrchestrator {
     }
 
     async executeForAgent(agentWalletId, action, params) {
+        console.log(`>> [ORCHESTRATOR] Executing ${action} for Wallet ${agentWalletId}. Params:`, JSON.stringify(params));
+        
         let signature = "";
         let contract = "";
         let abiParams = [];
@@ -40,60 +42,89 @@ export class SwarmOrchestrator {
             case "register":
                 contract = this.registryAddress;
                 signature = "register(bool,bool,bytes32,bytes32)";
-                abiParams = [params.asSeller, params.asVerifier, params.capHash, params.pubKey];
-                amount = params.stake;
+                abiParams = [
+                    !!params.asSeller, 
+                    !!params.asVerifier, 
+                    params.capHash || "0x" + "0".repeat(64), 
+                    params.pubKey || "0x" + "0".repeat(64)
+                ];
+                amount = params.stake || "0";
                 break;
             case "updateProfile":
                 contract = this.registryAddress;
                 signature = "updateProfile(bytes32,bytes32,bool)";
-                abiParams = [params.capHash, params.pubKey, true];
+                abiParams = [
+                    params.capHash || "0x" + "0".repeat(64), 
+                    params.pubKey || "0x" + "0".repeat(64), 
+                    true
+                ];
                 break;
             case "createOpenTask":
                 contract = this.escrowAddress;
                 signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)";
-                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM];
+                abiParams = [
+                    String(params.jobDeadline || 0), 
+                    String(params.bidDeadline || 0), 
+                    String(params.verifierDeadline || 0), 
+                    params.taskHash || "0x" + "0".repeat(64), 
+                    params.verifiers || [], 
+                    Number(params.quorumM || 1)
+                ];
                 amount = params.value || params.amount || "0";
                 break;
             case "placeBid":
                 contract = this.escrowAddress;
                 signature = "placeBid(uint256,uint256,uint64,bytes32)";
-                abiParams = [params.taskId, (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString(), params.eta.toString(), params.meta];
+                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString() : "0";
+                abiParams = [
+                    String(params.taskId || 0), 
+                    bidPriceScaled, 
+                    String(params.eta || 0), 
+                    params.meta || "0x" + "0".repeat(64)
+                ];
                 break;
             case "selectBid":
                 contract = this.escrowAddress;
                 signature = "selectBid(uint256,uint256)";
-                abiParams = [params.taskId, params.bidIndex];
+                abiParams = [String(params.taskId || 0), String(params.bidIndex || 0)];
                 break;
             case "submitResult":
                 contract = this.escrowAddress;
                 signature = "submitResult(uint256,bytes32,string)";
-                abiParams = [params.taskId, params.hash, params.uri];
+                abiParams = [
+                    String(params.taskId || 0), 
+                    params.hash || params.resultHash || "0x" + "0".repeat(64), 
+                    params.uri || params.resultURI || ""
+                ];
                 break;
+            case "approve":
             case "approveTask":
                 contract = this.escrowAddress;
                 signature = "approve(uint256)";
-                abiParams = [params.taskId];
+                abiParams = [String(params.taskId || 0)];
                 break;
+            case "finalize":
             case "finalizeTask":
                 contract = this.escrowAddress;
                 signature = "finalize(uint256)";
-                abiParams = [params.taskId];
+                abiParams = [String(params.taskId || 0)];
                 break;
             case "timeoutRefund":
                 contract = this.escrowAddress;
                 signature = "timeoutRefund(uint256)";
-                abiParams = [params.taskId];
+                abiParams = [String(params.taskId || 0)];
                 break;
             case "requestWithdraw":
                 contract = this.registryAddress;
                 signature = "requestWithdraw(uint256)";
-                abiParams = [(BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString()];
+                const withdrawAmountScaled = params.amount ? (BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString() : "0";
+                abiParams = [withdrawAmountScaled];
                 break;
             case "topUpStake":
                 contract = this.registryAddress;
                 signature = "topUpStake()";
                 abiParams = [];
-                amount = params.amount;
+                amount = params.amount || "0";
                 break;
             case "completeWithdraw":
                 contract = this.registryAddress;
@@ -101,8 +132,10 @@ export class SwarmOrchestrator {
                 abiParams = [];
                 break;
             default:
-                throw new Error("Unknown action");
+                throw new Error(`Unknown action: ${action}`);
         }
+
+        console.log(`>> [ORCHESTRATOR] Prepared Payload for ${action}. Signature: ${signature} Params:`, JSON.stringify(abiParams));
 
         return this.client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
