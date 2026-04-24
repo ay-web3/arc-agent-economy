@@ -298,6 +298,25 @@ app.get('/admin/swarm-fuel', async (req, res) => {
     }
 });
 
+app.post('/nano/execute', (req, res) => {
+    const { from, to, amount, description, resultURI } = req.body;
+    if (!from || !to || !amount) {
+        return res.status(400).json({ error: "Missing from/to/amount" });
+    }
+    
+    // In a real swarm, this would check the off-chain 'nano-balance' of the 'from' agent
+    // For the demo, we assume the deposit is handled and just record the high-speed task
+    nanoLedger.push({ 
+        from, 
+        to, 
+        amount, 
+        description: description || "Swarm Task Execution",
+        resultURI: resultURI || "ipfs://nano-result",
+        timestamp: Date.now() 
+    });
+    res.json({ status: "ok", message: "Off-chain nano-task accepted" });
+});
+
 app.post('/settle-nano', async (req, res) => {
     try {
         const { taskId, worker, amount } = req.body;
@@ -669,7 +688,7 @@ app.get('/debug/balance/:address', async (req, res) => {
 
 app.post('/nano/create', async (req, res) => {
     try {
-        const { agentName, agentSecret, amount, manifestHash } = req.body;
+        const { agentName, agentSecret, amount, manifestHash, description } = req.body;
         const auth = await verifyAgent(agentName, agentSecret);
         
         const taskId = ++nanoState.taskCounter;
@@ -680,6 +699,7 @@ app.post('/nano/create', async (req, res) => {
             buyer: buyerAddr,
             amount,
             manifestHash,
+            description: description || "Swarm Nano-Task",
             bids: [],
             selectedBid: null,
             resultUri: null,

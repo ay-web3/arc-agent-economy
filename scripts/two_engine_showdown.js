@@ -32,9 +32,9 @@ async function runShowdown() {
         const v_a = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_A_" + ts })).data;
 
         console.log(">> Fueling Agents (Gas Sponsorship)...");
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=6.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=2.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=1.3`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=1.3`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=1.3`);
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");
@@ -47,11 +47,11 @@ async function runShowdown() {
         const currentCounter = await pc.readContract({ address: ESCROW_ADDR, abi: parseAbi(['function taskCounter() view returns (uint256)']), functionName: 'taskCounter' });
         const taskId = Number(currentCounter) + 1;
 
-        console.log(`>> Creating Task ${taskId} on-chain (5.0 USDC)...`);
+        console.log(`>> Creating Task ${taskId} on-chain (0.5 USDC)...`);
         const t1 = Date.now();
         const r3 = await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: b_a.agentId, agentSecret: b_a.agentSecret,
-            amount: "5.0", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
+            amount: "0.5", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
             taskHash: "0x" + "1".repeat(64), verifiers: [v_a.address], quorumM: 1
         });
         console.log(`   Task Created: ${EXPLORER_BASE}${r3.data.txId}`);
@@ -106,13 +106,30 @@ async function runShowdown() {
 
         console.log(">> Executing 3 Swarm Tasks OFF-CHAIN (Zero Latency)...");
         const t3 = Date.now();
+        const swarmNarratives = [
+            { desc: "Analyze Satellite Weather Data", uri: "ipfs://weather-report-881" },
+            { desc: "Predict Energy Grid Demand", uri: "ipfs://grid-analysis-v2" },
+            { desc: "Execute Renewable Arbitrage", uri: "ipfs://arbitrage-plan-zeta" }
+        ];
+
         for (let i = 0; i < 3; i++) {
-            const { taskId } = (await axios.post(`${HUB_URL}/nano/create`, { agentName: b_b.agentName, agentSecret: b_b.agentSecret, amount: "0.001" })).data;
+            const { taskId } = (await axios.post(`${HUB_URL}/nano/create`, { 
+                agentName: b_b.agentName, 
+                agentSecret: b_b.agentSecret, 
+                amount: "0.001",
+                description: swarmNarratives[i].desc
+            })).data;
+            
             await axios.post(`${HUB_URL}/nano/bid`, { agentName: s_b.agentName, agentSecret: s_b.agentSecret, taskId, bidPrice: "0.001" });
             await axios.post(`${HUB_URL}/nano/select`, { agentName: b_b.agentName, agentSecret: b_b.agentSecret, taskId, bidIndex: 0 });
-            await axios.post(`${HUB_URL}/nano/submit`, { agentName: s_b.agentName, agentSecret: s_b.agentSecret, taskId, resultURI: "swarm://data" });
+            await axios.post(`${HUB_URL}/nano/submit`, { 
+                agentName: s_b.agentName, 
+                agentSecret: s_b.agentSecret, 
+                taskId, 
+                resultURI: swarmNarratives[i].uri 
+            });
             await axios.post(`${HUB_URL}/nano/approve`, { agentName: v_b.agentName, agentSecret: v_b.agentSecret, taskId, verifierAddress: v_b.address });
-            console.log(`   Task ${i+1} Finished Off-Chain. Gas: $0.00`);
+            console.log(`   Task ${i+1} Finished: ${swarmNarratives[i].desc}`);
         }
         
         console.log(">> 🚨 BATCH TRIGGERED. Settling 3 Tasks on ARC in 1 Transaction...");

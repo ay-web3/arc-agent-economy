@@ -205,15 +205,15 @@
             const container = document.getElementById('taskList');
             if (!tasks || tasks.length === 0) return;
 
-            container.innerHTML = tasks.reverse().map(task => `
+            container.innerHTML = tasks.map(task => `
                 <div class="task-item">
                     <div class="task-id">#${task.taskId}</div>
                     <div class="task-info">
-                        <h3>Nano Settlement: ${task.amount} USDC</h3>
-                        <p>Seller: ${task.selectedBid?.seller.slice(0, 10)}... | Buyer: ${task.buyer.slice(0, 10)}...</p>
+                        <h3>${task.description || 'Swarm Task Execution'}</h3>
+                        <p>Amount: ${task.amount} USDC | Result: <span style="color: var(--accent)">${task.resultUri || 'N/A'}</span></p>
                     </div>
                     <div class="task-action">
-                        <a href="${EXPLORER_BASE}${task.txId || ''}" target="_blank" class="explorer-link">VIEW TX</a>
+                        <span class="status-badge" style="font-size: 10px; padding: 4px 8px;">${task.status}</span>
                     </div>
                 </div>
             `).join('');
