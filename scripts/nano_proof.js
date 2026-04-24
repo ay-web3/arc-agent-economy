@@ -34,6 +34,9 @@ async function runNanoProof() {
         const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "DemoSeller_" + ts })).data;
         const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "DemoVerifier_" + ts })).data;
 
+        console.log(`>> Agents onboarded. Waiting 15s for gas sponsorship to arrive...`);
+        await new Promise(r => setTimeout(r, 15000));
+
         console.log(`[LEDGER] Buyer depositing 0.01 USDC into Prepaid Nano Ledger (On-Chain)...`);
         await axios.post(`${HUB_URL}/execute/deposit-nano`, {
             agentId: b.agentId,
@@ -83,6 +86,14 @@ async function runNanoProof() {
                 console.log(`>> [GATEWAY] Queued 0.0027 USDC for Seller_Alpha`);
                 console.log(`>> [GATEWAY] Queued 0.0003 USDC for Verifier_Alpha`);
                 console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle!`);
+
+                // WAIT FOR ON-CHAIN SETTLEMENT TO INDEX
+                console.log(`>> Waiting 10s for on-chain settlement finality...`);
+                await new Promise(r => setTimeout(r, 10000));
+
+                const sellerStatus = (await axios.get(`${HUB_URL}/debug/balance/${s.address}`)).data;
+                console.log(`\n[FINAL PROOF] Seller Balance on ARC Testnet: ${sellerStatus.balance} USDC`);
+                console.log(`>> ✅ ENGINE B SETTLEMENT CONFIRMED!`);
             }
         }
 

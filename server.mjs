@@ -714,6 +714,23 @@ app.post('/nano/authorize', async (req, res) => {
     }
 });
 
+app.get('/debug/balance/:address', async (req, res) => {
+    try {
+        const { createPublicClient, http, parseAbi } = await import('viem');
+        const client = createPublicClient({ chain: { id: 5042002, name: 'ARC' }, transport: http("https://rpc.testnet.arc.network") });
+        const USDC_ABI = parseAbi(["function balanceOf(address) view returns (uint256)"]);
+        const balance = await client.readContract({
+            address: process.env.USDC_CA || "0x0000000000000000000000000000000000000000",
+            abi: USDC_ABI,
+            functionName: 'balanceOf',
+            args: [req.params.address]
+        });
+        res.json({ address: req.params.address, balance: (Number(balance) / 1e18).toFixed(6) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/nano/create', async (req, res) => {
     try {
         const { buyerAddress, amount, manifestHash } = req.body;
