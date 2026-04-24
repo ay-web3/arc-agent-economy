@@ -857,6 +857,16 @@ app.post('/nano/bid', async (req, res) => {
     }
 });
 
+app.get('/nano/history', (req, res) => {
+    res.json({
+        tasks: Object.values(nanoState.tasks).reverse().slice(0, 50),
+        stats: {
+            completedCount: nanoState.completedCount,
+            totalCreated: nanoState.taskCounter - 1000
+        }
+    });
+});
+
 app.post('/nano/reset', (req, res) => {
     nanoState = {
         tasks: {},
