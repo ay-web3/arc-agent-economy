@@ -101,32 +101,6 @@ async function bootstrap() {
 }
 
 // --- UTILS ---
-async function verifyAgent(agentName, providedSecret) {
-    if (mongoPromise) await mongoPromise;
-    if (!mongoClient || !providedSecret) return { success: false, error: "Missing identity or validation" };
-    
-    const db = mongoClient.db("arc_swarm");
-    const record = await db.collection("agents").findOne({ agentName });
-    
-    if (!record) {
-        console.error(`>> [AUTH_FAIL] Agent Not Found in DB: ${agentName}`);
-        return { success: false, error: "Agent unauthorized or not secured" };
-    }
-
-    if (!record.hashedSecret) {
-        console.error(`>> [AUTH_FAIL] Record missing hashedSecret for: ${agentName}`);
-        return { success: false, error: "Agent unauthorized or not secured" };
-    }
-
-    const hash = crypto.createHash('sha256').update(providedSecret).digest('hex');
-    if (hash !== record.hashedSecret) {
-        console.error(`>> [AUTH_FAIL] Secret mismatch for agent: ${agentName}`);
-        return { success: false, error: "Invalid agent secret" };
-    }
-
-    return { success: true, walletId: record.walletId };
-}
-
 async function saveWalletId(agentName, walletId, rawSecret, address) {
     if (mongoPromise) await mongoPromise;
     if (mongoClient) {
@@ -331,17 +305,23 @@ async function linkArcIdentity(agentId, tokenId) {
     await agents.updateOne({ agentName: agentId }, { $set: { arcIdentityTokenId: tokenId.toString(), identityLinkedAt: new Date() } });
 }
 
-async function verifyAgent(agentId, secret) {
-    if (agentId === "Admin" && secret === "SOVEREIGN_ADMIN_2026") {
+async function verifyAgent(agentId, providedSecret) {
+    if (agentId === "Admin" && providedSecret === "SOVEREIGN_ADMIN_2026") {
         return { success: true, walletId: process.env.MASTER_WALLET_ID };
     }
     if (mongoPromise) await mongoPromise;
-    const db = mongoClient.db("arc_economy");
-    const agents = db.collection("agents");
-    const agent = await agents.findOne({ agentName: agentId });
-    if (!agent) return { success: false, error: "Agent not found" };
-    if (agent.secret !== secret) return { success: false, error: "Invalid secret" };
-    return { success: true, walletId: agent.walletId, address: agent.address };
+    if (!mongoClient || !providedSecret) return { success: false, error: "Missing identity or validation" };
+    
+    const db = mongoClient.db("arc_swarm");
+    const record = await db.collection("agents").findOne({ agentName: agentId });
+    
+    if (!record) return { success: false, error: "Agent not found" };
+    if (!record.hashedSecret) return { success: false, error: "Agent record corrupted" };
+
+    const hash = crypto.createHash('sha256').update(providedSecret).digest('hex');
+    if (hash !== record.hashedSecret) return { success: false, error: "Invalid secret" };
+
+    return { success: true, walletId: record.walletId, address: record.address };
 }
 
 // PROFILE_QUERY: Retrieves the decentralized reputation profile (SDK expectation)
