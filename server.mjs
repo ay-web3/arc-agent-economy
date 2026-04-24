@@ -99,7 +99,7 @@ async function bootstrap() {
         if (client && MASTER_WALLET_ID) {
             try {
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
-                const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
+                const GOV_ROLE = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
                 const masterAddr = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"; // Treasury
                 
                 const hasRoleResp = await pc.readContract({

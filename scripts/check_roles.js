@@ -8,7 +8,7 @@ async function check() {
     });
 
     const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-    const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
+    const GOV_ROLE = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
     const TREASURY = "0xabc3afc19fa3d0123bd45e418bb39cf23dd5964d";
 
     const hasRole = await pc.readContract({
