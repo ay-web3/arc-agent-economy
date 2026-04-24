@@ -594,6 +594,12 @@ app.post('/execute/:action', async (req, res) => {
                 payload.abiParameters = [];
                 payload.amount = params.amount || "0";
                 break;
+            case "list-wallets":
+                const listResp = await client.listWallets({ walletSetId: process.env.WALLET_SET_ID });
+                return res.json({ success: true, wallets: listResp.data.wallets.map(w => ({ id: w.id, address: w.address })) });
+            case "list-wallet-sets":
+                const setResp = await client.listWalletSets();
+                return res.json({ success: true, walletSets: setResp.data.walletSets });
             case "deposit-nano":
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "depositNanoBalance()";
