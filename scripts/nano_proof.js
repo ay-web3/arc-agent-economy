@@ -38,11 +38,26 @@ async function runNanoProof() {
         await new Promise(r => setTimeout(r, 15000));
 
         console.log(`[LEDGER] Buyer depositing 0.01 USDC into Prepaid Nano Ledger (On-Chain)...`);
-        await axios.post(`${HUB_URL}/execute/deposit-nano`, {
+        const depResp = (await axios.post(`${HUB_URL}/execute/deposit-nano`, {
             agentId: b.agentId,
             agentSecret: b.agentSecret,
             amount: "0.01"
-        });
+        })).data;
+        
+        console.log(`   >> Deposit Injected. Tx: ${depResp.txId}. Waiting for confirmation...`);
+        let confirmed = false;
+        for (let i = 0; i < 20; i++) {
+            const status = (await axios.get(`${HUB_URL}/tx-status/${depResp.txId}`)).data;
+            if (status.state === "COMPLETE") {
+                confirmed = true;
+                break;
+            }
+            if (status.state === "FAILED") {
+                throw new Error("Deposit Failed: " + status.errorReason);
+            }
+            await new Promise(r => setTimeout(r, 2000));
+        }
+        if (!confirmed) throw new Error("Deposit Confirmation Timeout");
         console.log(`   >> Tx Confirmed. Nano Balance: 0.01 USDC`);
 
         for(let i=1; i<=3; i++) {

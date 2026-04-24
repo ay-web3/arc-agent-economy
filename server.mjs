@@ -533,8 +533,6 @@ app.post('/execute/:action', async (req, res) => {
                 break;
             case "createOpenTask":
                 payload.contractAddress = ESCROW;
-                // Bypass Circle's ABI packer — encode calldata ourselves with viem
-                const { encodeFunctionData, parseAbi } = await import('viem');
                 const vArr = Array.isArray(params.verifiers) ? params.verifiers : [params.verifiers];
                 const taskAbi = parseAbi([
                     'function createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM) external payable returns (uint256 taskId)'
