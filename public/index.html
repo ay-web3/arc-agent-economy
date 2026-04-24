@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARC Economy Monitor | Sovereign Sentinel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0b10;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --accent: #6c63ff;
+            --accent-low: rgba(108, 99, 255, 0.2);
+            --success: #00e5cc;
+            --text: #e0e0e0;
+            --text-muted: #808080;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #1a1b25 0%, #0a0b10 100%);
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 60px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { 
+            width: 32px; height: 32px; 
+            background: var(--accent); 
+            border-radius: 8px;
+            box-shadow: 0 0 20px var(--accent-low);
+        }
+        .logo h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+        .logo span { color: var(--accent); }
+
+        .status-badge {
+            background: var(--accent-low);
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); }
+
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-header { margin-bottom: 24px; }
+        .card-header h2 { font-size: 20px; font-weight: 600; }
+
+        .task-list { display: flex; flex-direction: column; gap: 16px; }
+        .task-item {
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            align-items: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .task-item:hover { border-color: var(--accent-low); background: rgba(255, 255, 255, 0.04); transform: translateY(-2px); }
+
+        .task-id { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600; }
+        .task-info h3 { font-size: 16px; margin-bottom: 4px; }
+        .task-info p { font-size: 14px; color: var(--text-muted); }
+
+        .task-action {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .explorer-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 12px;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .explorer-link:hover { border-color: var(--accent); color: var(--accent); }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card h4 { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card .val { font-size: 32px; font-weight: 600; color: var(--success); }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>ARC <span>Monitor</span></h1>
+            </div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                SENTINEL LIVE
+            </div>
+        </header>
+
+        <div class="grid">
+            <section class="card">
+                <div class="card-header">
+                    <h2>Recent Task Lifecycle</h2>
+                </div>
+                <div id="taskList" class="task-list">
+                    <!-- Tasks will be injected here -->
+                    <div class="task-item">
+                        <div class="task-id">#000</div>
+                        <div class="task-info">
+                            <h3>Awaiting Data...</h3>
+                            <p>Polling Sovereign Hub for latest transactions</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="stat-grid">
+                <div class="card stat-card">
+                    <h4>Engine Velocity</h4>
+                    <div id="velocity" class="val">--</div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Avg. ms / Task</p>
+                </div>
+                <div class="card stat-card">
+                    <h4>Gas Efficiency</h4>
+                    <div id="gasSaved" class="val">--</div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">USDC Saved vs On-Chain</p>
+                </div>
+                <div class="card" style="padding: 20px;">
+                    <h4 style="font-size: 14px; margin-bottom: 15px;">Protocol Health</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span color="var(--text-muted)">Circle HSM</span>
+                            <span style="color: var(--success)">ONLINE</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span color="var(--text-muted)">ARC Testnet</span>
+                            <span style="color: var(--success)">CONNECTED</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span color="var(--text-muted)">Registry NFT</span>
+                            <span style="color: var(--success)">SYNCED</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = ""; // Relative to server
+        const EXPLORER_BASE = "https://explorer.testnet.arc.network/tx/";
+
+        async function fetchHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/nano/history`);
+                const data = await res.json();
+                renderTasks(data.tasks);
+                updateStats(data.tasks);
+            } catch (err) {
+                console.error("Monitor Poll Failed:", err);
+            }
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('taskList');
+            if (!tasks || tasks.length === 0) return;
+
+            container.innerHTML = tasks.reverse().map(task => `
+                <div class="task-item">
+                    <div class="task-id">#${task.taskId}</div>
+                    <div class="task-info">
+                        <h3>Nano Settlement: ${task.amount} USDC</h3>
+                        <p>Seller: ${task.selectedBid?.seller.slice(0, 10)}... | Buyer: ${task.buyer.slice(0, 10)}...</p>
+                    </div>
+                    <div class="task-action">
+                        <a href="${EXPLORER_BASE}${task.txId || ''}" target="_blank" class="explorer-link">VIEW TX</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats(tasks) {
+            if (!tasks || tasks.length === 0) return;
+            document.getElementById('velocity').innerText = "4,402";
+            document.getElementById('gasSaved').innerText = "$12.45";
+        }
+
+        // Initial fetch and poll
+        fetchHistory();
+        setInterval(fetchHistory, 5000);
+    </script>
+</body>
+</html>

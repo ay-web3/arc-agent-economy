@@ -4,6 +4,7 @@ import { createPublicClient, http, parseAbi } from 'viem';
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 const ESCROW_ADDR = "0xDF5455170BCE05D961c8643180f22361C0340DE0"; 
+const EXPLORER_BASE = "https://explorer.testnet.arc.network/tx/";
 
 const client = createPublicClient({ 
     chain: { id: 5042002, name: 'ARC', nativeCurrency: { decimals: 18, name: 'USDC', symbol: 'USDC' }, rpcUrls: { default: { http: ['https://rpc.testnet.arc.network'] } } }, 
@@ -37,8 +38,10 @@ async function runShowdown() {
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");
-        await axios.post(`${HUB_URL}/execute/register`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, asSeller: true, asVerifier: false, stake: "1.0", capHash: "0x11", pubKey: "0x22" });
-        await axios.post(`${HUB_URL}/execute/register`, { agentId: v_a.agentId, agentSecret: v_a.agentSecret, asSeller: false, asVerifier: true, stake: "1.0", capHash: "0x33", pubKey: "0x44" });
+        const r1 = await axios.post(`${HUB_URL}/execute/register`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, asSeller: true, asVerifier: false, stake: "1.0", capHash: "0x11", pubKey: "0x22" });
+        console.log(`   Seller Registered: ${EXPLORER_BASE}${r1.data.txId}`);
+        const r2 = await axios.post(`${HUB_URL}/execute/register`, { agentId: v_a.agentId, agentSecret: v_a.agentSecret, asSeller: false, asVerifier: true, stake: "1.0", capHash: "0x33", pubKey: "0x44" });
+        console.log(`   Verifier Registered: ${EXPLORER_BASE}${r2.data.txId}`);
         await sleep(15000);
 
         const currentCounter = await client.readContract({ address: ESCROW_ADDR, abi, functionName: 'taskCounter' });
@@ -46,25 +49,31 @@ async function runShowdown() {
 
         console.log(`>> Creating Task ${taskId} on-chain...`);
         const t1 = Date.now();
-        await axios.post(`${HUB_URL}/execute/createOpenTask`, {
+        const r3 = await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: b_a.agentId, agentSecret: b_a.agentSecret,
             amount: "1.0", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
             taskHash: "0x" + "1".repeat(64), verifiers: [v_a.address], quorumM: 1
         });
+        console.log(`   Task Created: ${EXPLORER_BASE}${r3.data.txId}`);
         await sleep(15000);
 
         console.log(">> Executing Bidding & Selection (On-Chain Transactions)...");
-        await axios.post(`${HUB_URL}/execute/placeBid`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, taskId, price: "0.5", eta: 3600 });
+        const r4 = await axios.post(`${HUB_URL}/execute/placeBid`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, taskId, price: "0.5", eta: 3600 });
+        console.log(`   Bid Placed: ${EXPLORER_BASE}${r4.data.txId}`);
         await sleep(15000);
-        await axios.post(`${HUB_URL}/execute/selectBid`, { agentId: b_a.agentId, agentSecret: b_a.agentSecret, taskId, bidIndex: 0 });
+        const r5 = await axios.post(`${HUB_URL}/execute/selectBid`, { agentId: b_a.agentId, agentSecret: b_a.agentSecret, taskId, bidIndex: 0 });
+        console.log(`   Bid Selected: ${EXPLORER_BASE}${r5.data.txId}`);
         await sleep(15000);
         
         console.log(">> Executing Submission & Approval (On-Chain Transactions)...");
-        await axios.post(`${HUB_URL}/execute/submitResult`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, taskId, hash: "0x" + "2".repeat(64), uri: "ipfs://test" });
+        const r6 = await axios.post(`${HUB_URL}/execute/submitResult`, { agentId: s_a.agentId, agentSecret: s_a.agentSecret, taskId, hash: "0x" + "2".repeat(64), uri: "ipfs://test" });
+        console.log(`   Result Submitted: ${EXPLORER_BASE}${r6.data.txId}`);
         await sleep(15000);
-        await axios.post(`${HUB_URL}/execute/approve`, { agentId: v_a.agentId, agentSecret: v_a.agentSecret, taskId });
+        const r7 = await axios.post(`${HUB_URL}/execute/approve`, { agentId: v_a.agentId, agentSecret: v_a.agentSecret, taskId });
+        console.log(`   Result Approved: ${EXPLORER_BASE}${r7.data.txId}`);
         await sleep(15000);
-        await axios.post(`${HUB_URL}/execute/finalize`, { agentId: b_a.agentId, agentSecret: b_a.agentSecret, taskId });
+        const r8 = await axios.post(`${HUB_URL}/execute/finalize`, { agentId: b_a.agentId, agentSecret: b_a.agentSecret, taskId });
+        console.log(`   Task Finalized: ${EXPLORER_BASE}${r8.data.txId}`);
         
         const t2 = Date.now();
         console.log(`✅ ENGINE A COMPLETE. Total Time: ${((t2-t1)/1000).toFixed(1)}s. Total Gas Transactions: 8.`);
@@ -91,7 +100,8 @@ async function runShowdown() {
         await sleep(15000);
 
         console.log(">> Pre-funding Engine B Escrow (1 On-Chain Deposit)...");
-        await axios.post(`${HUB_URL}/execute/deposit-nano`, { agentId: b_b.agentId, agentSecret: b_b.agentSecret, amount: "0.1" });
+        const r9 = await axios.post(`${HUB_URL}/execute/deposit-nano`, { agentId: b_b.agentId, agentSecret: b_b.agentSecret, amount: "0.1" });
+        console.log(`   Escrow Funded: ${EXPLORER_BASE}${r9.data.txId}`);
         await sleep(15000);
 
         console.log(">> Executing 3 Swarm Tasks OFF-CHAIN (Zero Latency)...");
