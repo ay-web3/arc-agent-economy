@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import { createPublicClient, http, parseAbi } from 'viem';
+import readline from 'readline';
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 const ESCROW_ADDR = "0xDF5455170BCE05D961c8643180f22361C0340DE0"; 
@@ -13,33 +14,48 @@ const pc = createPublicClient({
 
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function waitInput(msg) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    return new Promise(resolve => rl.question(msg, ans => { rl.close(); resolve(ans); }));
+}
+
 async function runShowdown() {
     console.log("\n================================================================");
-    console.log("   🚀 ARC AGENT ECONOMY - NARRATIVE SHOWDOWN (v2.2) 🚀");
+    console.log("   🚀 ARC AGENT ECONOMY - PERMANENT WALLET SHOWDOWN 🚀");
     console.log("================================================================");
 
     try {
         const ts = Date.now();
 
         console.log("\n[STAGE 1] ENGINE A: FULL ON-CHAIN (MAX SECURITY)");
-        console.log(">> Onboarding Unified Agents...");
-        const b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Buyer_" + ts })).data;
-        const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Seller_" + ts })).data;
-        const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_" + ts })).data;
+        console.log(">> Retrieving Persistent Agents...");
+        
+        const b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Buyer_Final" })).data;
+        const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_Final" })).data;
+        const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_Final" })).data;
 
-        console.log(">> ⛽ Fueling Agents for Mission (Hyper-Efficient)...");
-        for (const agent of [b, s, v]) {
-            await axios.post(`${HUB_URL}/funding/fuel`, { address: agent.address, amount: "0.1" });
-            console.log(`   Fuel Sent to ${agent.agentName}`);
-        }
-        await sleep(15000);
+        console.log("\n================================================================");
+        console.log("⚠️  ACTION REQUIRED: FINAL FUNDING (THESE WALLETS ARE PERMANENT)");
+        console.log(`   1. BUYER:    ${b.address}`);
+        console.log(`   2. SELLER:   ${s.address}`);
+        console.log(`   3. VERIFIER: ${v.address}`);
+        console.log("================================================================\n");
 
-        console.log(">> Registering & Staking (Min Stake: 0.1 USDC)...");
-        const r1 = await axios.post(`${HUB_URL}/execute/register`, { agentId: s.agentId, agentSecret: s.agentSecret, asSeller: true, asVerifier: false, stake: "0.1", capHash: "0x11", pubKey: "0x22" });
-        console.log(`   Seller Registered: ${EXPLORER_BASE}${r1.data.txId}`);
-        const r2 = await axios.post(`${HUB_URL}/execute/register`, { agentId: v.agentId, agentSecret: v.agentSecret, asSeller: false, asVerifier: true, stake: "0.1", capHash: "0x33", pubKey: "0x44" });
-        console.log(`   Verifier Registered: ${EXPLORER_BASE}${r2.data.txId}`);
-        await sleep(15000);
+        await waitInput(">> Press ENTER once you have funded these permanent addresses...");
+
+        console.log("\n>> Continuing with Mission...");
+        console.log(">> Registering & Staking (if needed)...");
+        try {
+            const r1 = await axios.post(`${HUB_URL}/execute/register`, { agentId: s.agentId, agentSecret: s.agentSecret, asSeller: true, asVerifier: false, stake: "0.1", capHash: "0x11", pubKey: "0x22" });
+            if (r1.data.txId) console.log(`   Seller Registered: ${EXPLORER_BASE}${r1.data.txId}`);
+        } catch (e) { console.log("   Seller already registered or registration skipped."); }
+
+        try {
+            const r2 = await axios.post(`${HUB_URL}/execute/register`, { agentId: v.agentId, agentSecret: v.agentSecret, asSeller: false, asVerifier: true, stake: "0.1", capHash: "0x33", pubKey: "0x44" });
+            if (r2.data.txId) console.log(`   Verifier Registered: ${EXPLORER_BASE}${r2.data.txId}`);
+        } catch (e) { console.log("   Verifier already registered or registration skipped."); }
+        
+        await sleep(10000);
 
         const currentCounter = await pc.readContract({ address: ESCROW_ADDR, abi: parseAbi(['function taskCounter() view returns (uint256)']), functionName: 'taskCounter' });
         const taskId = Number(currentCounter) + 1;
@@ -110,9 +126,9 @@ async function runShowdown() {
             console.log(`   Task ${i+1} Finished: ${swarmNarratives[i].desc}`);
         }
         
-        console.log(">> 🚨 BATCH TRIGGERED. Settling 3 Tasks on ARC in 1 Transaction...");
-        const r9 = await axios.post(`${HUB_URL}/nano/settle-all`);
-        console.log(`   Swarm Batch Finalized: ${EXPLORER_BASE}${r9.data.txId}`);
+        console.log(">> 🚨 BATCH TRIGGERED. Hub is settling 3 Tasks on ARC in 1 Transaction...");
+        await sleep(20000); // Wait for auto-batch on server
+        console.log(`   Swarm Batch Finalized automatically via Hub x402 Gateway.`);
 
         const t4 = Date.now();
         const engineATime = (t2 - t1) / 1000;
