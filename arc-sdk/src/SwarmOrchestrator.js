@@ -71,22 +71,37 @@ export class SwarmOrchestrator {
                 break;
 
             case "createOpenTask":
-                // 🚀 New Fix: Using full signature with parameter names to bypass packer issues
+                // 🛡️ Special Case: Use callData for array-based parameters to bypass Circle packer limitations
                 contract = this.escrowAddress;
-                signature = "createOpenTask(uint64 jobDeadline, uint64 bidDeadline, uint64 verifierDeadline, bytes32 taskHash, address[] _verifiers, uint8 quorumM)";
-                
                 let verifiers = params.verifiers || [];
                 if (typeof verifiers === 'string') verifiers = [verifiers];
                 if (!Array.isArray(verifiers)) verifiers = [];
 
-                abiParams = [
-                    String(params.jobDeadline || 0), 
-                    String(params.bidDeadline || 0), 
-                    String(params.verifierDeadline || 0), 
-                    this.padBytes32(params.taskHash), 
-                    verifiers, 
-                    Number(params.quorumM || 1)
-                ];
+                const cotAbi = [{
+                    name: "createOpenTask",
+                    type: "function",
+                    stateMutability: "payable",
+                    inputs: [
+                        { name: "jobDeadline", type: "uint64" },
+                        { name: "bidDeadline", type: "uint64" },
+                        { name: "verifierDeadline", type: "uint64" },
+                        { name: "taskHash", type: "bytes32" },
+                        { name: "verifiers", type: "address[]" },
+                        { name: "quorumM", type: "uint8" }
+                    ]
+                }];
+                callData = encodeFunctionData({ 
+                    abi: cotAbi, 
+                    functionName: "createOpenTask", 
+                    args: [
+                        BigInt(params.jobDeadline || 0), 
+                        BigInt(params.bidDeadline || 0), 
+                        BigInt(params.verifierDeadline || 0), 
+                        this.padBytes32(params.taskHash), 
+                        verifiers, 
+                        Number(params.quorumM || 1)
+                    ]
+                });
                 amount = params.value || params.amount || "0";
                 break;
 
