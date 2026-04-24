@@ -94,6 +94,39 @@ async function bootstrap() {
                 }
             };
         }
+        // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
+        if (client && MASTER_WALLET_ID && process.env.ESCROW_CA) {
+            try {
+                console.log(">> [SENTINEL] Verifying Governance Permissions...");
+                const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
+                const masterAddr = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"; // Treasury
+                
+                const hasRoleResp = await pc.readContract({
+                    address: process.env.ESCROW_CA,
+                    abi: parseAbi(['function hasRole(bytes32,address) view returns (bool)']),
+                    functionName: 'hasRole',
+                    args: [GOV_ROLE, masterAddr]
+                });
+
+                if (!hasRoleResp) {
+                    console.log(">> [SENTINEL] Granting GOVERNANCE_ROLE to Treasury...");
+                    await client.createContractExecutionTransaction({
+                        idempotencyKey: uuidv4(),
+                        walletId: MASTER_WALLET_ID,
+                        blockchain: "ARC-TESTNET",
+                        contractAddress: process.env.ESCROW_CA,
+                        abiFunctionSignature: "grantRole(bytes32,address)",
+                        abiParameters: [GOV_ROLE, masterAddr],
+                        fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                    });
+                    console.log(">> [SENTINEL] Self-Authorization Transaction Pushed.");
+                } else {
+                    console.log(">> [SENTINEL] Governance Permissions Verified.");
+                }
+            } catch (e) {
+                console.warn(">> [WARNING] Self-Authorization Check Failed:", e.message);
+            }
+        }
     } catch (e) {
         console.error(">> [FATAL] Logic Restoration Failed:", e.message);
         SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
