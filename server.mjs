@@ -358,18 +358,18 @@ async function verifyAgent(agentId, providedSecret) {
         return { success: true, walletId: process.env.MASTER_WALLET_ID };
     }
     if (mongoPromise) await mongoPromise;
-    if (!mongoClient || !providedSecret) return { success: false, error: "Missing identity or validation" };
+    if (!mongoClient || !providedSecret) throw new Error("Missing identity or validation");
     
     const db = mongoClient.db("arc_swarm");
     const record = await db.collection("agents").findOne({ agentName: agentId });
     
-    if (!record) return { success: false, error: "Agent not found" };
-    if (!record.hashedSecret) return { success: false, error: "Agent record corrupted" };
+    if (!record) throw new Error(`Agent not found: ${agentId}`);
+    if (!record.hashedSecret) throw new Error("Agent record corrupted");
 
     const hash = crypto.createHash('sha256').update(providedSecret).digest('hex');
-    if (hash !== record.hashedSecret) return { success: false, error: "Invalid secret" };
+    if (hash !== record.hashedSecret) throw new Error("Invalid secret");
 
-    return { success: true, walletId: record.walletId, address: record.address };
+    return record; // Return the full record (includes address, walletId, etc)
 }
 
 // PROFILE_QUERY: Retrieves the decentralized reputation profile (SDK expectation)
@@ -461,6 +461,7 @@ app.post('/onboard', async (req, res) => {
         res.json({ 
             success: true, 
             agentId: agentName, 
+            agentName: agentName,
             agentSecret: agentSecret,
             address: newWallet.address, 
             sponsorshipTxId: txId, 

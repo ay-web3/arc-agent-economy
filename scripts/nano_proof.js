@@ -66,7 +66,7 @@ async function runNanoProof() {
             console.log(`\n--- NANO TASK #${i} ---`);
             console.log(`[MARKET] Buyer creating off-chain task (0.001 USDC)...`);
             const taskId = (await axios.post(`${HUB_URL}/nano/create`, { 
-                agentName: b.agentName,
+                agentName: b.agentId,
                 agentSecret: b.agentSecret,
                 amount: "0.001" 
             })).data.taskId;
@@ -75,7 +75,7 @@ async function runNanoProof() {
             console.log(`[x402] EIP-3009 Signature Generated & Verified. Gas: $0.00`);
             
             await axios.post(`${HUB_URL}/nano/bid`, { 
-                agentName: s.agentName,
+                agentName: s.agentId,
                 agentSecret: s.agentSecret,
                 taskId, 
                 bidPrice: "0.001" 
@@ -83,13 +83,13 @@ async function runNanoProof() {
 
             console.log(`[WORK] Seller submitting work...`);
             await axios.post(`${HUB_URL}/nano/select`, { 
-                agentName: b.agentName,
+                agentName: b.agentId,
                 agentSecret: b.agentSecret,
                 taskId, 
                 bidIndex: 0 
             });
             await axios.post(`${HUB_URL}/nano/submit`, { 
-                agentName: s.agentName,
+                agentName: s.agentId,
                 agentSecret: s.agentSecret,
                 taskId, 
                 resultURI: "ipfs://work-" + i 
@@ -98,7 +98,7 @@ async function runNanoProof() {
             
             console.log(`[VERIFICATION] Verifier auditing...`);
             await axios.post(`${HUB_URL}/nano/approve`, { 
-                agentName: v.agentName,
+                agentName: v.agentId,
                 agentSecret: v.agentSecret,
                 taskId, 
                 verifierAddress: v.address 
