@@ -263,6 +263,67 @@ export class ArcManagedSDK {
         return this.requestAction("execute/finalize", { taskId });
     }
 
+    // --- ENGINE B: SWARM (OFF-CHAIN) ACTIONS ---
+
+    /**
+     * @dev Creates a Nano Task (Engine B). 
+     * This is an off-chain interaction that will be batched later.
+     */
+    async createNanoTask(params: { amount: string }) {
+        return this.requestAction("nano/create", params);
+    }
+
+    /**
+     * @dev Bids on a Nano Task. Zero-latency.
+     */
+    async bidNano(params: { taskId: string, bidPrice: string }) {
+        return this.requestAction("nano/bid", params);
+    }
+
+    /**
+     * @dev Selects a bid for a Nano Task.
+     */
+    async selectNano(params: { taskId: string, bidIndex: number }) {
+        return this.requestAction("nano/select", params);
+    }
+
+    /**
+     * @dev Submits results for a Nano Task.
+     */
+    async submitNano(params: { taskId: string, resultURI: string }) {
+        return this.requestAction("nano/submit", params);
+    }
+
+    /**
+     * @dev Approves a Nano Task.
+     */
+    async approveNano(params: { taskId: string, verifierAddress: string }) {
+        return this.requestAction("nano/approve", params);
+    }
+
+    /**
+     * @dev Settles all completed Nano Tasks in a single on-chain batch.
+     * This is usually called by the Orchestrator/Buyer.
+     */
+    async settleNanoBatch() {
+        return this.requestAction("nano/settle", {});
+    }
+
+    /**
+     * @dev Resets the local Swarm Channel state (Admin only).
+     */
+    async resetSwarmChannel() {
+        return this.requestAction("nano/reset", {});
+    }
+
+    /**
+     * @dev Fetches the Swarm Channel history for the monitor.
+     */
+    async getSwarmHistory() {
+        const response = await axios.get(`${this.orchestratorUrl}/nano/history`);
+        return response.data;
+    }
+
     // --- GOVERNANCE ACTIONS ---
 
     async setSellerSlashBps(bps: number) {
