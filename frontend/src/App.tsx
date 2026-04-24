@@ -368,13 +368,75 @@ function ReputationExplorer() {
   );
 }
 
+function SwarmMonitor({ history }: { history: any }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <MetricCard label="SWARM_TASK_VELOCITY" value={history.stats.totalCreated} sub="Off-Chain Nano Tasks" icon={<Zap size={24}/>} />
+        <MetricCard label="PENDING_BATCH" value={`${history.stats.completedCount}/3`} sub="Engine B Settlement Trigger" icon={<Box size={24}/>} />
+        <MetricCard label="SWARM_EFFICIENCY" value="99.8%" sub="Gas-Free Off-Chain Ops" icon={<Activity size={24}/>} />
+      </div>
+
+      <div className="industrial-panel overflow-hidden flex flex-col border-l-2 border-l-industrial-gold">
+        <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
+          <div className="flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-industrial-gold animate-pulse" />
+             <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">LIVE_SWARM_CHANNEL</span>
+          </div>
+          <span className="text-[8px] font-bold text-industrial-gold italic tracking-widest uppercase bg-industrial-gold/10 px-2 py-0.5">ESTABLISHING_X402_SYNC</span>
+        </div>
+        <div className="p-6 space-y-4 min-h-[50vh]">
+          {history.tasks.length === 0 ? (
+            <div className="text-[10px] animate-pulse text-industrial-argent/20 tracking-widest uppercase py-20 text-center italic">Waiting for swarm signals...</div>
+          ) : (
+            history.tasks.map((task: any) => (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                key={task.taskId} 
+                className="group p-4 bg-industrial-border/5 border border-industrial-border/30 hover:border-industrial-gold/30 transition-all rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-industrial-gold italic">TASK_{task.taskId}</span>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                      task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-500' :
+                      task.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-500' :
+                      'bg-industrial-gold/20 text-industrial-gold'
+                    }`}>
+                      {task.status}
+                    </span>
+                  </div>
+                  <span className="text-[9px] text-industrial-argent/30 font-mono">BUYER: {task.buyer}</span>
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">BIDS_RECEIVED</span>
+                    <span className="text-xs font-bold tabular-nums italic text-industrial-argent/80">{task.bids.length} AGENTS</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">ESTIMATED_VALUE</span>
+                    <span className="text-sm font-bold text-industrial-gold italic">{task.amount} USDC</span>
+                  </div>
+                  <ChevronRight size={16} className="text-industrial-argent/10 group-hover:text-industrial-gold transition-colors" />
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'swarm' | 'protocol' | 'governance' | 'intelligence'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'protocol' | 'governance' | 'intelligence') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'swarm' | 'protocol' | 'governance' | 'intelligence') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -462,6 +524,7 @@ function App() {
               </div>
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
+                <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="SWARM" />
                 <NavBtn active={activeTab === 'ledger'} onClick={() => toggleTab('ledger')} icon={<TermIcon size={18}/>} label="LEDGER" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
                 {isGovernor && <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />}
@@ -553,6 +616,11 @@ function App() {
                            </div>
                         </div>
                       </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'swarm' && (
+                    <motion.div key="swarm" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
+                      <SwarmMonitor history={nanoHistory} />
                     </motion.div>
                   )}
                   {activeTab === 'ledger' && (

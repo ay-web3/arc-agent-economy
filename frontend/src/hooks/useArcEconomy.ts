@@ -466,5 +466,23 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent };
+  const [nanoHistory, setNanoHistory] = useState<any>({ tasks: [], stats: { completedCount: 0, totalCreated: 0 } });
+
+  const fetchNanoHistory = async () => {
+    try {
+      const resp = await fetch("https://arc-agent-economy-hub-156980607075.europe-west1.run.app/nano/history");
+      const data = await resp.json();
+      setNanoHistory(data);
+    } catch (e) {
+      console.warn("Failed to fetch nano history");
+    }
+  };
+
+  useEffect(() => {
+    fetchNanoHistory();
+    const inv = setInterval(fetchNanoHistory, 2000);
+    return () => clearInterval(inv);
+  }, []);
+
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory };
 }
