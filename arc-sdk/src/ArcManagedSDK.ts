@@ -10,6 +10,7 @@ export interface ArcManagedConfig {
 }
 
 const IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e";
+const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
 
 /**
  * @title ArcManagedSDK
@@ -188,16 +189,15 @@ export class ArcManagedSDK {
         const vArrStr = `[${vArr.join(',')}]`;
 
         const payload = {
-            contractAddress: ESCROW,
-            abiFunctionSignature: "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)",
+            contractAddress: "0xDF5455170BCE05D961c8643180f22361C0340DE0",
+            abiFunctionSignature: "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)",
             abiParameters: [
                 String(params.jobDeadline), 
                 String(params.bidDeadline), 
                 String(params.verifierDeadline), 
                 this.pad32(params.taskHash), 
                 vArrStr, 
-                String(params.quorumM), 
-                String(params.isNano)
+                String(params.quorumM)
             ],
             amount: amount
         };
@@ -363,5 +363,11 @@ export class ArcManagedSDK {
         });
 
         return response.data;
+    }
+
+    private pad32(hex: string): string {
+        if (!hex.startsWith("0x")) hex = "0x" + hex;
+        if (hex.length >= 66) return hex.slice(0, 66);
+        return "0x" + hex.slice(2).padStart(64, "0");
     }
 }

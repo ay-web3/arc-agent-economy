@@ -55,8 +55,8 @@ export class SwarmOrchestrator {
                 break;
             case "createOpenTask":
                 contract = this.escrowAddress;
-                signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8,bool)";
-                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM, params.isNano];
+                signature = "createOpenTask(uint64,uint64,uint64,bytes32,address[],uint8)";
+                abiParams = [params.jobDeadline, params.bidDeadline, params.verifierDeadline, params.taskHash, params.verifiers, params.quorumM];
                 amount = params.value || params.amount || "0";
                 break;
             case "placeBid":
