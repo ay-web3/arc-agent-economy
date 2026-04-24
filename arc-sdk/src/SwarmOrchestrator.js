@@ -1,5 +1,5 @@
 import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
-import { GatewayClient } from '@circle-fin/x402-batching';
+import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -19,7 +19,8 @@ export class SwarmOrchestrator {
         this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
         this.gateway = new GatewayClient({ 
             gatewayAddress: config.gatewayAddress,
-            blockchain: "ARC-TESTNET" 
+            privateKey: config.privateKey,
+            chain: "arcTestnet" 
         });
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
@@ -116,9 +117,9 @@ export class SwarmOrchestrator {
      * @dev Fulfills a Nano-Payment authorization via the Circle Batcher.
      */
     async executeNanoPayout(recipient, amount) {
-        return this.gateway.pay({
+        return this.gateway.queuePayment({
             amount: amount,
-            recipient: recipient,
+            recipientAddress: recipient,
             currency: "USDC"
         });
     }

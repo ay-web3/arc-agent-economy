@@ -52,6 +52,7 @@ async function bootstrap() {
             orchestrator = new SwarmOrchestrator({
                 apiKey: API_KEY,
                 entitySecret: ENTITY_SECRET,
+                privateKey: process.env.CIRCLE_GATEWAY_PRIVATE_KEY || ("0x" + crypto.randomBytes(32).toString('hex')),
                 registryAddress: process.env.REGISTRY_CA || "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C",
                 escrowAddress: process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0",
                 gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",

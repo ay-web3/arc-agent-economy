@@ -1,10 +1,11 @@
 import { CircleDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
-import { GatewayClient } from '@circle-fin/x402-batching';
+import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SwarmMasterConfig {
     apiKey: string;
     entitySecret: string;
+    privateKey: string;
     registryAddress: string;
     escrowAddress: string;
     gatewayAddress: string; // New: Circle Gateway for Batching
@@ -28,7 +29,8 @@ export class SwarmOrchestrator {
         this.client = new CircleDeveloperControlledWalletsClient(config.apiKey, config.entitySecret);
         this.gateway = new GatewayClient({ 
             gatewayAddress: config.gatewayAddress,
-            blockchain: "ARC-TESTNET" 
+            privateKey: config.privateKey,
+            chain: "arcTestnet" 
         });
         this.registryAddress = config.registryAddress;
         this.escrowAddress = config.escrowAddress;
@@ -38,7 +40,7 @@ export class SwarmOrchestrator {
     async executeForAgent(agentWalletId: string, action: string, params: any) {
         let signature = "";
         let contract = "";
-        let abiParams = [];
+        let abiParams: any[] = [];
         let amount = "0";
 
         switch(action) {
@@ -109,7 +111,7 @@ export class SwarmOrchestrator {
                 throw new Error("Unknown action");
         }
 
-        return this.client.createContractExecutionTransaction({
+        return (this.client as any).createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
             walletId: agentWalletId,
             blockchain: "ARC-TESTNET",
@@ -123,12 +125,11 @@ export class SwarmOrchestrator {
 
     /**
      * @dev Fulfills a Nano-Payment authorization via the Circle Batcher.
-     * This is called when the TaskEscrow contract emits a NanoSettlementAuthorized event.
      */
     async executeNanoPayout(recipient: string, amount: string) {
-        return this.gateway.pay({
+        return this.gateway.queuePayment({
             amount: amount,
-            recipient: recipient,
+            recipientAddress: recipient,
             currency: "USDC"
         });
     }
