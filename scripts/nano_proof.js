@@ -6,8 +6,8 @@ const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app
 const EIP3009_DOMAIN = {
     name: "USD Coin",
     version: "2",
-    chainId: 10247,
-    verifyingContract: "0x0000000000000000000000000000000000000000" // Mock for demo
+    chainId: 5042002,
+    verifyingContract: "0x3600000000000000000000000000000000000000"
 };
 
 const TYPES = {
