@@ -30,6 +30,13 @@ export class SwarmOrchestrator {
         this.treasuryAddress = config.treasuryAddress;
     }
 
+    padBytes32(hex) {
+        if (!hex || hex === "0x") return "0x" + "0".repeat(64);
+        if (!hex.startsWith("0x")) hex = "0x" + hex;
+        if (hex.length >= 66) return hex.slice(0, 66);
+        return hex + "0".repeat(66 - hex.length);
+    }
+
     async executeForAgent(agentWalletId, action, params) {
         console.log(`>> [ORCHESTRATOR] Executing ${action} for Wallet ${agentWalletId}. Params:`, JSON.stringify(params));
         
@@ -43,10 +50,10 @@ export class SwarmOrchestrator {
                 contract = this.registryAddress;
                 signature = "register(bool,bool,bytes32,bytes32)";
                 abiParams = [
-                    !!params.asSeller, 
-                    !!params.asVerifier, 
-                    params.capHash || "0x" + "0".repeat(64), 
-                    params.pubKey || "0x" + "0".repeat(64)
+                    params.asSeller === true || params.asSeller === "true", 
+                    params.asVerifier === true || params.asVerifier === "true", 
+                    this.padBytes32(params.capHash), 
+                    this.padBytes32(params.pubKey)
                 ];
                 amount = params.stake || "0";
                 break;
@@ -54,8 +61,8 @@ export class SwarmOrchestrator {
                 contract = this.registryAddress;
                 signature = "updateProfile(bytes32,bytes32,bool)";
                 abiParams = [
-                    params.capHash || "0x" + "0".repeat(64), 
-                    params.pubKey || "0x" + "0".repeat(64), 
+                    this.padBytes32(params.capHash), 
+                    this.padBytes32(params.pubKey), 
                     true
                 ];
                 break;
@@ -70,7 +77,7 @@ export class SwarmOrchestrator {
                     String(params.jobDeadline || 0), 
                     String(params.bidDeadline || 0), 
                     String(params.verifierDeadline || 0), 
-                    params.taskHash || "0x" + "0".repeat(64), 
+                    this.padBytes32(params.taskHash), 
                     verifiers, 
                     String(params.quorumM || 1)
                 ];
@@ -84,7 +91,7 @@ export class SwarmOrchestrator {
                     String(params.taskId || 0), 
                     bidPriceScaled, 
                     String(params.eta || 0), 
-                    params.meta || "0x" + "0".repeat(64)
+                    this.padBytes32(params.meta || params.metaHash)
                 ];
                 break;
             case "selectBid":
@@ -97,7 +104,7 @@ export class SwarmOrchestrator {
                 signature = "submitResult(uint256,bytes32,string)";
                 abiParams = [
                     String(params.taskId || 0), 
-                    params.hash || params.resultHash || "0x" + "0".repeat(64), 
+                    this.padBytes32(params.hash || params.resultHash), 
                     params.uri || params.resultURI || ""
                 ];
                 break;
