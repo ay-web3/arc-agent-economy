@@ -865,21 +865,25 @@ app.post('/nano/approve', async (req, res) => {
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
                 console.log(`>> [GATEWAY] Deducting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
                 
-                const settlePayload = {
-                    agentId: "Admin", 
-                    agentSecret: "SOVEREIGN_ADMIN_2026", // Known secret for Hub internal calls
-                    batchId: Date.now(),
-                    buyers,
-                    earners
+                const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+                const payload = {
+                    idempotencyKey: uuidv4(),
+                    walletId: process.env.MASTER_WALLET_ID,
+                    blockchain: "ARC-TESTNET",
+                    contractAddress: ESCROW,
+                    abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
+                    abiParameters: [
+                        String(Date.now()),
+                        buyers.map(b => [b.agent, b.amount]),
+                        earners.map(e => [e.agent, e.amount])
+                    ],
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
 
-                const settleResp = await axios.post(`http://127.0.0.1:${PORT}/execute/settle-nano`, settlePayload);
-
-                if (settleResp.data && settleResp.data.txId) {
-                    console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${settleResp.data.txId}`);
-                } else {
-                    console.warn(`>> [x402 GATEWAY] ⚠️ Settlement pushed but no TxID returned:`, JSON.stringify(settleResp.data));
-                }
+                const resp = await client.createContractExecutionTransaction(payload);
+                const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
+                
+                console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txId}`);
             } catch (err) {
                 const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
                 console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", errMsg);
