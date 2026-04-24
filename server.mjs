@@ -728,7 +728,7 @@ app.post('/payout/nano', async (req, res) => {
 // ================= OFF-CHAIN NANO STATE CHANNEL =================
 
 // In-memory state channel for the Hackathon (Zero Gas)
-const nanoState = {
+let nanoState = {
     tasks: {},
     taskCounter: 1000,
     completedCount: 0,
