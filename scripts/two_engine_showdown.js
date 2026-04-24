@@ -32,9 +32,9 @@ async function runShowdown() {
         const v_a = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_A_" + ts })).data;
 
         console.log(">> Fueling Agents (Gas Sponsorship)...");
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=1.2`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=1.2`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=0.1`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=0.1`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=0.1`);
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");

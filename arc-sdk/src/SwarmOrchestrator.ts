@@ -53,26 +53,15 @@ export class SwarmOrchestrator {
         
         let contract = "";
         let amount = "0";
-        let abi: any[] = [];
-        let functionName = "";
-        let args: any[] = [];
+        let signature: string | null = null;
+        let abiParams: any[] | null = null;
+        let callData: string | null = null;
 
         switch(action) {
             case "register":
                 contract = this.registryAddress;
-                functionName = "register";
-                abi = [{
-                    name: "register",
-                    type: "function",
-                    stateMutability: "payable",
-                    inputs: [
-                        { name: "asSeller", type: "bool" },
-                        { name: "asVerifier", type: "bool" },
-                        { name: "capabilitiesHash", type: "bytes32" },
-                        { name: "pubKey", type: "bytes32" }
-                    ]
-                }];
-                args = [
+                signature = "register(bool,bool,bytes32,bytes32)";
+                abiParams = [
                     params.asSeller === true || params.asSeller === "true", 
                     params.asVerifier === true || params.asVerifier === "true", 
                     this.padBytes32(params.capHash), 
@@ -83,18 +72,8 @@ export class SwarmOrchestrator {
 
             case "updateProfile":
                 contract = this.registryAddress;
-                functionName = "updateProfile";
-                abi = [{
-                    name: "updateProfile",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [
-                        { name: "capabilitiesHash", type: "bytes32" },
-                        { name: "pubKey", type: "bytes32" },
-                        { name: "active", type: "bool" }
-                    ]
-                }];
-                args = [
+                signature = "updateProfile(bytes32,bytes32,bool)";
+                abiParams = [
                     this.padBytes32(params.capHash), 
                     this.padBytes32(params.pubKey), 
                     true
@@ -102,9 +81,13 @@ export class SwarmOrchestrator {
                 break;
 
             case "createOpenTask":
+                // 🛡️ Special Case: Use callData for array-based parameters to bypass Circle packer limitations
                 contract = this.escrowAddress;
-                functionName = "createOpenTask";
-                abi = [{
+                let verifiers = params.verifiers || [];
+                if (typeof verifiers === 'string') verifiers = [verifiers];
+                if (!Array.isArray(verifiers)) verifiers = [];
+
+                const cotAbi = [{
                     name: "createOpenTask",
                     type: "function",
                     stateMutability: "payable",
@@ -117,74 +100,44 @@ export class SwarmOrchestrator {
                         { name: "quorumM", type: "uint8" }
                     ]
                 }];
-                let verifiers = params.verifiers || [];
-                if (typeof verifiers === 'string') verifiers = [verifiers];
-                if (!Array.isArray(verifiers)) verifiers = [];
-
-                args = [
-                    BigInt(params.jobDeadline || 0), 
-                    BigInt(params.bidDeadline || 0), 
-                    BigInt(params.verifierDeadline || 0), 
-                    this.padBytes32(params.taskHash), 
-                    verifiers, 
-                    Number(params.quorumM || 1)
-                ];
+                callData = encodeFunctionData({ 
+                    abi: cotAbi, 
+                    functionName: "createOpenTask", 
+                    args: [
+                        BigInt(params.jobDeadline || 0), 
+                        BigInt(params.bidDeadline || 0), 
+                        BigInt(params.verifierDeadline || 0), 
+                        this.padBytes32(params.taskHash), 
+                        verifiers, 
+                        Number(params.quorumM || 1)
+                    ]
+                });
                 amount = params.value || params.amount || "0";
                 break;
 
             case "placeBid":
                 contract = this.escrowAddress;
-                functionName = "placeBid";
-                abi = [{
-                    name: "placeBid",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [
-                        { name: "taskId", type: "uint256" },
-                        { name: "bidPrice", type: "uint256" },
-                        { name: "etaSeconds", type: "uint64" },
-                        { name: "metaHash", type: "bytes32" }
-                    ]
-                }];
-                const bidPriceScaled = params.price ? BigInt(Math.floor(parseFloat(params.price) * 1e6)) : 0n;
-                args = [
-                    BigInt(params.taskId || 0), 
+                signature = "placeBid(uint256,uint256,uint64,bytes32)";
+                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString() : "0";
+                abiParams = [
+                    String(params.taskId || 0), 
                     bidPriceScaled, 
-                    BigInt(params.eta || 0), 
+                    String(params.eta || 0), 
                     this.padBytes32(params.meta || params.metaHash)
                 ];
                 break;
 
             case "selectBid":
                 contract = this.escrowAddress;
-                functionName = "selectBid";
-                abi = [{
-                    name: "selectBid",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [
-                        { name: "taskId", type: "uint256" },
-                        { name: "bidIndex", type: "uint256" }
-                    ]
-                }];
-                args = [BigInt(params.taskId || 0), BigInt(params.bidIndex || 0)];
+                signature = "selectBid(uint256,uint256)";
+                abiParams = [String(params.taskId || 0), String(params.bidIndex || 0)];
                 break;
 
             case "submitResult":
                 contract = this.escrowAddress;
-                functionName = "submitResult";
-                abi = [{
-                    name: "submitResult",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [
-                        { name: "taskId", type: "uint256" },
-                        { name: "resultHash", type: "bytes32" },
-                        { name: "resultURI", type: "string" }
-                    ]
-                }];
-                args = [
-                    BigInt(params.taskId || 0), 
+                signature = "submitResult(uint256,bytes32,string)";
+                abiParams = [
+                    String(params.taskId || 0), 
                     this.padBytes32(params.hash || params.resultHash), 
                     params.uri || params.resultURI || ""
                 ];
@@ -193,71 +146,53 @@ export class SwarmOrchestrator {
             case "approve":
             case "approveTask":
                 contract = this.escrowAddress;
-                functionName = "approve";
-                abi = [{
-                    name: "approve",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [{ name: "taskId", type: "uint256" }]
-                }];
-                args = [BigInt(params.taskId || 0)];
+                signature = "approve(uint256)";
+                abiParams = [String(params.taskId || 0)];
                 break;
 
             case "finalize":
             case "finalizeTask":
                 contract = this.escrowAddress;
-                functionName = "finalize";
-                abi = [{
-                    name: "finalize",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [{ name: "taskId", type: "uint256" }]
-                }];
-                args = [BigInt(params.taskId || 0)];
+                signature = "finalize(uint256)";
+                abiParams = [String(params.taskId || 0)];
                 break;
 
             case "deposit-nano":
                 contract = this.escrowAddress;
-                functionName = "depositNanoBalance";
-                abi = [{
-                    name: "depositNanoBalance",
-                    type: "function",
-                    stateMutability: "payable",
-                    inputs: []
-                }];
-                args = [];
+                signature = "depositNanoBalance()";
+                abiParams = [];
                 amount = params.amount || "0";
                 break;
 
             case "withdraw-nano":
                 contract = this.escrowAddress;
-                functionName = "withdrawNanoBalance";
-                abi = [{
-                    name: "withdrawNanoBalance",
-                    type: "function",
-                    stateMutability: "nonpayable",
-                    inputs: [{ name: "amount", type: "uint256" }]
-                }];
-                const withdrawNanoScaled = params.amount ? BigInt(Math.floor(parseFloat(params.amount) * 1e6)) : 0n;
-                args = [withdrawNanoScaled];
+                signature = "withdrawNanoBalance(uint256)";
+                const withdrawNanoScaled = params.amount ? (BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString() : "0";
+                abiParams = [withdrawNanoScaled];
                 break;
 
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
 
-        const callData = encodeFunctionData({ abi, functionName, args });
-        console.log(`>> [ORCHESTRATOR] Encoded CallData for ${action}: ${callData}`);
-
-        return this.client.createContractExecutionTransaction({
+        const txPayload: any = {
             idempotencyKey: uuidv4(),
             walletId: agentWalletId,
             blockchain: "ARC-TESTNET",
             contractAddress: contract,
-            callData: callData,
             amount: amount,
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        });
+        };
+
+        if (callData) {
+            txPayload.callData = callData;
+        } else {
+            txPayload.abiFunctionSignature = signature;
+            txPayload.abiParameters = abiParams;
+        }
+
+        console.log(`>> [ORCHESTRATOR] Prepared Payload for ${action}. Type: ${callData ? 'callData' : 'abiSignature'}`);
+        return this.client.createContractExecutionTransaction(txPayload);
     }
 
     /**
