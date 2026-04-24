@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
 import axios from 'axios';
@@ -8,6 +9,7 @@ import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;

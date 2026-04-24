@@ -31,9 +31,9 @@ async function runShowdown() {
         const v_a = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_A_" + ts })).data;
 
         console.log(">> Fueling Agents (Gas Sponsorship)...");
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=2.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=2.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=1.2`);
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");
@@ -80,9 +80,9 @@ async function runShowdown() {
         const b_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Buyer_B_" + ts })).data;
         const s_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Seller_B_" + ts })).data;
         const v_b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_B_" + ts })).data;
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_b.address}?amount=2.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_b.address}?amount=2.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_b.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_b.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_b.address}?amount=1.2`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_b.address}?amount=1.2`);
         await sleep(20000);
 
         console.log(">> Registering & Staking Swarm Agents...");
