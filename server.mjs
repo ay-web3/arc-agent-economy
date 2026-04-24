@@ -591,13 +591,38 @@ app.post('/execute/:action', async (req, res) => {
                 payload.amount = params.amount || params.value || "0";
                 break;
             case "settle-nano":
+                const { encodeFunctionData } = await import('viem');
                 payload.contractAddress = ESCROW;
-                payload.abiFunctionSignature = "settleNanoBatch(uint256,tuple[],tuple[])";
-                payload.abiParameters = [
-                    String(params.batchId || Math.floor(Date.now() / 1000)),
-                    params.buyers.map(b => [b.agent, b.amount]),
-                    params.earners.map(e => [e.agent, e.amount])
-                ];
+                payload.callData = encodeFunctionData({
+                    abi: [{
+                        name: "settleNanoBatch",
+                        type: "function",
+                        inputs: [
+                            { name: "batchId", type: "uint256" },
+                            {
+                                name: "buyers",
+                                type: "tuple[]",
+                                components: [
+                                    { name: "agent", type: "address" },
+                                    { name: "amount", type: "uint256" }
+                                ]
+                            },
+                            {
+                                name: "earners",
+                                type: "tuple[]",
+                                components: [
+                                    { name: "agent", type: "address" },
+                                    { name: "amount", type: "uint256" }
+                                ]
+                            }
+                        ]
+                    }],
+                    args: [
+                        BigInt(params.batchId || Math.floor(Date.now() / 1000)),
+                        params.buyers.map(b => ({ agent: b.agent, amount: BigInt(b.amount) })),
+                        params.earners.map(e => ({ agent: e.agent, amount: BigInt(e.amount) }))
+                    ]
+                });
                 break;
             case "transfer":
                 // Standard Native Token Transfer (USDC on ARC)
@@ -867,44 +892,49 @@ app.post('/nano/approve', async (req, res) => {
                 console.log(`>> [GATEWAY] Deducting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
                 
                 const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+                
+                // CRITICAL FIX: Manually encode callData to bypass Circle SDK packing issues
+                const { encodeFunctionData } = await import('viem');
+                const callData = encodeFunctionData({
+                    abi: [{
+                        name: "settleNanoBatch",
+                        type: "function",
+                        stateMutability: "nonpayable",
+                        inputs: [
+                            { name: "batchId", type: "uint256" },
+                            {
+                                name: "buyers",
+                                type: "tuple[]",
+                                components: [
+                                    { name: "agent", type: "address" },
+                                    { name: "amount", type: "uint256" }
+                                ]
+                            },
+                            {
+                                name: "earners",
+                                type: "tuple[]",
+                                components: [
+                                    { name: "agent", type: "address" },
+                                    { name: "amount", type: "uint256" }
+                                ]
+                            }
+                        ]
+                    }],
+                    args: [
+                        BigInt(Math.floor(Date.now() / 1000)),
+                        buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) })),
+                        earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }))
+                    ]
+                });
+
                 const payload = {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
                     blockchain: "ARC-TESTNET",
                     contractAddress: ESCROW,
-                    abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
-                    abiParameters: [
-                        String(Math.floor(Date.now() / 1000)),
-                        buyers,
-                        earners
-                    ],
+                    callData: callData,
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
-
-                // CRITICAL FIX: Use explicit ABI for struct array packing
-                payload.abi = [{
-                    name: "settleNanoBatch",
-                    type: "function",
-                    inputs: [
-                        { name: "batchId", type: "uint256" },
-                        {
-                            name: "buyers",
-                            type: "tuple[]",
-                            components: [
-                                { name: "agent", type: "address" },
-                                { name: "amount", type: "uint256" }
-                            ]
-                        },
-                        {
-                            name: "earners",
-                            type: "tuple[]",
-                            components: [
-                                { name: "agent", type: "address" },
-                                { name: "amount", type: "uint256" }
-                            ]
-                        }
-                    ]
-                }];
 
                 const resp = await client.createContractExecutionTransaction(payload);
                 const txId = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
