@@ -398,7 +398,7 @@ function SwarmMonitor({ history }: { history: any }) {
               >
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-industrial-gold italic">TASK_{task.taskId}</span>
+                    <span className="text-[10px] font-bold text-industrial-gold italic tracking-widest uppercase">SWARM_TASK_{task.taskId}</span>
                     <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
                       task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-500' :
                       task.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-500' :
@@ -407,16 +407,18 @@ function SwarmMonitor({ history }: { history: any }) {
                       {task.status}
                     </span>
                   </div>
-                  <span className="text-[9px] text-industrial-argent/30 font-mono">BUYER: {task.buyer}</span>
+                  <span className="text-[11px] font-bold text-industrial-argent/80 uppercase italic">{task.description || 'Off-Chain Swarm Execution'}</span>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[8px] text-industrial-argent/30 font-mono">BUYER: {task.buyer.slice(0, 12)}...</span>
+                    {task.resultUri && (
+                      <a href={task.resultUri} target="_blank" className="text-[8px] text-industrial-gold/50 hover:text-industrial-gold font-bold underline underline-offset-2">RESULT_MANIFEST</a>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
-                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">BIDS_RECEIVED</span>
-                    <span className="text-xs font-bold tabular-nums italic text-industrial-argent/80">{task.bids.length} AGENTS</span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">ESTIMATED_VALUE</span>
+                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">NANO_VALUE</span>
                     <span className="text-sm font-bold text-industrial-gold italic">{task.amount} USDC</span>
                   </div>
                   <ChevronRight size={16} className="text-industrial-argent/10 group-hover:text-industrial-gold transition-colors" />
