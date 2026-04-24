@@ -142,11 +142,13 @@ async function saveWalletId(agentName, walletId, rawSecret, address) {
     }
 }
 
+const USDC_TOKEN_ID = "15dc2b5d-0994-58b0-bf8c-3a0501148ee8";
+
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
         console.log(`>> [FUEL] Resolving USDC TokenId for Wallet: ${walletId}`);
-        const response = await client.getWalletTokenBalance({ walletId: walletId }); 
+        const response = await client.getWalletTokenBalance({ id: walletId }); 
         const balances = response.data.tokenBalances;
         console.log(`>> [FUEL] Found ${balances.length} tokens in Master Wallet.`);
         const usdc = balances.find(b => b.token.symbol === "USDC");
@@ -154,11 +156,11 @@ async function getUsdcTokenId(walletId) {
             console.log(`>> [FUEL] USDC TokenId Resolved: ${usdc.token.id}`);
             return usdc.token.id;
         }
-        console.warn(">> [FUEL] USDC Token not found in wallet balances. Falling back to env.");
-        return process.env.USDC_TOKEN_ID;
+        console.warn(">> [FUEL] USDC Token not found in wallet balances. Falling back to hardcoded.");
+        return USDC_TOKEN_ID;
     } catch (e) {
         console.error(`>> [FUEL] Failed to fetch balances: ${e.message}`);
-        return process.env.USDC_TOKEN_ID;
+        return USDC_TOKEN_ID;
     }
 }
 
