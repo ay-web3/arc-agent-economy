@@ -96,7 +96,6 @@ async function bootstrap() {
         }
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-        const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID;
         if (client && MASTER_WALLET_ID) {
             try {
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
