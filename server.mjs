@@ -161,6 +161,16 @@ async function getUsdcTokenId(walletId) {
 }
 
 // --- ENDPOINTS ---
+app.get('/debug/wallets', async (req, res) => {
+    if (!client) return res.json({ error: "Engines Offline" });
+    try {
+        const resp = await client.listWallets({ walletSetId: process.env.WALLET_SET_ID });
+        res.json(resp.data.wallets.map(w => ({ id: w.id, address: w.address })));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/debug/master', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {

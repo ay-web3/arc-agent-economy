@@ -9,7 +9,7 @@ async function check() {
 
     const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
     const GOV_ROLE = "0x718093de3564e4511528c2a833777f7a8dc58849646487e4125b29f795656645";
-    const TREASURY = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D";
+    const TREASURY = "0xabc3afc19fa3d0123bd45e418bb39cf23dd5964d";
 
     const hasRole = await pc.readContract({
         address: ESCROW,
