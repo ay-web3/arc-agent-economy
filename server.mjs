@@ -853,6 +853,7 @@ app.post('/nano/bid', async (req, res) => {
 app.post('/nano/reset', (req, res) => {
     nanoState = {
         tasks: {},
+        taskCounter: 1000,
         buyersToDeduct: {},
         earnersToCredit: {},
         completedCount: 0
