@@ -19,6 +19,7 @@ let uuidv4 = null;
 let SDK_LOAD_ERROR = null;
 let mongoClient = null;
 let mongoPromise = null;
+let MASTER_ADDRESS = null;
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -98,34 +99,27 @@ async function bootstrap() {
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         if (client && MASTER_WALLET_ID) {
             try {
+                const wResp = await client.getWallet({ id: MASTER_WALLET_ID });
+                MASTER_ADDRESS = wResp.data.wallet.address;
+                console.log(`>> [SENTINEL] Master Wallet Resolved: ${MASTER_ADDRESS}`);
+
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
                 const GOV_ROLE = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
-                const masterAddr = "0x401FaF90c2b08c88914B630BFbcAF4b10CE1965D"; // Treasury
                 
                 const hasRoleResp = await pc.readContract({
                     address: ESCROW,
                     abi: parseAbi(['function hasRole(bytes32,address) view returns (bool)']),
                     functionName: 'hasRole',
-                    args: [GOV_ROLE, masterAddr]
+                    args: [GOV_ROLE, MASTER_ADDRESS]
                 });
 
                 if (!hasRoleResp) {
-                    console.log(">> [SENTINEL] Granting GOVERNANCE_ROLE to Treasury...");
-                    await client.createContractExecutionTransaction({
-                        idempotencyKey: uuidv4(),
-                        walletId: MASTER_WALLET_ID,
-                        blockchain: "ARC-TESTNET",
-                        contractAddress: ESCROW,
-                        abiFunctionSignature: "grantRole(bytes32,address)",
-                        abiParameters: [GOV_ROLE, masterAddr],
-                        fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                    });
-                    console.log(">> [SENTINEL] Self-Authorization Transaction Pushed.");
+                    console.warn(">> [CRITICAL] Treasury LACKS GOVERNANCE_ROLE on Escrow!");
                 } else {
                     console.log(">> [SENTINEL] Governance Permissions Verified.");
                 }
             } catch (e) {
-                console.warn(">> [WARNING] Self-Authorization Check Failed:", e.message);
+                console.warn(">> [WARNING] Treasury Resolution Failed:", e.message);
             }
         }
     } catch (e) {
@@ -902,7 +896,9 @@ app.post('/nano/approve', async (req, res) => {
                 ]);
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [GATEWAY] Deducting from ${buyers.length} Buyers and Crediting ${earners.length} Earners...`);
+                console.log(`>> [GATEWAY] Deducting from Buyers: ${JSON.stringify(buyers)}`);
+                console.log(`>> [GATEWAY] Crediting Earners: ${JSON.stringify(earners)}`);
+                console.log(`>> [GATEWAY] Processing...`);
                 
                 const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
                 
