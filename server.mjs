@@ -386,13 +386,16 @@ app.get('/registry/profile/:address', async (req, res) => {
 
 // ERC-8004 Identity Update (SDK Official Sync)
 app.post('/updateArcIdentity', async (req, res) => {
-    if (mongoPromise) await mongoPromise;
-    const { agentId, agentSecret, tokenId } = req.body;
-    const auth = await verifyAgent(agentId, agentSecret);
-    if (!auth.success) return res.status(401).json({ error: auth.error });
-    
-    await linkArcIdentity(agentId, tokenId);
-    res.json({ success: true, agentId, tokenId });
+    try {
+        if (mongoPromise) await mongoPromise;
+        const { agentId, agentSecret, tokenId } = req.body;
+        const auth = await verifyAgent(agentId, agentSecret);
+        
+        await linkArcIdentity(agentId, tokenId);
+        res.json({ success: true, agentId, tokenId });
+    } catch (e) {
+        res.status(401).json({ error: e.message });
+    }
 });
 
 app.post('/onboard', async (req, res) => {
@@ -482,13 +485,10 @@ app.post('/execute/:action', async (req, res) => {
     const payload = req.body;
     const effectiveName = payload.agentId || payload.agentName;
     
-    const auth = await verifyAgent(effectiveName, payload.agentSecret);
-    if (!auth.success) return res.status(401).json({ error: auth.error });
-
-    const walletId = auth.walletId;
-    const params = payload; // Redirect params to top-level payload
-
     try {
+        const auth = await verifyAgent(effectiveName, payload.agentSecret);
+        const walletId = auth.walletId;
+        const params = payload; 
         let payload = {
             idempotencyKey: uuidv4(),
             walletId: walletId,
