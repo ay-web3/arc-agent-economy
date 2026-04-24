@@ -593,7 +593,7 @@ app.post('/execute/:action', async (req, res) => {
                 payload.contractAddress = ESCROW;
                 payload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
                 payload.abiParameters = [
-                    String(params.batchId || Date.now()),
+                    String(params.batchId || Math.floor(Date.now() / 1000)),
                     params.buyers.map(b => [b.agent, b.amount]),
                     params.earners.map(e => [e.agent, e.amount])
                 ];
@@ -873,7 +873,7 @@ app.post('/nano/approve', async (req, res) => {
                     contractAddress: ESCROW,
                     abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
                     abiParameters: [
-                        String(Date.now()),
+                        String(Math.floor(Date.now() / 1000)), // Use smaller number for batchId just in case
                         buyers.map(b => [b.agent, b.amount]),
                         earners.map(e => [e.agent, e.amount])
                     ],
