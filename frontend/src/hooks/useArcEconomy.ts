@@ -470,7 +470,7 @@ export function useArcEconomy() {
 
   const fetchNanoHistory = async () => {
     try {
-      const resp = await fetch("https://arc-agent-economy-hub-bhsvvftara-ew.a.run.app/nano/history");
+      const resp = await fetch("https://arc-agent-economy-hub-156980607075.europe-west1.run.app/nano/history");
       const data = await resp.json();
       setNanoHistory(data);
     } catch (e) {

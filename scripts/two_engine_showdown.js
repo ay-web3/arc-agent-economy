@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { createPublicClient, http, parseAbi } from 'viem';
 
-const HUB_URL = "https://arc-agent-economy-hub-bhsvvftara-ew.a.run.app";
+const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 const ESCROW_ADDR = "0xDF5455170BCE05D961c8643180f22361C0340DE0"; 
 
 const client = createPublicClient({ 
@@ -31,9 +31,9 @@ async function runShowdown() {
         const v_a = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Verifier_A_" + ts })).data;
 
         console.log(">> Fueling Agents (Gas Sponsorship)...");
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=5.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=5.0`);
-        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=5.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${b_a.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${s_a.address}?amount=2.0`);
+        await axios.get(`${HUB_URL}/admin/fuel-agent/${v_a.address}?amount=2.0`);
         await sleep(20000);
 
         console.log(">> Registering & Staking (1.0 USDC each)...");

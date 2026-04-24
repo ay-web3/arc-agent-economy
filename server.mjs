@@ -145,11 +145,19 @@ async function saveWalletId(agentName, walletId, rawSecret, address) {
 async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
-        const response = await client.getWalletTokenBalance({ id: walletId }); // Fix: use id
+        console.log(`>> [FUEL] Resolving USDC TokenId for Wallet: ${walletId}`);
+        const response = await client.getWalletTokenBalance({ walletId: walletId }); 
         const balances = response.data.tokenBalances;
+        console.log(`>> [FUEL] Found ${balances.length} tokens in Master Wallet.`);
         const usdc = balances.find(b => b.token.symbol === "USDC");
-        return usdc ? usdc.token.id : process.env.USDC_TOKEN_ID;
+        if (usdc) {
+            console.log(`>> [FUEL] USDC TokenId Resolved: ${usdc.token.id}`);
+            return usdc.token.id;
+        }
+        console.warn(">> [FUEL] USDC Token not found in wallet balances. Falling back to env.");
+        return process.env.USDC_TOKEN_ID;
     } catch (e) {
+        console.error(`>> [FUEL] Failed to fetch balances: ${e.message}`);
         return process.env.USDC_TOKEN_ID;
     }
 }
@@ -808,7 +816,7 @@ app.get('/debug/balance/:address', async (req, res) => {
             functionName: 'balanceOf',
             args: [req.params.address]
         });
-        res.json({ address: req.params.address, balance: (Number(balance) / 1e6).toFixed(6) });
+        res.json({ address: req.params.address, balance: (Number(balance) / 1e18).toFixed(6) });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
