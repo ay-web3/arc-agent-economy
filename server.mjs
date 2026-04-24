@@ -594,8 +594,8 @@ app.post('/execute/:action', async (req, res) => {
                 payload.abiFunctionSignature = "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])";
                 payload.abiParameters = [
                     String(params.batchId || Math.floor(Date.now() / 1000)),
-                    params.buyers.map(b => [b.agent, b.amount]),
-                    params.earners.map(e => [e.agent, e.amount])
+                    params.buyers.map(b => ({ agent: b.agent, amount: b.amount })),
+                    params.earners.map(e => ({ agent: e.agent, amount: e.amount }))
                 ];
                 break;
             case "transfer":
@@ -873,9 +873,9 @@ app.post('/nano/approve', async (req, res) => {
                     contractAddress: ESCROW,
                     abiFunctionSignature: "settleNanoBatch(uint256,(address,uint256)[],(address,uint256)[])",
                     abiParameters: [
-                        String(Math.floor(Date.now() / 1000)), // Use smaller number for batchId just in case
-                        buyers.map(b => [b.agent, b.amount]),
-                        earners.map(e => [e.agent, e.amount])
+                        String(Math.floor(Date.now() / 1000)),
+                        buyers.map(b => ({ agent: b.agent, amount: b.amount })),
+                        earners.map(e => ({ agent: e.agent, amount: e.amount }))
                     ],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
