@@ -423,6 +423,7 @@ async function verifyAgent(agentId, providedSecret) {
     if (!record) throw new Error(`Agent not found: ${agentId}`);
     
     // Recovery Check: For hackathon demo, allow displaySecret or master fallback
+    console.log(`>> [AUTH_DEBUG] Agent: ${agentId}, Provided: ${providedSecret}, Stored: ${record.displaySecret || "NONE"}`);
     if (providedSecret === record.displaySecret || providedSecret === "SOVEREIGN_SECRET_2026") {
         return record;
     }
