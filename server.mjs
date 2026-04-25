@@ -366,7 +366,13 @@ app.post('/execute/paymindOnboard', async (req, res) => {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
 
-        res.json({ success: true, txId: txResp.data.transaction.id, vault: "PENDING_FORGE" });
+        const txId = txResp.data?.transaction?.id || txResp.data?.id;
+        if (!txId) {
+            console.error(">> [BRIDGE_ERROR] No transaction ID in Circle response:", JSON.stringify(txResp.data));
+            throw new Error("Circle SDK returned successful status but no transaction ID.");
+        }
+
+        res.json({ success: true, txId, vault: "PENDING_FORGE" });
     } catch (e) {
         const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(">> [BRIDGE_ERROR] Paymind Onboard Failed:", detail);
@@ -389,7 +395,13 @@ app.post('/execute/paymindPay', async (req, res) => {
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
 
-        res.json({ success: true, txId: txResp.data.transaction.id });
+        const txId = txResp.data?.transaction?.id || txResp.data?.id;
+        if (!txId) {
+            console.error(">> [BRIDGE_ERROR] No transaction ID in Circle response:", JSON.stringify(txResp.data));
+            throw new Error("Circle SDK returned successful status but no transaction ID.");
+        }
+
+        res.json({ success: true, txId });
     } catch (e) {
         const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(">> [BRIDGE_ERROR] Paymind Pay Failed:", detail);
