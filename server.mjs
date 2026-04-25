@@ -841,15 +841,16 @@ app.post('/nano/approve', async (req, res) => {
         task.status = 'COMPLETED';
         console.log(`>> [NANO CHANNEL] Verification Approved off-chain by ${auth.address}. Gas: $0.00`);
 
-        // Tally balances
-        const price = parseFloat(task.selectedBid.bidPrice);
+        // Tally balances with BigInt precision (18 decimals)
+        const { parseUnits } = await import('viem');
+        const priceUnits = parseUnits(task.selectedBid.bidPrice, 18);
         const buyerAddr = task.buyer.toLowerCase();
         const sellerAddr = task.selectedBid.seller.toLowerCase();
         const verAddr = verifierAddress.toLowerCase();
 
-        nanoState.buyersToDeduct[buyerAddr] = (nanoState.buyersToDeduct[buyerAddr] || 0) + price;
-        nanoState.earnersToCredit[sellerAddr] = (nanoState.earnersToCredit[sellerAddr] || 0) + (price * 0.9);
-        nanoState.earnersToCredit[verAddr] = (nanoState.earnersToCredit[verAddr] || 0) + (price * 0.1);
+        nanoState.buyersToDeduct[buyerAddr] = (BigInt(nanoState.buyersToDeduct[buyerAddr] || "0") + priceUnits).toString();
+        nanoState.earnersToCredit[sellerAddr] = (BigInt(nanoState.earnersToCredit[sellerAddr] || "0") + (priceUnits * 90n / 100n)).toString();
+        nanoState.earnersToCredit[verAddr] = (BigInt(nanoState.earnersToCredit[verAddr] || "0") + (priceUnits * 10n / 100n)).toString();
 
         nanoState.completedCount++;
 
@@ -859,12 +860,12 @@ app.post('/nano/approve', async (req, res) => {
                 // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
                 const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e18))).toString()
+                    val
                 ]);
                 
                 const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e18))).toString()
+                    val
                 ]);
 
                 const batchId = BigInt(Math.floor(Date.now() / 1000));
@@ -874,14 +875,27 @@ app.post('/nano/approve', async (req, res) => {
                 nanoState.buyersToDeduct = {};
                 nanoState.earnersToCredit = {};
 
-                console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [x402 GATEWAY] Executing settleNanoBatch via Orchestrator...`);
+                const ESCROW_HUB = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+                const batchId = BigInt(Math.floor(Date.now() / 1000));
+                
+                console.log(`>> [NUCLEAR_TRACE] 🚨 BATCH TRIGGER REACHED 🚨`);
+                console.log(`>> [NUCLEAR_TRACE] Escrow: ${ESCROW_HUB}`);
+                console.log(`>> [NUCLEAR_TRACE] Batch ID: ${batchId}`);
 
+                // Convert arrays to correct format for orchestrator
                 const buyerData = buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) }));
                 const earnerData = earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }));
 
+                console.log(`>> [NUCLEAR_TRACE] Buyers Array: ${JSON.stringify(buyerData, (k, v) => typeof v === 'bigint' ? v.toString() : v)}`);
+                console.log(`>> [NUCLEAR_TRACE] Earners Array: ${JSON.stringify(earnerData, (k, v) => typeof v === 'bigint' ? v.toString() : v)}`);
+
+                // RESET STATE IMMEDIATELY (Prevent double-trigger)
+                nanoState.completedCount = 0;
+                nanoState.buyersToDeduct = {};
+                nanoState.earnersToCredit = {};
+
                 const resp = await orchestrator.settleNanoBatch(batchId, buyerData, earnerData);
-                const txIdNano = resp.data.transaction?.id || resp.data?.id || "PENDING";
+                const txIdNano = resp?.data?.transaction?.id || resp?.data?.id || "PUSHED_PENDING";
                 console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txIdNano}`);
             } catch (err) {
                 const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
