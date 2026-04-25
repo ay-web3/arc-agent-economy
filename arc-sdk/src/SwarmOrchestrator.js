@@ -157,7 +157,8 @@ export class SwarmOrchestrator {
             case "placeBid":
                 contract = this.escrowAddress;
                 signature = "placeBid(uint256,uint256,uint64,bytes32)";
-                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString() : "0";
+                // Scaled to 18 decimals (Native Standard)
+                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e18))).toString() : "0";
                 abiParams = [
                     String(params.taskId || 0), 
                     bidPriceScaled, 
@@ -201,7 +202,7 @@ export class SwarmOrchestrator {
                 signature = "approve(address,uint256)";
                 abiParams = [
                     this.escrowAddress, 
-                    BigInt(Math.floor(parseFloat(params.amount || "1000") * 1e6))
+                    BigInt(Math.floor(parseFloat(params.amount || "1000") * 1e18))
                 ];
                 break;
 
@@ -222,7 +223,7 @@ export class SwarmOrchestrator {
             case "withdraw-nano":
                 contract = this.escrowAddress;
                 signature = "withdrawNanoBalance(uint256)";
-                const withdrawNanoScaled = params.amount ? (BigInt(Math.floor(parseFloat(params.amount) * 1e6))).toString() : "0";
+                const withdrawNanoScaled = params.amount ? (BigInt(Math.floor(parseFloat(params.amount) * 1e18))).toString() : "0";
                 abiParams = [withdrawNanoScaled];
                 break;
 

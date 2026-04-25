@@ -735,10 +735,13 @@ app.post('/nano/create', async (req, res) => {
         const taskId = ++nanoState.taskCounter;
         const buyerAddr = auth.address.toLowerCase();
 
+        // Scale amount to 18 decimals (Native Standard)
+        const amountWei = (BigInt(Math.floor(parseFloat(amount || "0") * 1e18))).toString();
+        
         nanoState.tasks[taskId] = {
             taskId,
             buyer: buyerAddr,
-            amount,
+            amount: amountWei,
             manifestHash,
             description: description || "Swarm Nano-Task",
             bids: [],
@@ -763,7 +766,9 @@ app.post('/nano/bid', async (req, res) => {
         if (!task) throw new Error("Task not found");
 
         const sellerAddr = auth.address.toLowerCase();
-        task.bids.push({ seller: sellerAddr, bidPrice });
+        // Scale bidPrice to 18 decimals (Native Standard)
+        const bidPriceWei = (BigInt(Math.floor(parseFloat(bidPrice || "0") * 1e18))).toString();
+        task.bids.push({ seller: sellerAddr, bidPrice: bidPriceWei });
         console.log(`>> [NANO CHANNEL] Off-chain Bid received for Task ${taskId} from ${sellerAddr}. Gas: $0.00`);
         res.json({ success: true });
     } catch (e) {
@@ -842,17 +847,18 @@ app.post('/nano/approve', async (req, res) => {
         console.log(`>> [NANO CHANNEL] Verification Approved off-chain by ${auth.address}. Gas: $0.00`);
 
         // Tally balances with BigInt precision (18 decimals to match native standard)
-        const { parseUnits } = await import('viem');
-        const priceUnits = parseUnits(task.selectedBid.bidPrice, 18);
         const buyerAddr = task.buyer.toLowerCase();
         const sellerAddr = task.selectedBid.seller.toLowerCase();
         const verAddr = verifierAddress.toLowerCase();
 
+        // DB price is now already 18-decimal scaled (Wei Standard)
+        const priceUnits = BigInt(task.selectedBid.bidPrice);
+        
         nanoState.buyersToDeduct[buyerAddr] = (BigInt(nanoState.buyersToDeduct[buyerAddr] || "0") + priceUnits).toString();
         nanoState.earnersToCredit[sellerAddr] = (BigInt(nanoState.earnersToCredit[sellerAddr] || "0") + (priceUnits * 90n / 100n)).toString();
         nanoState.earnersToCredit[verAddr] = (BigInt(nanoState.earnersToCredit[verAddr] || "0") + (priceUnits * 10n / 100n)).toString();
         
-        console.log(`>> [PRECISION] Tallied ${task.selectedBid.bidPrice} USDC (18-dec units: ${priceUnits}) for ${buyerAddr}`);
+        console.log(`>> [PRECISION] DB Price: ${task.selectedBid.bidPrice} (6-dec) -> Translated: ${priceUnits} (18-dec) for ${buyerAddr}`);
 
         nanoState.completedCount++;
 
