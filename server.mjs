@@ -6,7 +6,10 @@ import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
-import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
+import { SwarmOrchestrator } from './arc-sdk/src/ArcOrchestrator.js';
+
+const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
+const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -343,6 +346,49 @@ app.post('/settle-nano', async (req, res) => {
     } catch (error) {
         console.error("Gateway settlement error:", error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/execute/paymindOnboard', async (req, res) => {
+    const { agentId, agentSecret } = req.body;
+    try {
+        const agent = await verifyAgent(agentId, agentSecret);
+        console.log(`>> [BRIDGE] Onboarding Circle Wallet ${agent.address} to Paymind Manager...`);
+        
+        const txResp = await client.createTransaction({
+            idempotencyKey: uuidv4(),
+            walletId: agent.walletId,
+            blockchain: "ARC-TESTNET",
+            abiFunctionSignature: "createAgentWallet(uint256)",
+            abiParameters: ["10000000000000000000"], // 10 USDC daily limit
+            contractAddress: PAYMIND_MANAGER,
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+
+        res.json({ success: true, txId: txResp.data.transaction.id, vault: "PENDING_FORGE" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/execute/paymindPay', async (req, res) => {
+    const { agentId, agentSecret, vaultAddress, amount } = req.body;
+    try {
+        const agent = await verifyAgent(agentId, agentSecret);
+        console.log(`>> [BRIDGE] Funding Paymind Vault ${vaultAddress} with ${amount} USDC...`);
+        
+        const txResp = await client.createTransaction({
+            idempotencyKey: uuidv4(),
+            walletId: agent.walletId,
+            blockchain: "ARC-TESTNET",
+            destinationAddress: vaultAddress,
+            amounts: [amount || "0.1"],
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+
+        res.json({ success: true, txId: txResp.data.transaction.id });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 

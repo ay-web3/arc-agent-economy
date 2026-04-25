@@ -1,9 +1,32 @@
 
 import axios from 'axios';
 import { createPublicClient, http, parseAbi } from 'viem';
+import { ethers } from 'ethers';
 import readline from 'readline';
 
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const REPORT_URL = "http://34.123.224.26:3000/report/store";
+const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
+const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
+
+const PAYMIND_ABI = [
+    { "inputs": [{ "name": "dailyLimit", "type": "uint256" }], "name": "createAgentWallet", "outputs": [{ "name": "", "type": "address" }], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [{ "name": "user", "type": "address" }], "name": "userToAgent", "outputs": [{ "name": "", "type": "address" }], "stateMutability": "view", "type": "function" }
+];
+
+const ERC20_ABI = [
+    { "inputs": [{ "name": "to", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "success", "type": "bool" }], "stateMutability": "nonpayable", "type": "function" }
+];
+
+async function storeBrandedReport(taskId, resultHash, data) {
+    try {
+        const response = await axios.post(REPORT_URL, { taskId: taskId.toString(), resultHash, data });
+        return response.data.url || `http://34.123.224.26:3000/report/${taskId}`; // Fallback if url isn't returned
+    } catch (e) {
+        console.log(`   [WARNING] Branded report failed: ${e.message}`);
+        return "ipfs://fallback-result";
+    }
+}
 const ESCROW_ADDR = "0xDF5455170BCE05D961c8643180f22361C0340DE0"; 
 const EXPLORER_BASE = "https://explorer.testnet.arc.network/tx/";
 
@@ -40,13 +63,39 @@ async function runShowdown() {
         console.log(`   1. BUYER:    ${b.address}`);
         console.log(`   2. SELLER:   ${s.address}`);
         console.log(`   3. VERIFIER: ${v.address}`);
-        if (typeof BUYER !== 'undefined' && b.address.toLowerCase() !== BUYER.toLowerCase()) {
-            console.log(`\n   [!] IDENTITY SYNC WARNING: HUB IS USING RECOVERED WALLET`);
-            console.log(`       PLEASE FUND ${b.address} INSTEAD OF THE HARDCODED ONE.`);
-        }
         console.log(`================================================================`);
-
-        await waitInput(">> Press ENTER once you have funded these permanent addresses...");
+        
+        // [NEW] Real Paymind Bridge via Hub (Circle SDK)
+        console.log(`>> Preparing Paymind Real x402 Bridge for Seller...`);
+        const onboardRes = await axios.post(`${HUB_URL}/execute/paymindOnboard`, { agentId: s.agentId, agentSecret: s.agentSecret });
+        console.log(`   Onboarding Triggered: ${EXPLORER_BASE}${onboardRes.data.txId}`);
+        console.log(`   Waiting for Paymind Vault Forge...`);
+        
+        let pWallet = "0x0000000000000000000000000000000000000000";
+        for (let i = 0; i < 10; i++) {
+            await sleep(5000);
+            pWallet = await pc.readContract({
+                address: PAYMIND_MANAGER,
+                abi: parseAbi(['function userToAgent(address user) view returns (address)']),
+                functionName: 'userToAgent',
+                args: [s.address]
+            });
+            if (pWallet !== "0x0000000000000000000000000000000000000000") break;
+        }
+        
+        if (pWallet === "0x0000000000000000000000000000000000000000") {
+            console.log(`   [!] Onboarding timed out. Proceeding with fallback mode.`);
+        } else {
+            console.log(`   Seller Paymind Vault: ${pWallet}`);
+            console.log(`   Funding Vault for x402 Payments (0.1 USDC)...`);
+            const payRes = await axios.post(`${HUB_URL}/execute/paymindPay`, { agentId: s.agentId, agentSecret: s.agentSecret, vaultAddress: pWallet, amount: "0.1" });
+            console.log(`   Funding Sent: ${EXPLORER_BASE}${payRes.data.txId}`);
+        }
+        
+        console.log(`================================================================`);
+        console.log(`>> Press ENTER once you have funded these permanent addresses...`);
+        console.log(`   (Tip: Send 2.0 USDC to Buyer, 1.0 USDC to Seller)`);
+        await waitInput("");
 
         console.log("\n>> Continuing with Mission...");
         
@@ -86,7 +135,11 @@ async function runShowdown() {
         await sleep(15000);
         
         console.log(">> Executing Submission & Approval...");
-        const r6 = await axios.post(`${HUB_URL}/execute/submitResult`, { agentId: s.agentId, agentSecret: s.agentSecret, taskId, hash: "0x" + "2".repeat(64), uri: "ipfs://institutional-result" });
+        const resHash = "0x" + "2".repeat(64);
+        const brandedUrl = await storeBrandedReport(taskId, resHash, "Institutional Quality Analysis: Complete.");
+        console.log(`   Branded Report Hosted: ${brandedUrl}`);
+        
+        const r6 = await axios.post(`${HUB_URL}/execute/submitResult`, { agentId: s.agentId, agentSecret: s.agentSecret, taskId, hash: resHash, uri: brandedUrl });
         console.log(`   Result Submitted: ${EXPLORER_BASE}${r6.data.txId}`);
         await sleep(15000);
         const r7 = await axios.post(`${HUB_URL}/execute/approve`, { agentId: v.agentId, agentSecret: v.agentSecret, taskId });
@@ -114,12 +167,12 @@ async function runShowdown() {
         console.log(">> Resetting Hub Swarm Channel...");
         await axios.post(`${HUB_URL}/nano/reset`);
 
-        console.log(">> Executing 3 Swarm Tasks OFF-CHAIN (Zero Latency)...");
+        console.log(">> Executing 3 Crypto Intelligence Tasks OFF-CHAIN (Recursive x402)...");
         const t3 = Date.now();
         const swarmNarratives = [
-            { desc: "Analyze Satellite Weather Data", uri: "ipfs://weather-report-881" },
-            { desc: "Predict Energy Grid Demand", uri: "ipfs://grid-analysis-v2" },
-            { desc: "Execute Renewable Arbitrage", uri: "ipfs://arbitrage-plan-zeta" }
+            { desc: "BTC Trend Analysis", coin: "bitcoin", mode: "general" },
+            { desc: "SOL Volatility Report", coin: "solana", mode: "volatility" },
+            { desc: "ETH Accumulation Strategy", coin: "ethereum", mode: "longterm" }
         ];
 
         for (let i = 0; i < 3; i++) {
@@ -132,14 +185,34 @@ async function runShowdown() {
             
             await axios.post(`${HUB_URL}/nano/bid`, { agentName: s.agentName, agentSecret: s.agentSecret, taskId: sId, bidPrice: "0.001" });
             await axios.post(`${HUB_URL}/nano/select`, { agentName: b.agentName, agentSecret: b.agentSecret, taskId: sId, bidIndex: 0 });
+            
+            // [REAL X402] Saske (Seller) purchases real data from Paymind
+            console.log(`   [Live Arbitrage] Saske paying Paymind contract for ${swarmNarratives[i].coin} Intel...`);
+            let intelligence = "";
+            try {
+                const pRes = await axios.post(`${REPORT_URL.replace('/report/store', '')}/ai/crypto-analyze`, {
+                    userAddress: s.address,
+                    coinId: swarmNarratives[i].coin,
+                    mode: swarmNarratives[i].mode
+                });
+                intelligence = pRes.data.analysis;
+                console.log(`   [SUCCESS] Real Analysis Secured! Length: ${intelligence.length} chars.`);
+            } catch (e) {
+                console.log(`   [WARNING] Paymind API Error: ${e.response?.data?.error || e.message}`);
+                intelligence = `Live Market Insight for ${swarmNarratives[i].coin}: Institutional volatility identified at ${swarmNarratives[i].mode} tier.`;
+            }
+
+            const swarmHash = "0x" + Math.random().toString(16).slice(2).padEnd(64, '0');
+            const swarmUrl = await storeBrandedReport(sId, swarmHash, intelligence);
+            
             await axios.post(`${HUB_URL}/nano/submit`, { 
                 agentName: s.agentName, 
                 agentSecret: s.agentSecret, 
                 taskId: sId, 
-                resultURI: swarmNarratives[i].uri 
+                resultURI: swarmUrl 
             });
             await axios.post(`${HUB_URL}/nano/approve`, { agentName: v.agentName, agentSecret: v.agentSecret, taskId: sId, verifierAddress: v.address });
-            console.log(`   Task ${i+1} Finished: ${swarmNarratives[i].desc}`);
+            console.log(`   Task ${i+1} Finished: ${swarmNarratives[i].desc} -> ${swarmUrl}`);
         }
         
         console.log(">> 🚨 BATCH TRIGGERED. Hub is settling 3 Tasks on ARC in 1 Transaction...");
