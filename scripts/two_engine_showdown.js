@@ -34,12 +34,16 @@ async function runShowdown() {
         const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_Final" })).data;
         const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_Final" })).data;
 
-        console.log("\n================================================================");
-        console.log("⚠️  ACTION REQUIRED: FINAL FUNDING (THESE WALLETS ARE PERMANENT)");
+        console.log(`================================================================`);
+        console.log(`⚠️  ACTION REQUIRED: FINAL FUNDING (THESE WALLETS ARE PERMANENT)`);
         console.log(`   1. BUYER:    ${b.address}`);
         console.log(`   2. SELLER:   ${s.address}`);
         console.log(`   3. VERIFIER: ${v.address}`);
-        console.log("================================================================\n");
+        if (typeof BUYER !== 'undefined' && b.address.toLowerCase() !== BUYER.toLowerCase()) {
+            console.log(`\n   [!] IDENTITY SYNC WARNING: HUB IS USING RECOVERED WALLET`);
+            console.log(`       PLEASE FUND ${b.address} INSTEAD OF THE HARDCODED ONE.`);
+        }
+        console.log(`================================================================`);
 
         await waitInput(">> Press ENTER once you have funded these permanent addresses...");
 
