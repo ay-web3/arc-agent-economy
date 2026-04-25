@@ -381,16 +381,17 @@ app.post('/execute/paymindOnboard', async (req, res) => {
 });
 
 app.post('/execute/paymindPay', async (req, res) => {
-    const { agentId, agentSecret, vaultAddress, amount } = req.body;
+    const { agentId, agentSecret, vaultAddress, target, amount } = req.body;
+    const effectiveVault = vaultAddress || target;
     try {
         const agent = await verifyAgent(agentId, agentSecret);
-        console.log(`>> [BRIDGE] Funding Paymind Vault ${vaultAddress} with ${amount} USDC...`);
+        console.log(`>> [BRIDGE] Funding Paymind Vault ${effectiveVault} with ${amount} USDC...`);
         
         const txResp = await client.createTransaction({
             idempotencyKey: uuidv4(),
             walletId: agent.walletId,
             blockchain: "ARC-TESTNET",
-            destinationAddress: vaultAddress,
+            destinationAddress: effectiveVault,
             amounts: [amount || "0.1"],
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });

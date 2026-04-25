@@ -7,6 +7,7 @@ import readline from 'readline';
 const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
 const REPORT_URL = "http://34.123.224.26:3000/report/store";
 const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
+const PAYMIND_CONTRACT = PAYMIND_MANAGER;
 const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
 
 const PAYMIND_ABI = [
@@ -54,9 +55,19 @@ async function runShowdown() {
         console.log(">> Retrieving Persistent Agents...");
         
         const suffix = Date.now().toString().slice(-4);
-        const b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Buyer_" + suffix })).data;
-        const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_" + suffix })).data;
-        const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_" + suffix })).data;
+        
+        // Identity Fetching with manual override for funded addresses
+        const b = (process.env.AGENT_BUYER_ADDRESS && process.env.AGENT_BUYER_ID && process.env.AGENT_BUYER_SECRET)
+            ? { address: process.env.AGENT_BUYER_ADDRESS, agentId: process.env.AGENT_BUYER_ID, agentSecret: process.env.AGENT_BUYER_SECRET, agentName: process.env.AGENT_BUYER_ID }
+            : (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Buyer_" + suffix })).data;
+            
+        const s = (process.env.AGENT_SELLER_ADDRESS && process.env.AGENT_SELLER_ID && process.env.AGENT_SELLER_SECRET)
+            ? { address: process.env.AGENT_SELLER_ADDRESS, agentId: process.env.AGENT_SELLER_ID, agentSecret: process.env.AGENT_SELLER_SECRET, agentName: process.env.AGENT_SELLER_ID }
+            : (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_" + suffix })).data;
+            
+        const v = (process.env.AGENT_VERIFIER_ADDRESS && process.env.AGENT_VERIFIER_ID && process.env.AGENT_VERIFIER_SECRET)
+            ? { address: process.env.AGENT_VERIFIER_ADDRESS, agentId: process.env.AGENT_VERIFIER_ID, agentSecret: process.env.AGENT_VERIFIER_SECRET, agentName: process.env.AGENT_VERIFIER_ID }
+            : (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_" + suffix })).data;
 
         console.log(`================================================================`);
         console.log(`⚠️  ACTION REQUIRED: FINAL FUNDING (THESE WALLETS ARE PERMANENT)`);
@@ -100,10 +111,10 @@ async function runShowdown() {
             console.log(`   Funding Sent: ${EXPLORER_BASE}${payRes.data.txId}`);
         }
         
-        console.log(`================================================================`);
-        console.log(`>> Press ENTER once you have funded these permanent addresses...`);
-        console.log(`   (Tip: Send 2.0 USDC to Buyer, 1.0 USDC to Seller)`);
-        await waitInput("");
+        // console.log(`================================================================`);
+        // console.log(`>> Press ENTER once you have funded these permanent addresses...`);
+        // console.log(`   (Tip: Send 2.0 USDC to Buyer, 1.0 USDC to Seller)`);
+        // await waitInput("");
 
         console.log("\n>> Continuing with Mission...");
         
@@ -172,6 +183,18 @@ async function runShowdown() {
         console.log(`   Deposit Success: ${EXPLORER_BASE}${rDep.data.txId}`);
         await sleep(5000);
 
+        try {
+            console.log(`\n[Stage 2] SELLER ONBOARDING TO PAYMIND...`);
+            // Only Seller needs a Paymind wallet to pay for the professional analysis
+            await axios.post(`${HUB_URL}/execute/paymindOnboard`, { 
+                agentId: s.agentId, 
+                agentSecret: s.agentSecret 
+            });
+            console.log(`[Stage 2] Seller Circle Vault Created on Paymind.`);
+        } catch (e) {
+            console.log(`[Stage 2] Seller already has a Paymind wallet or is using recovery secret, proceeding.`);
+        }
+
         console.log(">> Resetting Hub Swarm Channel...");
         await axios.post(`${HUB_URL}/nano/reset`);
 
@@ -185,7 +208,7 @@ async function runShowdown() {
 
         for (let i = 0; i < 3; i++) {
             const { taskId: sId } = (await axios.post(`${HUB_URL}/nano/create`, { 
-                agentName: b.agentName, 
+                agentName: b.agentId, 
                 agentSecret: b.agentSecret, 
                 amount: "0.001",
                 description: swarmNarratives[i].desc
@@ -195,20 +218,29 @@ async function runShowdown() {
             await axios.post(`${HUB_URL}/nano/select`, { agentName: b.agentName, agentSecret: b.agentSecret, taskId: sId, bidIndex: 0 });
             
             // [REAL X402] Saske (Seller) purchases real data from Paymind
-            console.log(`   [Live Arbitrage] Saske paying Paymind contract for ${swarmNarratives[i].coin} Intel...`);
+            console.log(`   [Stage 2] Seller paying Paymind contract for ${swarmNarratives[i].coin} Intel...`);
             let intelligence = "";
             try {
-                const pRes = await axios.post(`${REPORT_URL.replace('/report/store', '')}/ai/crypto-analyze`, {
-                    userAddress: s.address,
-                    coinId: swarmNarratives[i].coin,
-                    mode: swarmNarratives[i].mode
+                // Seller pays the X402 contract via the Hub's Circle Bridge
+                await axios.post(`${HUB_URL}/execute/paymindPay`, {
+                    agentId: s.agentId,
+                    agentSecret: s.agentSecret,
+                    vaultAddress: PAYMIND_CONTRACT,
+                    amount: "1.0"
                 });
-                intelligence = pRes.data.analysis;
-                console.log(`   [SUCCESS] Real Analysis Secured! Length: ${intelligence.length} chars.`);
+                console.log(`   [SUCCESS] Payment of 1.0 USDC to Paymind verified.`);
+
+                const pRes = await axios.post(`${REPORT_URL.replace('/report/store', '')}/analysis`, {
+                    userAddress: s.address,
+                    coin: swarmNarratives[i].coin,
+                    tf: "1h"
+                });
+                intelligence = pRes.data.analysis.explanation;
+                console.log(`   [SUCCESS] Detailed Analysis Secured! Length: ${intelligence.length} chars.`);
             } catch (e) {
                 const apiError = e.response?.data?.error || e.response?.data || e.message;
                 console.log(`   [WARNING] Paymind API Error: ${apiError}`);
-                intelligence = `Live Market Insight for ${swarmNarratives[i].coin}: Institutional volatility identified at ${swarmNarratives[i].mode} tier.`;
+                intelligence = `Live Market Insight for ${swarmNarratives[i].coin}: Institutional volatility identified. Detailed analysis unavailable.`;
             }
 
             const swarmHash = "0x" + Math.random().toString(16).slice(2).padEnd(64, '0');
