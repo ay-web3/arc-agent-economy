@@ -863,47 +863,6 @@ app.post('/nano/approve', async (req, res) => {
                     (BigInt(Math.floor(val * 1e6))).toString()
                 ]);
 
-                console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [GATEWAY] Deducting from Buyers: ${JSON.stringify(buyers)}`);
-                console.log(`>> [GATEWAY] Crediting Earners: ${JSON.stringify(earners)}`);
-                console.log(`>> [GATEWAY] Processing...`);
-                
-                const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-                
-                // CRITICAL FIX: Manually encode callData to bypass Circle SDK packing issues
-                const callData = encodeFunctionData({
-                    abi: [{
-                        name: "settleNanoBatch",
-                        type: "function",
-                        stateMutability: "nonpayable",
-                        inputs: [
-                            { name: "batchId", type: "uint256" },
-                            {
-                                name: "buyers",
-                                type: "tuple[]",
-                                components: [
-                                    { name: "agent", type: "address" },
-                                    { name: "amount", type: "uint256" }
-                                ]
-                            },
-                            {
-                                name: "earners",
-                                type: "tuple[]",
-                                components: [
-                                    { name: "agent", type: "address" },
-                                    { name: "amount", type: "uint256" }
-                                ]
-                            }
-                        ]
-                    }],
-                    args: [
-                        BigInt(Math.floor(Date.now() / 1000)),
-                        buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) })),
-                        earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }))
-                    ]
-                });
-
-            try {
                 const batchId = BigInt(Math.floor(Date.now() / 1000));
                 
                 // RESET STATE IMMEDIATELY (Clean slate for next batch)
@@ -912,9 +871,8 @@ app.post('/nano/approve', async (req, res) => {
                 nanoState.earnersToCredit = {};
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
-                console.log(`>> [x402 GATEWAY] Executing settleNanoBatch for Batch ${batchId}...`);
+                console.log(`>> [x402 GATEWAY] Executing settleNanoBatch via Orchestrator...`);
 
-                // Convert arrays to correct format for orchestrator
                 const buyerData = buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) }));
                 const earnerData = earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }));
 
