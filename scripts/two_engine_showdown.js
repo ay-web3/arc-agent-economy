@@ -45,13 +45,13 @@ async function runShowdown() {
 
         console.log("\n>> Continuing with Mission...");
         
-        console.log(">> Authorizing Hub for Swarm Batching (Buyer Approval)...");
-        const r0 = await axios.post(`${HUB_URL}/execute/approveUSDC`, { 
+        console.log(">> Pre-Funding Hub Nano-Ledger (Buyer Deposit)...");
+        const r0 = await axios.post(`${HUB_URL}/execute/depositNanoBalance`, { 
             agentId: b.agentId, 
             agentSecret: b.agentSecret, 
-            amount: "100" 
+            amount: "1.0" 
         });
-        console.log(`   Approval Success: ${EXPLORER_BASE}${r0.data.txId}`);
+        console.log(`   Deposit Success: ${EXPLORER_BASE}${r0.data.txId}`);
         await sleep(5000);
 
         console.log(">> Registering & Staking (if needed)...");

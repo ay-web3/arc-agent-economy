@@ -903,28 +903,27 @@ app.post('/nano/approve', async (req, res) => {
                     ]
                 });
 
-                const payload = {
-                    idempotencyKey: uuidv4(),
-                    walletId: process.env.MASTER_WALLET_ID,
-                    blockchain: "ARC-TESTNET",
-                    contractAddress: ESCROW,
-                    callData: callData,
-                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                };
-
-                const resp = await client.createContractExecutionTransaction(payload);
-                const txIdNano = resp.data.transaction?.id || resp.data?.id || resp.data?.transactionId;
+            try {
+                const batchId = BigInt(Math.floor(Date.now() / 1000));
                 
+                // RESET STATE IMMEDIATELY (Clean slate for next batch)
+                nanoState.completedCount = 0;
+                nanoState.buyersToDeduct = {};
+                nanoState.earnersToCredit = {};
+
+                console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
+                console.log(`>> [x402 GATEWAY] Executing settleNanoBatch for Batch ${batchId}...`);
+
+                // Convert arrays to correct format for orchestrator
+                const buyerData = buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) }));
+                const earnerData = earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }));
+
+                const txIdNano = await orchestrator.settleNanoBatch(batchId, buyerData, earnerData);
                 console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txIdNano}`);
             } catch (err) {
                 const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
                 console.error(">> [GATEWAY ERROR] On-Chain Settlement Failed:", errMsg);
             }
-
-            // Reset
-            nanoState.completedCount = 0;
-            nanoState.buyersToDeduct = {};
-            nanoState.earnersToCredit = {};
         }
 
         res.json({ success: true });

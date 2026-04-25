@@ -33,6 +33,52 @@ export class SwarmOrchestrator {
         this.gateway = gateway;
     }
 
+    /**
+     * Executes the Engine B batch settlement.
+     * Uses manual callData encoding for complex struct arrays to ensure Circle compatibility.
+     */
+    async settleNanoBatch(batchId, buyers, earners) {
+        console.log(`>> [ORCHESTRATOR] Scaling & Encoding Batch ${batchId} for ARC...`);
+        
+        const callData = encodeFunctionData({
+            abi: [{
+                name: "settleNanoBatch",
+                type: "function",
+                inputs: [
+                    { name: "batchId", type: "uint256" },
+                    {
+                        name: "buyers",
+                        type: "tuple[]",
+                        components: [
+                            { name: "agent", type: "address" },
+                            { name: "amount", type: "uint256" }
+                        ]
+                    },
+                    {
+                        name: "earners",
+                        type: "tuple[]",
+                        components: [
+                            { name: "agent", type: "address" },
+                            { name: "amount", type: "uint256" }
+                        ]
+                    }
+                ]
+            }],
+            args: [batchId, buyers, earners]
+        });
+
+        const txPayload = {
+            idempotencyKey: uuidv4(),
+            walletId: process.env.MASTER_WALLET_ID,
+            blockchain: "ARC-TESTNET",
+            contractAddress: this.escrowAddress,
+            callData: callData,
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        };
+
+        return this.client.createContractExecutionTransaction(txPayload);
+    }
+
     padBytes32(hex) {
         if (!hex || hex === "0x") return "0x" + "0".repeat(64);
         if (!hex.startsWith("0x")) hex = "0x" + hex;
@@ -133,6 +179,13 @@ export class SwarmOrchestrator {
                     this.padBytes32(params.hash || params.resultHash), 
                     params.uri || params.resultURI || ""
                 ];
+                break;
+
+            case "depositNanoBalance":
+                contract = this.escrowAddress;
+                signature = "depositNanoBalance()";
+                abiParams = [];
+                amount = params.amount || "1.0"; // Amount to deposit into prepaid ledger
                 break;
 
             case "approve":
