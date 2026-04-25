@@ -6,7 +6,7 @@ import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
-import { SwarmOrchestrator } from './arc-sdk/src/ArcOrchestrator.js';
+import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
 const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
 const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
