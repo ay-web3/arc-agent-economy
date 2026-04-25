@@ -30,9 +30,10 @@ async function runShowdown() {
         console.log("\n[STAGE 1] ENGINE A: FULL ON-CHAIN (MAX SECURITY)");
         console.log(">> Retrieving Persistent Agents...");
         
-        const b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Buyer_Final" })).data;
-        const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_Final" })).data;
-        const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_Final" })).data;
+        const suffix = Date.now().toString().slice(-4);
+        const b = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Buyer_" + suffix })).data;
+        const s = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Seller_" + suffix })).data;
+        const v = (await axios.post(`${HUB_URL}/onboard`, { agentName: "Showdown_Verifier_" + suffix })).data;
 
         console.log(`================================================================`);
         console.log(`⚠️  ACTION REQUIRED: FINAL FUNDING (THESE WALLETS ARE PERMANENT)`);

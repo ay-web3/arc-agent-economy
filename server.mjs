@@ -735,13 +735,10 @@ app.post('/nano/create', async (req, res) => {
         const taskId = ++nanoState.taskCounter;
         const buyerAddr = auth.address.toLowerCase();
 
-        // Scale amount to 18 decimals (Native Standard)
-        const amountWei = (BigInt(Math.floor(parseFloat(amount || "0") * 1e18))).toString();
-        
         nanoState.tasks[taskId] = {
             taskId,
             buyer: buyerAddr,
-            amount: amountWei,
+            amount, // Human-readable float
             manifestHash,
             description: description || "Swarm Nano-Task",
             bids: [],
@@ -766,9 +763,7 @@ app.post('/nano/bid', async (req, res) => {
         if (!task) throw new Error("Task not found");
 
         const sellerAddr = auth.address.toLowerCase();
-        // Scale bidPrice to 18 decimals (Native Standard)
-        const bidPriceWei = (BigInt(Math.floor(parseFloat(bidPrice || "0") * 1e18))).toString();
-        task.bids.push({ seller: sellerAddr, bidPrice: bidPriceWei });
+        task.bids.push({ seller: sellerAddr, bidPrice }); // Human-readable float
         console.log(`>> [NANO CHANNEL] Off-chain Bid received for Task ${taskId} from ${sellerAddr}. Gas: $0.00`);
         res.json({ success: true });
     } catch (e) {
@@ -846,17 +841,18 @@ app.post('/nano/approve', async (req, res) => {
         task.status = 'COMPLETED';
         console.log(`>> [NANO CHANNEL] Verification Approved off-chain by ${auth.address}. Gas: $0.00`);
 
-        // Tally balances with BigInt precision (18 decimals to match native standard)
-        const priceUnits = BigInt(task.selectedBid.bidPrice);
+        // DB price is human-readable float (e.g. "0.1")
+        // Native ledger is 18-decimal. Translation: Multiply by 10^18.
+        const priceUnits = BigInt(Math.floor(parseFloat(task.selectedBid.bidPrice) * 1e18));
         const buyerAddr = task.buyer.toLowerCase();
         const sellerAddr = task.selectedBid.seller.toLowerCase();
         const verAddr = verifierAddress.toLowerCase();
-
+ 
         nanoState.buyersToDeduct[buyerAddr] = (BigInt(nanoState.buyersToDeduct[buyerAddr] || "0") + priceUnits).toString();
         nanoState.earnersToCredit[sellerAddr] = (BigInt(nanoState.earnersToCredit[sellerAddr] || "0") + (priceUnits * 90n / 100n)).toString();
         nanoState.earnersToCredit[verAddr] = (BigInt(nanoState.earnersToCredit[verAddr] || "0") + (priceUnits * 10n / 100n)).toString();
         
-        console.log(`>> [PRECISION] DB Price: ${task.selectedBid.bidPrice} (Wei) -> Tallied for ${buyerAddr}`);
+        console.log(`>> [PRECISION] Float Price: ${task.selectedBid.bidPrice} -> Translated: ${priceUnits} (Wei) for ${buyerAddr}`);
 
         nanoState.completedCount++;
 
