@@ -67,9 +67,17 @@ async function runShowdown() {
         
         // [NEW] Real Paymind Bridge via Hub (Circle SDK)
         console.log(`>> Preparing Paymind Real x402 Bridge for Seller...`);
-        const onboardRes = await axios.post(`${HUB_URL}/execute/paymindOnboard`, { agentId: s.agentId, agentSecret: s.agentSecret });
-        console.log(`   Onboarding Triggered: ${EXPLORER_BASE}${onboardRes.data.txId}`);
-        console.log(`   Waiting for Paymind Vault Forge...`);
+        console.log(`>> Waiting 15s for Gas Sync (Sponsorship Landing)...`);
+        await sleep(15000);
+
+        try {
+            const onboardRes = await axios.post(`${HUB_URL}/execute/paymindOnboard`, { agentId: s.agentId, agentSecret: s.agentSecret });
+            console.log(`   Onboarding Triggered: ${EXPLORER_BASE}${onboardRes.data.txId}`);
+            console.log(`   Waiting for Paymind Vault Forge...`);
+        } catch (e) {
+            console.log(`   [FATAL] Paymind Onboard Failed:`, e.response?.data?.error || e.message);
+            throw e;
+        }
         
         let pWallet = "0x0000000000000000000000000000000000000000";
         for (let i = 0; i < 10; i++) {
@@ -198,7 +206,8 @@ async function runShowdown() {
                 intelligence = pRes.data.analysis;
                 console.log(`   [SUCCESS] Real Analysis Secured! Length: ${intelligence.length} chars.`);
             } catch (e) {
-                console.log(`   [WARNING] Paymind API Error: ${e.response?.data?.error || e.message}`);
+                const apiError = e.response?.data?.error || e.response?.data || e.message;
+                console.log(`   [WARNING] Paymind API Error: ${apiError}`);
                 intelligence = `Live Market Insight for ${swarmNarratives[i].coin}: Institutional volatility identified at ${swarmNarratives[i].mode} tier.`;
             }
 

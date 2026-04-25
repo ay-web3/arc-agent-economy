@@ -356,7 +356,7 @@ app.post('/execute/paymindOnboard', async (req, res) => {
         const agent = await verifyAgent(agentId, agentSecret);
         console.log(`>> [BRIDGE] Onboarding Circle Wallet ${agent.address} to Paymind Manager...`);
         
-        const txResp = await client.createTransaction({
+        const txResp = await client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
             walletId: agent.walletId,
             blockchain: "ARC-TESTNET",
