@@ -44,6 +44,16 @@ async function runShowdown() {
         await waitInput(">> Press ENTER once you have funded these permanent addresses...");
 
         console.log("\n>> Continuing with Mission...");
+        
+        console.log(">> Authorizing Hub for Swarm Batching (Buyer Approval)...");
+        const r0 = await axios.post(`${HUB_URL}/execute/approveUSDC`, { 
+            agentId: b.agentId, 
+            agentSecret: b.agentSecret, 
+            amount: "100" 
+        });
+        console.log(`   Approval Success: ${EXPLORER_BASE}${r0.data.txId}`);
+        await sleep(5000);
+
         console.log(">> Registering & Staking (if needed)...");
         try {
             const r1 = await axios.post(`${HUB_URL}/execute/register`, { agentId: s.agentId, agentSecret: s.agentSecret, asSeller: true, asVerifier: false, stake: "0.1", capHash: "0x11", pubKey: "0x22" });

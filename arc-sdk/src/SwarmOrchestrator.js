@@ -142,6 +142,15 @@ export class SwarmOrchestrator {
                 abiParams = [String(params.taskId || 0)];
                 break;
 
+            case "approveUSDC":
+                contract = "0x3600000000000000000000000000000000000000";
+                signature = "approve(address,uint256)";
+                abiParams = [
+                    this.escrowAddress, 
+                    BigInt(Math.floor(parseFloat(params.amount || "1000") * 1e18))
+                ];
+                break;
+
             case "finalize":
             case "finalizeTask":
                 contract = this.escrowAddress;
