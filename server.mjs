@@ -843,9 +843,13 @@ app.post('/nano/approve', async (req, res) => {
 
         // Tally balances
         const price = parseFloat(task.selectedBid.bidPrice);
-        nanoState.buyersToDeduct[task.buyer] = (nanoState.buyersToDeduct[task.buyer] || 0) + price;
-        nanoState.earnersToCredit[task.selectedBid.seller] = (nanoState.earnersToCredit[task.selectedBid.seller] || 0) + (price * 0.9);
-        nanoState.earnersToCredit[verifierAddress] = (nanoState.earnersToCredit[verifierAddress] || 0) + (price * 0.1);
+        const buyerAddr = task.buyer.toLowerCase();
+        const sellerAddr = task.selectedBid.seller.toLowerCase();
+        const verAddr = verifierAddress.toLowerCase();
+
+        nanoState.buyersToDeduct[buyerAddr] = (nanoState.buyersToDeduct[buyerAddr] || 0) + price;
+        nanoState.earnersToCredit[sellerAddr] = (nanoState.earnersToCredit[sellerAddr] || 0) + (price * 0.9);
+        nanoState.earnersToCredit[verAddr] = (nanoState.earnersToCredit[verAddr] || 0) + (price * 0.1);
 
         nanoState.completedCount++;
 
@@ -876,7 +880,8 @@ app.post('/nano/approve', async (req, res) => {
                 const buyerData = buyers.map(b => ({ agent: b[0], amount: BigInt(b[1]) }));
                 const earnerData = earners.map(e => ({ agent: e[0], amount: BigInt(e[1]) }));
 
-                const txIdNano = await orchestrator.settleNanoBatch(batchId, buyerData, earnerData);
+                const resp = await orchestrator.settleNanoBatch(batchId, buyerData, earnerData);
+                const txIdNano = resp.data.transaction?.id || resp.data?.id || "PENDING";
                 console.log(`>> [x402 GATEWAY] ✅ Batch Settlement Successfully Pushed to Circle! Tx: ${txIdNano}`);
             } catch (err) {
                 const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
