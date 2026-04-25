@@ -70,7 +70,7 @@ async function runShowdown() {
         const t1 = Date.now();
         const r3 = await axios.post(`${HUB_URL}/execute/createOpenTask`, {
             agentId: b.agentId, agentSecret: b.agentSecret,
-            amount: "0.1", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
+            amount: "2.0", jobDeadline: Math.floor(Date.now()/1000) + 3600, bidDeadline: Math.floor(Date.now()/1000) + 1800, verifierDeadline: Math.floor(Date.now()/1000) + 7200,
             taskHash: "0x" + "1".repeat(64), verifiers: [v.address], quorumM: 1
         });
         console.log(`   Task Created: ${EXPLORER_BASE}${r3.data.txId}`);
