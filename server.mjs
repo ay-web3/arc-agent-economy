@@ -351,6 +351,7 @@ app.post('/settle-nano', async (req, res) => {
 
 app.post('/execute/paymindOnboard', async (req, res) => {
     const { agentId, agentSecret } = req.body;
+    console.log(`>> [REQUEST] /execute/paymindOnboard: agentId=${agentId}`);
     try {
         const agent = await verifyAgent(agentId, agentSecret);
         console.log(`>> [BRIDGE] Onboarding Circle Wallet ${agent.address} to Paymind Manager...`);
@@ -367,7 +368,9 @@ app.post('/execute/paymindOnboard', async (req, res) => {
 
         res.json({ success: true, txId: txResp.data.transaction.id, vault: "PENDING_FORGE" });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [BRIDGE_ERROR] Paymind Onboard Failed:", detail);
+        res.status(500).json({ error: detail });
     }
 });
 
@@ -388,7 +391,9 @@ app.post('/execute/paymindPay', async (req, res) => {
 
         res.json({ success: true, txId: txResp.data.transaction.id });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [BRIDGE_ERROR] Paymind Pay Failed:", detail);
+        res.status(500).json({ error: detail });
     }
 });
 
