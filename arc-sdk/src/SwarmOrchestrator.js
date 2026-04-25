@@ -147,7 +147,7 @@ export class SwarmOrchestrator {
                 signature = "approve(address,uint256)";
                 abiParams = [
                     this.escrowAddress, 
-                    BigInt(Math.floor(parseFloat(params.amount || "1000") * 1e18))
+                    BigInt(Math.floor(parseFloat(params.amount || "1000") * 1e6))
                 ];
                 break;
 

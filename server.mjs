@@ -855,12 +855,12 @@ app.post('/nano/approve', async (req, res) => {
                 // EXECUTING TRUE ENGINE B: ON-CHAIN BATCH SETTLEMENT
                 const buyers = Object.entries(nanoState.buyersToDeduct).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e18))).toString()
+                    (BigInt(Math.floor(val * 1e6))).toString()
                 ]);
                 
                 const earners = Object.entries(nanoState.earnersToCredit).map(([addr, val]) => [
                     addr,
-                    (BigInt(Math.floor(val * 1e18))).toString()
+                    (BigInt(Math.floor(val * 1e6))).toString()
                 ]);
 
                 console.log(`>> [x402 GATEWAY] 🚨 BATCH TRIGGER REACHED (3 Tasks) 🚨`);
