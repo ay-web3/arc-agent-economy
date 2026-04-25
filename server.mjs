@@ -878,7 +878,6 @@ app.post('/nano/approve', async (req, res) => {
                 nanoState.earnersToCredit = {};
 
                 const ESCROW_HUB = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
-                const batchId = BigInt(Math.floor(Date.now() / 1000));
                 
                 console.log(`>> [NUCLEAR_TRACE] 🚨 BATCH TRIGGER REACHED 🚨`);
                 console.log(`>> [NUCLEAR_TRACE] Escrow: ${ESCROW_HUB}`);
@@ -890,11 +889,6 @@ app.post('/nano/approve', async (req, res) => {
 
                 console.log(`>> [NUCLEAR_TRACE] Buyers Array: ${JSON.stringify(buyerData, (k, v) => typeof v === 'bigint' ? v.toString() : v)}`);
                 console.log(`>> [NUCLEAR_TRACE] Earners Array: ${JSON.stringify(earnerData, (k, v) => typeof v === 'bigint' ? v.toString() : v)}`);
-
-                // RESET STATE IMMEDIATELY (Prevent double-trigger)
-                nanoState.completedCount = 0;
-                nanoState.buyersToDeduct = {};
-                nanoState.earnersToCredit = {};
 
                 const resp = await orchestrator.settleNanoBatch(batchId, buyerData, earnerData);
                 const txIdNano = resp?.data?.transaction?.id || resp?.data?.id || "PUSHED_PENDING";
