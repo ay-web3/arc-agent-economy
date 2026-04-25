@@ -842,8 +842,7 @@ app.post('/nano/approve', async (req, res) => {
         console.log(`>> [NANO CHANNEL] Verification Approved off-chain by ${auth.address}. Gas: $0.00`);
 
         // Tally balances with BigInt precision (18 decimals to match native standard)
-        const { parseUnits } = await import('viem');
-        const priceUnits = parseUnits(task.selectedBid.bidPrice, 18);
+        const priceUnits = BigInt(task.selectedBid.bidPrice) * 1000000000000n;
         const buyerAddr = task.buyer.toLowerCase();
         const sellerAddr = task.selectedBid.seller.toLowerCase();
         const verAddr = verifierAddress.toLowerCase();
@@ -852,7 +851,7 @@ app.post('/nano/approve', async (req, res) => {
         nanoState.earnersToCredit[sellerAddr] = (BigInt(nanoState.earnersToCredit[sellerAddr] || "0") + (priceUnits * 90n / 100n)).toString();
         nanoState.earnersToCredit[verAddr] = (BigInt(nanoState.earnersToCredit[verAddr] || "0") + (priceUnits * 10n / 100n)).toString();
         
-        console.log(`>> [PRECISION] Tallied ${task.selectedBid.bidPrice} USDC (18-dec units: ${priceUnits}) for ${buyerAddr}`);
+        console.log(`>> [PRECISION] DB Price: ${task.selectedBid.bidPrice} (6-dec) -> Translated: ${priceUnits} (18-dec) for ${buyerAddr}`);
 
         nanoState.completedCount++;
 

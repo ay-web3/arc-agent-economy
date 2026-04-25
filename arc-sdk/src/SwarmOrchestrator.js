@@ -157,7 +157,8 @@ export class SwarmOrchestrator {
             case "placeBid":
                 contract = this.escrowAddress;
                 signature = "placeBid(uint256,uint256,uint64,bytes32)";
-                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e6))).toString() : "0";
+                // Scaled to 18 decimals (Native Standard)
+                const bidPriceScaled = params.price ? (BigInt(Math.floor(parseFloat(params.price) * 1e18))).toString() : "0";
                 abiParams = [
                     String(params.taskId || 0), 
                     bidPriceScaled, 
