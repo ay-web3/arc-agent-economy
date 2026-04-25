@@ -86,7 +86,8 @@ export class SwarmOrchestrator {
         return hex + "0".repeat(66 - hex.length);
     }
 
-    async executeForAgent(agentWalletId, action, params) {
+    async executeForAgent(agentWalletId, action, params = {}) {
+        console.log(`>> [ORCHESTRATOR] Routing Action: '${action}' for Wallet: ${agentWalletId}`);
         console.log(`>> [ORCHESTRATOR] Executing ${action} for Wallet ${agentWalletId}. Params:`, JSON.stringify(params));
         
         let contract = "";
