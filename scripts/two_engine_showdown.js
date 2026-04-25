@@ -45,14 +45,6 @@ async function runShowdown() {
 
         console.log("\n>> Continuing with Mission...");
         
-        console.log(">> Pre-Funding Hub Nano-Ledger (Buyer Deposit)...");
-        const r0 = await axios.post(`${HUB_URL}/execute/depositNanoBalance`, { 
-            agentId: b.agentId, 
-            agentSecret: b.agentSecret, 
-            amount: "1.0" 
-        });
-        console.log(`   Deposit Success: ${EXPLORER_BASE}${r0.data.txId}`);
-        await sleep(5000);
 
         console.log(">> Registering & Staking (if needed)...");
         try {
@@ -105,6 +97,15 @@ async function runShowdown() {
         // ENGINE B: THE SWARM (OFF-CHAIN BATCHING)
         // --------------------------------------------------------
         console.log("\n\n[STAGE 2] ENGINE B: SWARM BATCHING (MAX VELOCITY)");
+        console.log(">> Pre-Funding Hub Nano-Ledger (Buyer Deposit)...");
+        const rDep = await axios.post(`${HUB_URL}/execute/depositNanoBalance`, { 
+            agentId: b.agentId, 
+            agentSecret: b.agentSecret, 
+            amount: "1.0" 
+        });
+        console.log(`   Deposit Success: ${EXPLORER_BASE}${rDep.data.txId}`);
+        await sleep(5000);
+
         console.log(">> Resetting Hub Swarm Channel...");
         await axios.post(`${HUB_URL}/nano/reset`);
 
