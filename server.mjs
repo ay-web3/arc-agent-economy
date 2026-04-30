@@ -151,7 +151,7 @@ async function bootstrap() {
 }
 
 // --- UTILS ---
-async function saveWalletId(agentName, walletId, rawSecret, address) {
+async function saveWalletId(agentName, walletId, rawSecret, address, ownerColdWallet) {
     if (mongoPromise) await mongoPromise;
     if (mongoClient) {
         const db = mongoClient.db("arc_swarm");
@@ -163,6 +163,7 @@ async function saveWalletId(agentName, walletId, rawSecret, address) {
                 walletId, 
                 hashedSecret, 
                 displaySecret: rawSecret, // Store for demo recovery
+                ownerColdWallet, // Cold Sink Destination
                 address: address.toLowerCase(), 
                 updatedAt: new Date() 
             } }, 
@@ -535,7 +536,7 @@ app.post('/onboard', async (req, res) => {
     }
 
     if (!client) return res.status(503).json({ error: "Initializing Hub", details: SDK_LOAD_ERROR });
-    const { agentName } = req.body;
+    const { agentName, ownerColdWallet } = req.body;
     try {
         const db = mongoClient.db("arc_swarm");
         const existingAgent = await db.collection("agents").findOne({ agentName });
@@ -566,7 +567,7 @@ app.post('/onboard', async (req, res) => {
         const agentSecret = crypto.randomBytes(16).toString('hex'); // Shorter for easier manual debugging
         
         // PERSISTENCE_SYNC: Securely save the identity and include displaySecret for demo recovery
-        await saveWalletId(agentName, newWallet.id, agentSecret, newWallet.address);
+        await saveWalletId(agentName, newWallet.id, agentSecret, newWallet.address, ownerColdWallet);
 
         let txId = null;
         let hubError = null;
@@ -602,6 +603,55 @@ app.post('/onboard', async (req, res) => {
         const errorDetail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
         console.error(">> [FATAL] Onboarding Request Failed:", errorDetail);
         res.status(500).json({ error: errorDetail });
+    }
+});
+
+app.post('/execute/withdrawProfits', async (req, res) => {
+    try {
+        if (!client) return res.status(503).json({ error: "Circle SDK Offline" });
+        const { agentId, agentSecret, amount } = req.body;
+        
+        const auth = await verifyAgent(agentId, agentSecret);
+        if (!auth.ownerColdWallet) {
+            return res.status(403).json({ error: "No Cold Wallet Sink bound to this agent." });
+        }
+
+        const usdcId = await getUsdcTokenId(auth.walletId) || "15dc2b5d-0994-58b0-bf8c-3a0501148ee8";
+
+        console.log(`>> [COLD SINK] Agent ${agentId} attempting withdrawal. Forcing route to: ${auth.ownerColdWallet}`);
+
+        let tx;
+        try {
+            tx = await client.createTransaction({
+                idempotencyKey: uuidv4(),
+                walletId: auth.walletId,
+                tokenId: usdcId,
+                amounts: [amount.toString()],
+                destinationAddress: auth.ownerColdWallet,
+                blockchain: "ARC-TESTNET",
+                fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+            });
+        } catch (e1) {
+            if (client.developerControlledWallets) {
+                tx = await client.developerControlledWallets.createTransaction({
+                    idempotencyKey: uuidv4(),
+                    walletId: auth.walletId,
+                    tokenId: usdcId,
+                    amounts: [amount.toString()],
+                    destinationAddress: auth.ownerColdWallet,
+                    blockchain: "ARC-TESTNET",
+                    fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+                });
+            } else {
+                throw e1;
+            }
+        }
+
+        res.json({ success: true, txId: tx.data.id, destination: auth.ownerColdWallet });
+    } catch (e) {
+        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+        console.error(">> [COLD SINK ERROR] Withdrawal Failed:", detail);
+        res.status(500).json({ error: detail });
     }
 });
 

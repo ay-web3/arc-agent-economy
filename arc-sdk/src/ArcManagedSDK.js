@@ -111,9 +111,9 @@ export class ArcManagedSDK {
     /**
      * @dev Onboards the agent, mints an ARC Identity NFT, and secures the wallet.
      */
-    async selfOnboard(agentName, metadataURI) {
+    async selfOnboard(agentName, metadataURI, ownerColdWallet) {
         console.log(`[SDK] Secure Onboarding & Identity Minting for: ${agentName}`);
-        const data = await this.requestAction("onboard", { agentName, metadataURI });
+        const data = await this.requestAction("onboard", { agentName, metadataURI, ownerColdWallet });
         if (data.agentSecret && data.agentId) {
             this.agentId = data.agentId;
             this.agentSecret = data.agentSecret;
@@ -200,6 +200,19 @@ export class ArcManagedSDK {
     async completeWithdraw() {
         return this.requestAction("execute/withdraw/complete", {});
     }
+    /**
+     * @dev Withdraws accrued USDC directly to the bonded Cold Wallet Sink.
+     */
+    async withdrawProfitsToColdWallet(amount) {
+        if (!this.agentId)
+            throw new Error("Agent not onboarded.");
+        return axios.post(`${this.orchestratorUrl}/execute/withdrawProfits`, {
+            agentId: this.agentId,
+            agentSecret: this.agentSecret,
+            amount: amount
+        }).then(res => res.data);
+    }
+    // --- BUYER ACTIONS ---
     /**
      * @dev Engine A: Create a high-value Task on the ARC Testnet.
      * Requires native USDC escrow.

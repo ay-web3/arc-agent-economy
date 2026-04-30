@@ -64,9 +64,9 @@ async function runSwarmDemo() {
 
         // 3. Swarm Loop
         const tasks = [
-            { desc: "Institutional BTC Analysis", coin: "bitcoin" },
-            { desc: "Institutional BNB Analysis", coin: "binancecoin" },
-            { desc: "Institutional USDC Stability Report", coin: "usd-coin" }
+            { desc: "Sharding Efficiency Benchmark", coin: "near" },
+            { desc: "Lachesis Consensus Speed Audit", coin: "fantom" },
+            { desc: "Adaptive State Sharding Report", coin: "elrond-erd-2" }
         ];
 
         console.log(`\n>> [SWARM] Launching ${tasks.length} High-Velocity Tasks...`);
