@@ -413,7 +413,7 @@ app.post('/execute/paymindPay', async (req, res) => {
 
 app.post('/escrow/create-task', async (req, res) => {
     try {
-        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         const count = await pc.readContract({
             address: ESCROW,
             abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
@@ -427,7 +427,7 @@ app.post('/escrow/create-task', async (req, res) => {
 
 app.get('/escrow/counter', async (req, res) => {
     try {
-        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         const count = await pc.readContract({
             address: ESCROW,
             abi: [{ name: 'taskCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
@@ -442,7 +442,7 @@ app.get('/escrow/counter', async (req, res) => {
 app.get('/escrow/task/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const ESCROW = process.env.ESCROW_CA || "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
+        const ESCROW = process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         
         // Use uint256 for all numeric fields to ensure viem returns BigInts consistently
         const task = await pc.readContract({
