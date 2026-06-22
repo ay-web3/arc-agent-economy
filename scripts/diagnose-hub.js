@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const HUB_URL = "https://arc-agent-economy.onrender.com";
 
 async function diagnoseHubSponsorship() {
     console.log("🔍 Diagnosing Hub Gas Sponsorship...");

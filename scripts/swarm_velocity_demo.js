@@ -4,7 +4,7 @@ import { createPublicClient, http, parseAbi } from 'viem';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- CONFIG ---
-const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const HUB_URL = "https://arc-agent-economy.onrender.com";
 const PAYMIND_URL = "http://34.123.224.26:3000";
 const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
 const PAYMIND_CONTRACT = PAYMIND_MANAGER;

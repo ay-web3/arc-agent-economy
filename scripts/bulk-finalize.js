@@ -2,7 +2,7 @@ import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 import { createPublicClient, http, parseAbi } from 'viem';
 import { arcTestnet } from 'viem/chains';
 
-const HUB_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const HUB_URL = "https://arc-agent-economy.onrender.com";
 const ESCROW = "0x9D3900c64DC309F79B12B1f06a94eC946a29933E";
 
 async function run() {

@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { ArcManagedSDK } from '../arc-sdk/src/ArcManagedSDK.js';
 
 const SECRET_PATH = path.join(process.cwd(), '.agent_secret');
-const ORCHESTRATOR_URL = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+const ORCHESTRATOR_URL = "https://arc-agent-economy.onrender.com";
 
 async function born() {
     // 1. HARD BLOCK for Build Environments (Google Cloud, GitHub Actions, CI)

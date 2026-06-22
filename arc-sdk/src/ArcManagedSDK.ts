@@ -17,7 +17,7 @@ const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
  * @dev Secure SDK with ERC-8004 Identity & Reputation integration.
  */
 export class ArcManagedSDK {
-    private orchestratorUrl: string = "https://arc-agent-economy-hub-156980607075.europe-west1.run.app";
+    private orchestratorUrl: string = "https://arc-agent-economy.onrender.com";
     private agentId: string | null = null;
     private agentSecret: string | null = null;
     private secretPath: string = path.join(process.cwd(), '.agent_secret');
