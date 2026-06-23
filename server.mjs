@@ -49,74 +49,50 @@ async function bootstrap() {
         const WALLET_SET_ID = process.env.WALLET_SET_ID;
         const MASTER_WALLET_ID = process.env.MASTER_WALLET_ID; // Sovereign Hub Treasury
 
-        if (API_KEY && ENTITY_SECRET) {
-            client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
-            
-            // Initialize Modular Orchestrator
-            orchestrator = new SwarmOrchestrator({
-                apiKey: API_KEY,
-                entitySecret: ENTITY_SECRET,
-                privateKey: process.env.CIRCLE_GATEWAY_PRIVATE_KEY || ("0x" + crypto.randomBytes(32).toString('hex')),
-                registryAddress: process.env.REGISTRY_CA || "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C",
-                escrowAddress: process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0",
-                gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
-                treasuryAddress: MASTER_WALLET_ID
-            });
-
-            console.log(">> [SENTINEL] Swarm Engines Operational (Modular Mode).");
-        } else {
-            console.log(">> [WARNING] CIRCLE_API_KEY missing. Initializing MOCK Swarm Engines for Simulation.");
-            client = {
-                createWallets: async () => ({ 
-                    data: { wallets: [{ id: "mock-wallet-id", address: "0x" + crypto.randomBytes(20).toString('hex') }] } 
-                }),
-                createTransaction: async () => ({ data: { transaction: { id: "mock-tx-" + Date.now() } } }),
-                getTransaction: async () => ({ data: { transaction: { state: "COMPLETE", id: "mock-tx" } } }),
-                getWalletTokenBalance: async () => ({ data: { tokenBalances: [{ token: { symbol: 'USDC', id: 'mock-usdc' } }] } }),
-                createContractExecutionTransaction: async () => ({ data: { transaction: { id: "mock-contract-tx-" + Date.now() } } })
-            };
+        if (!API_KEY || !ENTITY_SECRET) {
+            throw new Error("Missing required environment variables: CIRCLE_API_KEY or CIRCLE_ENTITY_SECRET");
         }
 
-        if (process.env.MONGODB_URI) {
-            mongoClient = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
-            mongoPromise = mongoClient.connect().then(() => {
-                console.log(">> [SENTINEL] Memory Persistence Synchronized.");
-            });
-        } else {
-            console.log(">> [WARNING] MONGODB_URI missing. Initializing MOCK Persistence.");
-            mongoClient = {
-                db: () => ({
-                    collection: () => ({
-                        findOne: async () => null,
-                        insertOne: async () => ({ insertedId: "mock-id" }),
-                        updateOne: async () => ({ modifiedCount: 1 })
-                    })
-                })
-            };
-            mongoPromise = Promise.resolve();
+        client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
+        
+        // Initialize Modular Orchestrator
+        orchestrator = new SwarmOrchestrator({
+            apiKey: API_KEY,
+            entitySecret: ENTITY_SECRET,
+            privateKey: process.env.CIRCLE_GATEWAY_PRIVATE_KEY,
+            registryAddress: process.env.REGISTRY_CA || "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C",
+            escrowAddress: process.env.ESCROW_CA || "0xDF5455170BCE05D961c8643180f22361C0340DE0",
+            gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+            treasuryAddress: MASTER_WALLET_ID
+        });
+
+        console.log(">> [SENTINEL] Swarm Engines Operational (Modular Mode).");
+
+        if (!process.env.MONGODB_URI) {
+            throw new Error("Missing required environment variable: MONGODB_URI");
         }
+
+        mongoClient = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });
+        mongoPromise = mongoClient.connect().then(() => {
+            console.log(">> [SENTINEL] Memory Persistence Synchronized.");
+        });
 
         // --- CIRCLE x402 GATEWAY INITIALIZATION ---
-        const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
-        const GATEWAY_KEY = process.env.CIRCLE_GATEWAY_PRIVATE_KEY || ("0x" + crypto.randomBytes(32).toString('hex'));
-        if (API_KEY && GATEWAY_ADDR) {
-            gateway = new GatewayClient({
-                gatewayAddress: GATEWAY_ADDR,
-                privateKey: GATEWAY_KEY,
-                chain: "arcTestnet"
-            });
-            if (orchestrator) orchestrator.setGateway(gateway);
-            console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
-        } else {
-            console.log(">> [WARNING] GATEWAY offline. Initializing MOCK x402 Gateway.");
-            gateway = {
-                queuePayment: async (params) => {
-                    console.log(`>> [MOCK GATEWAY] Queued ${params.amount} USDC for ${params.recipientAddress}`);
-                    return { success: true };
-                }
-            };
-            if (orchestrator) orchestrator.setGateway(gateway);
+        const GATEWAY_ADDR = process.env.CIRCLE_GATEWAY_ADDRESS;
+        const GATEWAY_KEY = process.env.CIRCLE_GATEWAY_PRIVATE_KEY;
+        
+        if (!GATEWAY_ADDR || !GATEWAY_KEY) {
+            throw new Error("Missing required environment variables: CIRCLE_GATEWAY_ADDRESS or CIRCLE_GATEWAY_PRIVATE_KEY");
         }
+
+        gateway = new GatewayClient({
+            gatewayAddress: GATEWAY_ADDR,
+            privateKey: GATEWAY_KEY,
+            chain: "arcTestnet"
+        });
+        
+        if (orchestrator) orchestrator.setGateway(gateway);
+        console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         if (client && MASTER_WALLET_ID) {
@@ -1014,6 +990,99 @@ app.post('/nano/approve', async (req, res) => {
         }
 
         res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ================= UNIFIED MICRO-BILLING ENGINE (CIRCLE x402) =================
+
+// 1. Pay-Per-Request (Flat Fee API)
+app.post('/nano/charge/request', async (req, res) => {
+    try {
+        const { buyerName, buyerSecret, sellerAddress, amount, endpoint } = req.body;
+        const buyer = await verifyAgent(buyerName, buyerSecret);
+        if (!gateway) throw new Error("x402 Gateway Offline");
+
+        console.log(`>> [BILLING] Request to ${endpoint}. Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
+        
+        const result = await gateway.queuePayment({
+            recipientAddress: sellerAddress,
+            amount: amount.toString(),
+            metadata: { type: "PER_REQUEST", buyer: buyer.address, endpoint }
+        });
+
+        res.json({ success: true, queueId: result.id, amount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Pay-Per-Second (Streaming)
+app.post('/nano/charge/stream', async (req, res) => {
+    try {
+        const { buyerName, buyerSecret, sellerAddress, seconds, ratePerSecond } = req.body;
+        const buyer = await verifyAgent(buyerName, buyerSecret);
+        if (!gateway) throw new Error("x402 Gateway Offline");
+
+        const amount = (parseFloat(seconds) * parseFloat(ratePerSecond)).toFixed(6);
+        console.log(`>> [BILLING] Stream ended (${seconds}s). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
+        
+        const result = await gateway.queuePayment({
+            recipientAddress: sellerAddress,
+            amount: amount.toString(),
+            metadata: { type: "PER_SECOND", buyer: buyer.address, seconds }
+        });
+
+        res.json({ success: true, queueId: result.id, amount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. Pay-Per-Token (LLM Reasoning)
+app.post('/nano/charge/token', async (req, res) => {
+    try {
+        const { buyerName, buyerSecret, sellerAddress, textPayload, ratePerToken } = req.body;
+        const buyer = await verifyAgent(buyerName, buyerSecret);
+        if (!gateway) throw new Error("x402 Gateway Offline");
+
+        const tokens = textPayload.split(/\s+/).length; // Simple word-based token estimation
+        const amount = (tokens * parseFloat(ratePerToken)).toFixed(6);
+        
+        console.log(`>> [BILLING] Token gen (${tokens} tokens). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
+        
+        const result = await gateway.queuePayment({
+            recipientAddress: sellerAddress,
+            amount: amount.toString(),
+            metadata: { type: "PER_TOKEN", buyer: buyer.address, tokens }
+        });
+
+        res.json({ success: true, queueId: result.id, amount, tokens });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. Pay-Per-Megabyte (Data)
+app.post('/nano/charge/data', async (req, res) => {
+    try {
+        const { buyerName, buyerSecret, sellerAddress, bytesDownloaded, ratePerMb } = req.body;
+        const buyer = await verifyAgent(buyerName, buyerSecret);
+        if (!gateway) throw new Error("x402 Gateway Offline");
+
+        const megabytes = bytesDownloaded / (1024 * 1024);
+        const amount = (megabytes * parseFloat(ratePerMb)).toFixed(6);
+        
+        console.log(`>> [BILLING] Data dl (${megabytes.toFixed(2)} MB). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
+        
+        const result = await gateway.queuePayment({
+            recipientAddress: sellerAddress,
+            amount: amount.toString(),
+            metadata: { type: "PER_MB", buyer: buyer.address, megabytes }
+        });
+
+        res.json({ success: true, queueId: result.id, amount, megabytes });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
