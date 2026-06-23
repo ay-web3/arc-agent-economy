@@ -195,7 +195,7 @@ app.get('/debug/wallet/:id', async (req, res) => {
     if (!client) return res.json({ error: "Engines Offline" });
     try {
         const wallet = await client.getWallet({ id: req.params.id });
-        const bResp = await client.developerControlledWallets.getWalletTokenBalance({ id: req.params.id });
+        const bResp = await client.getWalletTokenBalance({ id: req.params.id });
         res.json({ id: req.params.id, address: wallet.data.wallet.address, balances: bResp.data.tokenBalances });
     } catch (e) {
         res.status(500).json({ error: e.message });
