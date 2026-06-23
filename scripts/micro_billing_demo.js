@@ -38,12 +38,24 @@ async function runDemo() {
             address: buyer.address,
             signTypedData: async (typedData) => {
                 console.log(`   [PROXY] Intercepted local signing. Forwarding to Hub for Wallet ${buyer.address}...`);
-                const signResp = await axios.post(`${HUB_URL}/agent/sign-402`, {
-                    agentName: BUYER_NAME,
-                    agentSecret: buyer.agentSecret,
-                    typedData: typedData
-                });
-                return signResp.data.signature;
+                
+                // Fix: JSON.stringify cannot serialize BigInts by default. 
+                // We must stringify it with a custom replacer before sending to the Hub.
+                const stringifiedData = JSON.stringify(typedData, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                );
+
+                try {
+                    const signResp = await axios.post(`${HUB_URL}/agent/sign-402`, {
+                        agentName: BUYER_NAME,
+                        agentSecret: buyer.agentSecret,
+                        typedData: stringifiedData
+                    });
+                    return signResp.data.signature;
+                } catch (err) {
+                    console.error("   ❌ [PROXY ERROR]", err.response?.data || err.message);
+                    throw err;
+                }
             }
         };
 

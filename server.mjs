@@ -1021,7 +1021,7 @@ app.post('/agent/sign-402', async (req, res) => {
         res.json({ success: true, signature: response.data.signature });
     } catch (e) {
         console.error(">> [PROXY SIGNER ERROR]", e.response?.data || e.message);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e.response?.data || e.message });
     }
 });
 
