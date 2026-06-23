@@ -150,7 +150,7 @@ async function runDemo() {
             const depositResp = await axios.post(`${HUB_URL}/agent/gateway-deposit`, {
                 agentName: BUYER_NAME,
                 agentSecret: buyer.agentSecret,
-                amount: "0.1" // Deposit 0.1 USDC (enough for many micro-payments)
+                amount: "0.2" // Deposit 0.2 USDC (enough for all micro-payments)
             }, { timeout: 180000 }); // 3 minute timeout for on-chain txs
             console.log(`   ✅ Gateway Deposit Complete!`);
             console.log(`   Approve TX: ${depositResp.data.approveState}`);
