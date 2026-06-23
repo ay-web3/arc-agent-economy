@@ -177,8 +177,8 @@ async function getUsdcTokenId(walletId) {
         
         const balances = response.data.tokenBalances;
         console.log(`>> [FUEL] Found ${balances.length} tokens in Master Wallet.`);
-        // MUST find the ERC20 USDC, NOT the Native Gas USDC!
-        const usdc = balances.find(b => b.token.symbol === "USDC" && !b.token.isNative);
+        // MUST find the Native Gas USDC for ARC Testnet x402 batching!
+        const usdc = balances.find(b => b.token.symbol === "USDC" && b.token.isNative);
         if (usdc) {
             console.log(`>> [FUEL] USDC TokenId Resolved: ${usdc.token.id}`);
             return usdc.token.id;

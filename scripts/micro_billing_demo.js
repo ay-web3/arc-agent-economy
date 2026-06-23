@@ -36,7 +36,7 @@ async function runDemo() {
 
     try {
         console.log(`\n>> [1] Initializing Buyer Agent via /onboard...`);
-        const BUYER_NAME = "demo_buyer_fixed_1";
+        const BUYER_NAME = "demo_buyer_native_1";
         
         const onboardResp = await axios.post(`${HUB_URL}/onboard`, { agentName: BUYER_NAME });
         const buyer = onboardResp.data;
@@ -63,7 +63,7 @@ async function runDemo() {
                 }
                 const bResp = await axios.get(`${HUB_URL}/debug/wallet/${buyer.walletId}`);
                 if (bResp.data && bResp.data.balances) {
-                    const usdc = bResp.data.balances.find(b => b.token.symbol === "USDC" && !b.token.isNative);
+                    const usdc = bResp.data.balances.find(b => b.token.symbol === "USDC" && b.token.isNative);
                     if (usdc && parseFloat(usdc.amount) >= 0.005) {
                         console.log(`   ✅ Agent is fully funded! Balance: ${usdc.amount} USDC`);
                         funded = true;
