@@ -333,6 +333,90 @@ app.get('/admin/swarm-fuel', async (req, res) => {
     }
 });
 
+app.post('/agent/gateway-deposit', async (req, res) => {
+    try {
+        const { agentName, agentSecret, amount } = req.body;
+        const agent = await verifyAgent(agentName, agentSecret);
+        
+        const USDC_CA = "0x3600000000000000000000000000000000000000";
+        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+        const depositAmount = Math.round(parseFloat(amount) * 1e6).toString(); // 6 decimals
+
+        console.log(`>> [GATEWAY DEPOSIT] Agent ${agentName}: Approving ${amount} USDC for GatewayWallet...`);
+
+        // Step 1: Approve GatewayWallet to spend USDC
+        const approveResp = await client.createContractExecutionTransaction({
+            idempotencyKey: uuidv4(),
+            walletId: agent.walletId,
+            blockchain: "ARC-TESTNET",
+            abiFunctionSignature: "approve(address,uint256)",
+            abiParameters: [GATEWAY_WALLET, depositAmount],
+            contractAddress: USDC_CA,
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+        
+        const approveTxId = approveResp.data?.transaction?.id || approveResp.data?.id;
+        console.log(`>> [GATEWAY DEPOSIT] Approve TX queued: ${approveTxId}`);
+        
+        // Wait for approve to be mined
+        let approveState = "QUEUED";
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const txCheck = await client.getTransaction({ id: approveTxId });
+                approveState = txCheck.data?.transaction?.state || "UNKNOWN";
+                if (approveState === "COMPLETE" || approveState === "CONFIRMED") break;
+                if (approveState === "FAILED" || approveState === "DENIED") {
+                    throw new Error(`Approve TX failed: ${approveState}`);
+                }
+            } catch(e) { if (e.message.includes('failed')) throw e; }
+        }
+        console.log(`>> [GATEWAY DEPOSIT] Approve TX state: ${approveState}`);
+
+        // Step 2: Deposit into GatewayWallet
+        console.log(`>> [GATEWAY DEPOSIT] Depositing ${amount} USDC into GatewayWallet...`);
+        const depositResp = await client.createContractExecutionTransaction({
+            idempotencyKey: uuidv4(),
+            walletId: agent.walletId,
+            blockchain: "ARC-TESTNET",
+            abiFunctionSignature: "deposit(address,uint256)",
+            abiParameters: [USDC_CA, depositAmount],
+            contractAddress: GATEWAY_WALLET,
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+
+        const depositTxId = depositResp.data?.transaction?.id || depositResp.data?.id;
+        console.log(`>> [GATEWAY DEPOSIT] Deposit TX queued: ${depositTxId}`);
+
+        // Wait for deposit to be mined
+        let depositState = "QUEUED";
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const txCheck = await client.getTransaction({ id: depositTxId });
+                depositState = txCheck.data?.transaction?.state || "UNKNOWN";
+                if (depositState === "COMPLETE" || depositState === "CONFIRMED") break;
+                if (depositState === "FAILED" || depositState === "DENIED") {
+                    throw new Error(`Deposit TX failed: ${depositState}`);
+                }
+            } catch(e) { if (e.message.includes('failed')) throw e; }
+        }
+        console.log(`>> [GATEWAY DEPOSIT] Deposit TX state: ${depositState}`);
+
+        res.json({ 
+            success: true, 
+            approveTxId, 
+            depositTxId, 
+            amount,
+            approveState,
+            depositState
+        });
+    } catch (e) {
+        console.error(">> [GATEWAY DEPOSIT ERROR]", e.response?.data || e.message);
+        res.status(500).json({ error: e.response?.data || e.message });
+    }
+});
+
 app.post('/nano/execute', (req, res) => {
     const { from, to, amount, description, resultURI } = req.body;
     if (!from || !to || !amount) {
