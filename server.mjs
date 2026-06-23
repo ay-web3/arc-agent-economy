@@ -1036,7 +1036,7 @@ app.post('/agent/sign-402', async (req, res) => {
 app.get('/api/crypto-insights', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require({ amount: "0.005" })(req, res, next);
+        return gatewayMw.require("0.005")(req, res, next);
     },
     (req, res) => {
     res.json({ success: true, content: "The market is showing strong support at 145. Proceeding with accumulation strategy." });
@@ -1046,7 +1046,7 @@ app.get('/api/crypto-insights',
 app.post('/api/stream', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require({ amount: "0.02" })(req, res, next);
+        return gatewayMw.require("0.02")(req, res, next);
     },
     (req, res) => {
     res.json({ success: true, content: "Streaming initialized for requested duration." });
@@ -1056,7 +1056,7 @@ app.post('/api/stream',
 app.post('/api/llm-reasoning', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require({ amount: "0.015" })(req, res, next);
+        return gatewayMw.require("0.015")(req, res, next);
     },
     (req, res) => {
     res.json({ success: true, content: "Tokens generated successfully." });
@@ -1066,7 +1066,7 @@ app.post('/api/llm-reasoning',
 app.post('/api/dataset', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require({ amount: "0.1" })(req, res, next);
+        return gatewayMw.require("0.1")(req, res, next);
     },
     (req, res) => {
     res.json({ success: true, content: "Dataset downloaded." });
