@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
+import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
 import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
 import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
@@ -997,95 +998,28 @@ app.post('/nano/approve', async (req, res) => {
 
 // ================= UNIFIED MICRO-BILLING ENGINE (CIRCLE x402) =================
 
+const gatewayMw = createGatewayMiddleware({
+    sellerAddress: process.env.MASTER_WALLET_ID || "0x0000000000000000000000000000000000000000",
+});
+
 // 1. Pay-Per-Request (Flat Fee API)
-app.post('/nano/charge/request', async (req, res) => {
-    try {
-        const { buyerName, buyerSecret, sellerAddress, amount, endpoint } = req.body;
-        const buyer = await verifyAgent(buyerName, buyerSecret);
-        if (!gateway) throw new Error("x402 Gateway Offline");
-
-        console.log(`>> [BILLING] Request to ${endpoint}. Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
-        
-        const result = await gateway.queuePayment({
-            recipientAddress: sellerAddress,
-            amount: amount.toString(),
-            metadata: { type: "PER_REQUEST", buyer: buyer.address, endpoint }
-        });
-
-        res.json({ success: true, queueId: result.id, amount });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+app.get('/api/crypto-insights', gatewayMw.require('$0.005'), (req, res) => {
+    res.json({ success: true, content: "The market is showing strong support at 145. Proceeding with accumulation strategy." });
 });
 
 // 2. Pay-Per-Second (Streaming)
-app.post('/nano/charge/stream', async (req, res) => {
-    try {
-        const { buyerName, buyerSecret, sellerAddress, seconds, ratePerSecond } = req.body;
-        const buyer = await verifyAgent(buyerName, buyerSecret);
-        if (!gateway) throw new Error("x402 Gateway Offline");
-
-        const amount = (parseFloat(seconds) * parseFloat(ratePerSecond)).toFixed(6);
-        console.log(`>> [BILLING] Stream ended (${seconds}s). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
-        
-        const result = await gateway.queuePayment({
-            recipientAddress: sellerAddress,
-            amount: amount.toString(),
-            metadata: { type: "PER_SECOND", buyer: buyer.address, seconds }
-        });
-
-        res.json({ success: true, queueId: result.id, amount });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+app.post('/api/stream', gatewayMw.require('$0.001'), (req, res) => {
+    res.json({ success: true, content: "Streaming initialized for requested duration." });
 });
 
 // 3. Pay-Per-Token (LLM Reasoning)
-app.post('/nano/charge/token', async (req, res) => {
-    try {
-        const { buyerName, buyerSecret, sellerAddress, textPayload, ratePerToken } = req.body;
-        const buyer = await verifyAgent(buyerName, buyerSecret);
-        if (!gateway) throw new Error("x402 Gateway Offline");
-
-        const tokens = textPayload.split(/\s+/).length; // Simple word-based token estimation
-        const amount = (tokens * parseFloat(ratePerToken)).toFixed(6);
-        
-        console.log(`>> [BILLING] Token gen (${tokens} tokens). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
-        
-        const result = await gateway.queuePayment({
-            recipientAddress: sellerAddress,
-            amount: amount.toString(),
-            metadata: { type: "PER_TOKEN", buyer: buyer.address, tokens }
-        });
-
-        res.json({ success: true, queueId: result.id, amount, tokens });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+app.post('/api/llm-reasoning', gatewayMw.require('$0.005'), (req, res) => {
+    res.json({ success: true, content: "Tokens generated successfully." });
 });
 
 // 4. Pay-Per-Megabyte (Data)
-app.post('/nano/charge/data', async (req, res) => {
-    try {
-        const { buyerName, buyerSecret, sellerAddress, bytesDownloaded, ratePerMb } = req.body;
-        const buyer = await verifyAgent(buyerName, buyerSecret);
-        if (!gateway) throw new Error("x402 Gateway Offline");
-
-        const megabytes = bytesDownloaded / (1024 * 1024);
-        const amount = (megabytes * parseFloat(ratePerMb)).toFixed(6);
-        
-        console.log(`>> [BILLING] Data dl (${megabytes.toFixed(2)} MB). Charging ${amount} USDC from ${buyer.address} to ${sellerAddress}`);
-        
-        const result = await gateway.queuePayment({
-            recipientAddress: sellerAddress,
-            amount: amount.toString(),
-            metadata: { type: "PER_MB", buyer: buyer.address, megabytes }
-        });
-
-        res.json({ success: true, queueId: result.id, amount, megabytes });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+app.post('/api/dataset', gatewayMw.require('$0.03'), (req, res) => {
+    res.json({ success: true, content: "Dataset downloaded." });
 });
 
 // --- BOOTSTRAP INITIATION ---

@@ -22,6 +22,9 @@
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^1.1.0",
     "@circle-fin/x402-batching": "^2.1.0",
+    "@x402/core": "^2.16.0",
+    "@x402/evm": "^2.16.0",
+    "@x402/express": "^2.16.0",
     "axios": "^1.6.7",
     "cors": "^2.8.5",
     "ethers": "^6.11.1",
