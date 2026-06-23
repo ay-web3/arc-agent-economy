@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^1.1.0",
-    "@circle-fin/x402-batching": "^2.1.0",
+    "@circle-fin/x402-batching": "^3.2.0",
     "@x402/core": "^2.16.0",
     "@x402/evm": "^2.16.0",
     "@x402/express": "^2.16.0",
