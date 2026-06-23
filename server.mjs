@@ -571,6 +571,7 @@ app.post('/onboard', async (req, res) => {
                 agentId: agentName, 
                 agentSecret: recoveredSecret, 
                 address: existingAgent.address, 
+                walletId: existingAgent.walletId,
                 sponsorshipTxId: null, 
                 hubError: null,
                 recovered: true
