@@ -99,7 +99,12 @@ async function bootstrap() {
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
         if (client && MASTER_WALLET_ID) {
             try {
-                const wResp = await client.getWallet({ id: MASTER_WALLET_ID });
+                let wResp;
+                if (client.developerControlledWallets) {
+                    wResp = await client.developerControlledWallets.getWallet({ id: MASTER_WALLET_ID });
+                } else {
+                    wResp = await client.getWallet({ id: MASTER_WALLET_ID });
+                }
                 MASTER_ADDRESS = wResp.data.wallet.address;
                 console.log(`>> [WALLET] Master Wallet Initialized: ${MASTER_ADDRESS}`);
                 
@@ -162,7 +167,13 @@ async function getUsdcTokenId(walletId) {
     if (!client) return null;
     try {
         console.log(`>> [FUEL] Resolving USDC TokenId for Wallet: ${walletId}`);
-        const response = await client.getWalletTokenBalance({ id: walletId }); 
+        let response;
+        if (client.developerControlledWallets) {
+            response = await client.developerControlledWallets.getWalletTokenBalance({ id: walletId });
+        } else {
+            response = await client.getWalletTokenBalance({ id: walletId });
+        }
+        
         const balances = response.data.tokenBalances;
         console.log(`>> [FUEL] Found ${balances.length} tokens in Master Wallet.`);
         const usdc = balances.find(b => b.token.symbol === "USDC");
@@ -557,17 +568,25 @@ app.post('/onboard', async (req, res) => {
         let hubError = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
-                // 1. Hub Sponsors Gas (USDC is Native Gas on ARC)
+                // 1. Hub Sponsors Gas
                 console.log(`>> Sponsoring Gas for ${agentName}...`);
-                const txResp = await client.createTransaction({
+                const usdcId = await getUsdcTokenId(process.env.MASTER_WALLET_ID) || "15dc2b5d-0994-58b0-bf8c-3a0501148ee8";
+                const txPayload = {
                     idempotencyKey: uuidv4(),
                     walletId: process.env.MASTER_WALLET_ID,
-                    blockchain: "ARC-TESTNET",
+                    tokenId: usdcId,
                     destinationAddress: newWallet.address,
-                    amounts: [process.env.SPONSOR_AMOUNT || "0.02"],
+                    amounts: [process.env.SPONSOR_AMOUNT || "0.5"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                });
-                txId = txResp?.data?.transaction?.id;
+                };
+                
+                let txResp;
+                if (client.developerControlledWallets) {
+                    txResp = await client.developerControlledWallets.createTransaction(txPayload);
+                } else {
+                    txResp = await client.createTransaction(txPayload);
+                }
+                txId = txResp?.data?.id;
             } catch (e) {
                 const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 hubError = errBody;
