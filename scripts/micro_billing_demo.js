@@ -41,6 +41,16 @@ async function runDemo() {
                 
                 // Fix: JSON.stringify cannot serialize BigInts by default. 
                 // We must stringify it with a custom replacer before sending to the Hub.
+                // Fix 2: Circle API requires EIP712Domain to be explicitly defined in types!
+                if (!typedData.types.EIP712Domain) {
+                    typedData.types.EIP712Domain = [
+                        { name: "name", type: "string" },
+                        { name: "version", type: "string" },
+                        { name: "chainId", type: "uint256" },
+                        { name: "verifyingContract", type: "address" }
+                    ];
+                }
+
                 const stringifiedData = JSON.stringify(typedData, (key, value) =>
                     typeof value === 'bigint' ? value.toString() : value
                 );

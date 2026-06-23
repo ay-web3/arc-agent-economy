@@ -28,6 +28,7 @@ let SDK_LOAD_ERROR = null;
 let mongoClient = null;
 let mongoPromise = null;
 let MASTER_ADDRESS = null;
+let gatewayMw = null;
 let orchestrator = null;
 
 // --- ARC NETWORK CONFIG ---
@@ -100,7 +101,13 @@ async function bootstrap() {
             try {
                 const wResp = await client.getWallet({ id: MASTER_WALLET_ID });
                 MASTER_ADDRESS = wResp.data.wallet.address;
-                console.log(`>> [SENTINEL] Master Wallet Resolved: ${MASTER_ADDRESS}`);
+                console.log(`>> [WALLET] Master Wallet Initialized: ${MASTER_ADDRESS}`);
+                
+                // Initialize the x402 Gateway Middleware with the true Master Address
+                gatewayMw = createGatewayMiddleware({
+                    sellerAddress: MASTER_ADDRESS,
+                });
+                console.log(`>> [GATEWAY] x402 Gateway Middleware Initialized.`);
 
                 console.log(">> [SENTINEL] Verifying Governance Permissions...");
                 const GOV_ROLE = "0x71840dc4906352362b0cdaf79870196c8e42acafade72d5d5a6d59291253ceb1";
@@ -1025,27 +1032,43 @@ app.post('/agent/sign-402', async (req, res) => {
     }
 });
 
-const gatewayMw = createGatewayMiddleware({
-    sellerAddress: process.env.MASTER_WALLET_ID || "0x0000000000000000000000000000000000000000",
-});
-
 // 1. Pay-Per-Request (Flat Fee API)
-app.get('/api/crypto-insights', gatewayMw.require('$0.005'), (req, res) => {
+app.get('/api/crypto-insights', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require({ amount: "0.005" })(req, res, next);
+    },
+    (req, res) => {
     res.json({ success: true, content: "The market is showing strong support at 145. Proceeding with accumulation strategy." });
 });
 
 // 2. Pay-Per-Second (Streaming)
-app.post('/api/stream', gatewayMw.require('$0.001'), (req, res) => {
+app.post('/api/stream', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require({ amount: "0.02" })(req, res, next);
+    },
+    (req, res) => {
     res.json({ success: true, content: "Streaming initialized for requested duration." });
 });
 
 // 3. Pay-Per-Token (LLM Reasoning)
-app.post('/api/llm-reasoning', gatewayMw.require('$0.005'), (req, res) => {
+app.post('/api/llm-reasoning', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require({ amount: "0.015" })(req, res, next);
+    },
+    (req, res) => {
     res.json({ success: true, content: "Tokens generated successfully." });
 });
 
 // 4. Pay-Per-Megabyte (Data)
-app.post('/api/dataset', gatewayMw.require('$0.03'), (req, res) => {
+app.post('/api/dataset', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require({ amount: "0.1" })(req, res, next);
+    },
+    (req, res) => {
     res.json({ success: true, content: "Dataset downloaded." });
 });
 
