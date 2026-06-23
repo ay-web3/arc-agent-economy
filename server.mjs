@@ -195,7 +195,8 @@ app.get('/debug/wallet/:id', async (req, res) => {
     if (!client) return res.json({ error: "Engines Offline" });
     try {
         const wallet = await client.getWallet({ id: req.params.id });
-        res.json({ id: req.params.id, address: wallet.data.wallet.address });
+        const bResp = await client.developerControlledWallets.getWalletTokenBalance({ id: req.params.id });
+        res.json({ id: req.params.id, address: wallet.data.wallet.address, balances: bResp.data.tokenBalances });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -228,6 +229,19 @@ app.get('/debug/master', async (req, res) => {
             error: e.message, 
             availableMethods: Object.keys(client).filter(k => k.toLowerCase().includes('balance'))
         });
+    }
+});
+
+app.get('/debug/transactions', async (req, res) => {
+    if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
+    try {
+        const tResp = await client.developerControlledWallets.listTransactions({ 
+            walletIds: [process.env.MASTER_WALLET_ID],
+            pageSize: 5
+        });
+        res.json(tResp.data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
