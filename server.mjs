@@ -235,7 +235,7 @@ app.get('/debug/master', async (req, res) => {
 app.get('/debug/transactions', async (req, res) => {
     if (!client || !process.env.MASTER_WALLET_ID) return res.json({ error: "Missing client or master id" });
     try {
-        const tResp = await client.developerControlledWallets.listTransactions({ 
+        const tResp = await client.listTransactions({ 
             walletIds: [process.env.MASTER_WALLET_ID],
             pageSize: 5
         });
@@ -248,7 +248,7 @@ app.get('/debug/transactions', async (req, res) => {
 app.get('/debug/transaction/:id', async (req, res) => {
     if (!client) return res.json({ error: "Engines Offline" });
     try {
-        const tResp = await client.developerControlledWallets.getTransaction({ id: req.params.id });
+        const tResp = await client.getTransaction({ id: req.params.id });
         res.json(tResp.data);
     } catch (e) {
         res.status(500).json({ error: e.message });
