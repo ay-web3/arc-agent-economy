@@ -618,13 +618,14 @@ app.post('/onboard', async (req, res) => {
                 console.error(">> Sponsorship Failed:", hubError);
             }
         }
-        res.json({ 
-            success: true, 
-            agentId: agentName, 
+        return res.json({
+            success: true,
+            agentId: agentName,
             agentName: agentName,
             agentSecret: agentSecret,
-            address: newWallet.address, 
-            sponsorshipTxId: txId, 
+            address: newWallet.address,
+            walletId: newWallet.id,
+            sponsorshipTxId: txId,
             hubError: hubError
         });
     } catch (e) {
