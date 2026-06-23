@@ -15,16 +15,37 @@ async function runDemo() {
     console.log("==========================================\n");
 
     try {
-        console.log(`>> [1] Initializing Buyer Agent...`);
-        // The agent needs a private key to sign its EIP-712 transfer authorizations
-        const buyerSecret = process.env.CIRCLE_GATEWAY_PRIVATE_KEY || "0x" + crypto.randomBytes(32).toString('hex');
+        console.log(`>> [1] Initializing Buyer Agent via /onboard...`);
+        const BUYER_NAME = "Automated_Data_Buyer_" + Math.floor(Math.random() * 1000);
         
-        // Initialize the true Gateway Client for the Agent
+        const onboardResp = await axios.post(`${HUB_URL}/onboard`, { agentName: BUYER_NAME });
+        const buyer = onboardResp.data;
+
+        console.log(`   ✅ Success. Developer Wallet: ${buyer.address}`);
+        console.log(`   ✅ Hub Password: ${buyer.agentSecret}`);
+
+        // We initialize GatewayClient with a dummy private key because it requires one
+        // to pass the constructor validations. We will hijack its signing function next!
+        const dummyKey = "0x" + crypto.randomBytes(32).toString('hex');
         const gatewayClient = new GatewayClient({
             gatewayAddress: GATEWAY_ADDR,
-            privateKey: buyerSecret,
+            privateKey: dummyKey,
             chain: "arcTestnet"
         });
+
+        // 🚀 THE HYBRID PIVOT: Duck-type the internal account to use the Hub Proxy!
+        gatewayClient.account = {
+            address: buyer.address,
+            signTypedData: async (typedData) => {
+                console.log(`   [PROXY] Intercepted local signing. Forwarding to Hub for Wallet ${buyer.address}...`);
+                const signResp = await axios.post(`${HUB_URL}/agent/sign-402`, {
+                    agentName: BUYER_NAME,
+                    agentSecret: buyer.agentSecret,
+                    typedData: typedData
+                });
+                return signResp.data.signature;
+            }
+        };
 
         await delay(1000);
 

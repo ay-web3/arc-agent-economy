@@ -998,6 +998,33 @@ app.post('/nano/approve', async (req, res) => {
 
 // ================= UNIFIED MICRO-BILLING ENGINE (CIRCLE x402) =================
 
+// ================= CUSTOM X402 PROXY SIGNER =================
+// Because Circle Developer Controlled Wallets do not expose private keys,
+// the Client Agent cannot sign the x402 402-challenge locally.
+// Instead, the Agent requests the Hub to securely sign it via the Circle API.
+app.post('/agent/sign-402', async (req, res) => {
+    try {
+        const { agentName, agentSecret, typedData } = req.body;
+        // Authenticate the agent password
+        const agent = await verifyAgent(agentName, agentSecret);
+        
+        console.log(`>> [PROXY SIGNER] Generating x402 EIP-712 Signature for Agent ${agentName}...`);
+
+        // Use the Hub's ENTITY_SECRET to sign the transaction on the agent's behalf
+        // Circle's API expects the typed data to be a stringified JSON object
+        const response = await client.signTypedData({
+            walletId: agent.walletId,
+            data: typeof typedData === 'string' ? typedData : JSON.stringify(typedData)
+        });
+
+        // The response contains the hex signature
+        res.json({ success: true, signature: response.data.signature });
+    } catch (e) {
+        console.error(">> [PROXY SIGNER ERROR]", e.response?.data || e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 const gatewayMw = createGatewayMiddleware({
     sellerAddress: process.env.MASTER_WALLET_ID || "0x0000000000000000000000000000000000000000",
 });
