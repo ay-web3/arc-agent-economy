@@ -245,6 +245,16 @@ app.get('/debug/transactions', async (req, res) => {
     }
 });
 
+app.get('/debug/transaction/:id', async (req, res) => {
+    if (!client) return res.json({ error: "Engines Offline" });
+    try {
+        const tResp = await client.developerControlledWallets.getTransaction({ id: req.params.id });
+        res.json(tResp.data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/health', async (req, res) => {
     if (mongoPromise) await mongoPromise;
     const isReady = client && gateway;
