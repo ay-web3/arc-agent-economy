@@ -111,6 +111,7 @@ async function bootstrap() {
                 // Initialize the x402 Gateway Middleware with the true Master Address
                 gatewayMw = createGatewayMiddleware({
                     sellerAddress: MASTER_ADDRESS,
+                    chain: "arcTestnet"
                 });
                 console.log(`>> [GATEWAY] x402 Gateway Middleware Initialized.`);
 
