@@ -466,23 +466,48 @@ export function useArcEconomy() {
     return 0;
   }).slice(0, 50);
 
-  const [nanoHistory, setNanoHistory] = useState<any>({ tasks: [], stats: { completedCount: 0, totalCreated: 0 } });
+  const [nanoHistory, setNanoHistory] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
 
   const fetchNanoHistory = async () => {
     try {
-      const resp = await fetch("https://arc-agent-economy.onrender.com/nano/history");
+      const resp = await fetch("http://127.0.0.1:8080/api/nano-history"); // Fallback to local
       const data = await resp.json();
-      setNanoHistory(data);
+      if (data.success) {
+        setNanoHistory(data.history);
+      }
     } catch (e) {
-      console.warn("Failed to fetch nano history");
+      try {
+        const resp2 = await fetch("https://arc-agent-economy.onrender.com/api/nano-history");
+        const data2 = await resp2.json();
+        if (data2.success) setNanoHistory(data2.history);
+      } catch (e2) {}
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const resp = await fetch("http://127.0.0.1:8080/services/catalog"); // Fallback to local
+      const data = await resp.json();
+      if (data.success) setServices(data.services);
+    } catch (e) {
+      try {
+        const resp2 = await fetch("https://arc-agent-economy.onrender.com/services/catalog");
+        const data2 = await resp2.json();
+        if (data2.success) setServices(data2.services);
+      } catch (e2) {}
     }
   };
 
   useEffect(() => {
     fetchNanoHistory();
-    const inv = setInterval(fetchNanoHistory, 2000);
+    fetchServices();
+    const inv = setInterval(() => {
+        fetchNanoHistory();
+        fetchServices();
+    }, 2000);
     return () => clearInterval(inv);
   }, []);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services };
 }
