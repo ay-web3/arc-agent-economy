@@ -417,6 +417,57 @@ app.post('/agent/gateway-deposit', async (req, res) => {
     }
 });
 
+app.post('/agent/gateway-withdraw', async (req, res) => {
+    try {
+        const { agentName, agentSecret, amount } = req.body;
+        const agent = await verifyAgent(agentName, agentSecret);
+        
+        const USDC_CA = "0x3600000000000000000000000000000000000000";
+        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+        const withdrawAmount = Math.round(parseFloat(amount) * 1e6).toString(); // 6 decimals
+
+        console.log(`>> [GATEWAY WITHDRAW] Agent ${agentName}: Withdrawing ${amount} USDC from GatewayWallet...`);
+
+        const withdrawResp = await client.createContractExecutionTransaction({
+            idempotencyKey: uuidv4(),
+            walletId: agent.walletId,
+            blockchain: "ARC-TESTNET",
+            abiFunctionSignature: "withdraw(address,uint256)",
+            abiParameters: [USDC_CA, withdrawAmount],
+            contractAddress: GATEWAY_WALLET,
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
+        });
+
+        const withdrawTxId = withdrawResp.data?.transaction?.id || withdrawResp.data?.id;
+        console.log(`>> [GATEWAY WITHDRAW] Withdraw TX queued: ${withdrawTxId}`);
+
+        // Wait for withdraw to be mined
+        let withdrawState = "QUEUED";
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const txCheck = await client.getTransaction({ id: withdrawTxId });
+                withdrawState = txCheck.data?.transaction?.state || "UNKNOWN";
+                if (withdrawState === "COMPLETE" || withdrawState === "CONFIRMED") break;
+                if (withdrawState === "FAILED" || withdrawState === "DENIED") {
+                    throw new Error(`Withdraw TX failed: ${withdrawState}`);
+                }
+            } catch(e) { if (e.message.includes('failed')) throw e; }
+        }
+        console.log(`>> [GATEWAY WITHDRAW] Withdraw TX state: ${withdrawState}`);
+
+        res.json({ 
+            success: true, 
+            withdrawTxId, 
+            amount,
+            withdrawState
+        });
+    } catch (e) {
+        console.error(">> [GATEWAY WITHDRAW ERROR]", e.response?.data || e.message);
+        res.status(500).json({ error: e.response?.data || e.message });
+    }
+});
+
 app.post('/nano/execute', (req, res) => {
     const { from, to, amount, description, resultURI } = req.body;
     if (!from || !to || !amount) {
