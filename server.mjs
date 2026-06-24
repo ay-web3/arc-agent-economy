@@ -526,7 +526,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
                     gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
                     withdrawAmount,
                     recipientAddress, // recipient
-                    "0" // maxFee
+                    "2010000" // maxFee (2.01 USDC, standard default)
                 );
                 const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
                 intent.spec.sourceSigner = padToBytes32(recipientAddress);
