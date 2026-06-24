@@ -1520,10 +1520,11 @@ app.post('/api/dataset',
         try {
             const dataType = req.body?.type || "blocks";
             const limit = Math.min(req.body?.limit || 10, 25);
+            let blockNum = 0;
+            try { blockNum = await pc.getBlockNumber(); } catch(e) {}
 
             if (dataType === "blocks") {
                 // Fetch recent blocks from ARC-TESTNET
-                const blockNum = await pc.getBlockNumber();
                 const blocks = [];
                 for (let i = 0; i < limit; i++) {
                     try {
@@ -1550,7 +1551,6 @@ app.post('/api/dataset',
 
             } else if (dataType === "transactions") {
                 // Fetch transactions from recent blocks
-                const blockNum = await pc.getBlockNumber();
                 const txs = [];
                 for (let i = 0; i < 5 && txs.length < limit; i++) {
                     try {
@@ -1586,7 +1586,6 @@ app.post('/api/dataset',
                     functionName: 'balanceOf',
                     args: [GATEWAY_WALLET]
                 });
-                const blockNum = await pc.getBlockNumber();
                 res.json({
                     success: true,
                     dataset: "arc_gateway_analytics",
@@ -1610,7 +1609,7 @@ app.post('/api/dataset',
                 timestamp: new Date().toISOString()
             });
         } catch (e) {
-            res.status(502).json({ success: false, error: "Dataset error: " + e.message });
+            if (!res.headersSent) res.status(502).json({ success: false, error: "Dataset error: " + e.message });
         }
     }
 );
