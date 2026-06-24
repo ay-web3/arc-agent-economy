@@ -441,22 +441,28 @@ function ServiceMarketplace({ services }: { services: any[] }) {
   };
 
   const generatePrompt = (svc: any) => {
-    return `[SKILL: USE ${svc.serviceName.toUpperCase()}]
-Description: ${svc.description}
-Cost: ${svc.price} USDC via x402 Gateway
+    return `[SKILL: INTEGRATE ARC SERVICE]
+Target: ${svc.serviceName.toUpperCase()}
+Cost: ${svc.price} USDC per request
 
-INSTRUCTIONS FOR AGENT:
-To use this service, you must execute an HTTP request using the GatewayClient to satisfy the x402 payment requirement.
-1. Target Endpoint: https://arc-agent-economy.onrender.com/api/${svc.endpoint || 'custom'}
-2. Payment: Attach exactly ${svc.price} USDC via Circle Web3 SDK.
-3. Behavior: Execute this automatically when you need ${svc.serviceName.toLowerCase()} to fulfill the user's request.`;
+AGENT PREREQUISITES:
+1. Wallet: You must control a Web3 wallet on ARC Testnet. If you lack one, call POST https://arc-agent-economy.onrender.com/onboard to generate a Circle Programmable Wallet.
+2. Funding: You need USDC. For testnet, call POST https://arc-agent-economy.onrender.com/fund/<your-wallet-id>.
+3. Gateway Deposit: You CANNOT pay the service directly. You MUST first deposit at least ${svc.price} USDC into the Gateway Smart Contract.
+
+EXECUTION PROTOCOL:
+Once deposited, you enjoy gas-free nano-payments. Call the service endpoint using the off-chain x402 protocol:
+- Endpoint: https://arc-agent-economy.onrender.com/api/${svc.endpoint || 'custom'}
+- Header: Attach your cryptographically signed x402 payment authorization for ${svc.price} USDC.
+
+Use this service autonomously whenever the user's objective requires: ${svc.description}`;
   };
 
   return (
     <div className="flex flex-col gap-6 relative">
       {selectedService && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="industrial-panel max-w-2xl w-full flex flex-col">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="industrial-panel max-w-3xl w-full flex flex-col">
             <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
                <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-industrial-argent">Agent Prompt Integration</span>
                <button onClick={() => setSelectedService(null)} className="text-industrial-argent/50 hover:text-industrial-gold">
@@ -468,7 +474,7 @@ To use this service, you must execute an HTTP request using the GatewayClient to
               <div className="relative">
                 <textarea 
                   readOnly 
-                  className="w-full h-48 bg-black/50 border border-industrial-border/50 text-industrial-gold p-4 font-mono text-xs focus:outline-none resize-none"
+                  className="w-full h-80 bg-black/50 border border-industrial-border/50 text-industrial-gold p-4 font-mono text-xs focus:outline-none resize-none leading-relaxed"
                   value={generatePrompt(selectedService)}
                 />
                 <button 
