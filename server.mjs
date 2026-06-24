@@ -482,6 +482,13 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
         // 1. Generate the BurnIntent using GatewayClient
         const withdrawAmount = Math.round(parseFloat(amount) * 1e6).toString();
         
+        let recipientAddress = agent.walletAddress;
+        if (!recipientAddress) {
+            const walletResp = await client.getWallet({ id: agent.walletId });
+            recipientAddress = walletResp.data?.wallet?.address;
+            if (!recipientAddress) throw new Error("Could not fetch wallet address for Admin.");
+        }
+
         // Construct the EIP-712 Domain and Types based on GatewayClient spec
         const typedData = {
             domain: { name: "GatewayWallet", version: "1" },
@@ -517,7 +524,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
                 gateway.chainConfig,
                 gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
                 withdrawAmount,
-                agent.walletAddress, // recipient
+                recipientAddress, // recipient
                 "0" // maxFee
             )
         };
