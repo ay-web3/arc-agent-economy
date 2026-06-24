@@ -428,12 +428,15 @@ app.post('/agent/gateway-withdraw', async (req, res) => {
 
         console.log(`>> [GATEWAY WITHDRAW] Agent ${agentName}: Withdrawing ${amount} USDC from GatewayWallet...`);
 
+        const withdrawAmount = parseUnits(amount, 6);
+
+        // Initiate Withdrawal (locks funds for the withdrawal delay)
         const withdrawResp = await client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
             walletId: agent.walletId,
             blockchain: "ARC-TESTNET",
-            abiFunctionSignature: "withdraw(address)",
-            abiParameters: [USDC_CA],
+            abiFunctionSignature: "initiateWithdrawal(address,uint256)",
+            abiParameters: [USDC_CA, withdrawAmount],
             contractAddress: GATEWAY_WALLET,
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
