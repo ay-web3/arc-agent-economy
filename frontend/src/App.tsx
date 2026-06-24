@@ -535,7 +535,14 @@ function AgentExplorer() {
     setError('');
     setData(null);
     try {
-      const res = await fetch(`/api/explorer/agent/${encodeURIComponent(query.trim())}`);
+      const baseUrl = window.location.hostname === 'localhost' ? 'http://127.0.0.1:8080' : 'https://arc-agent-economy.onrender.com';
+      const res = await fetch(`${baseUrl}/api/explorer/agent/${encodeURIComponent(query.trim())}`);
+      
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response from server. Backend might be down.");
+      }
+
       const json = await res.json();
       if (!json.success) {
         setError(json.error || 'Agent not found');
