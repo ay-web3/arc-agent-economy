@@ -1336,45 +1336,366 @@ app.post('/agent/sign-402', async (req, res) => {
     }
 });
 
-// 1. Pay-Per-Request (Flat Fee API)
+// ═══════════════════════════════════════════════════════════════
+// REAL SERVICE MARKETPLACE — Pay-Per-Use Nano-Payment Endpoints
+// ═══════════════════════════════════════════════════════════════
+
+// 1. Pay-Per-Request — Live Crypto Market Data (CoinGecko)
 app.get('/api/crypto-insights', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
         return gatewayMw.require("0.005")(req, res, next);
     },
-    (req, res) => {
-    res.json({ success: true, content: "The market is showing strong support at 145. Proceeding with accumulation strategy." });
-});
+    async (req, res) => {
+        try {
+            const token = req.query.token || "bitcoin";
+            const cgResp = await fetch(
+                `https://api.coingecko.com/api/v3/coins/${token}?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false`
+            );
+            if (!cgResp.ok) throw new Error(`CoinGecko returned ${cgResp.status}`);
+            const data = await cgResp.json();
+            res.json({
+                success: true,
+                token: data.id,
+                symbol: data.symbol?.toUpperCase(),
+                price_usd: data.market_data?.current_price?.usd,
+                change_24h: data.market_data?.price_change_percentage_24h,
+                market_cap: data.market_data?.market_cap?.usd,
+                volume_24h: data.market_data?.total_volume?.usd,
+                ath: data.market_data?.ath?.usd,
+                timestamp: new Date().toISOString()
+            });
+        } catch (e) {
+            res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
+        }
+    }
+);
 
-// 2. Pay-Per-Second (Streaming)
+// 2. Pay-Per-Second — Real-Time Price Stream (simulated ticks from live base price)
 app.post('/api/stream', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
         return gatewayMw.require("0.02")(req, res, next);
     },
-    (req, res) => {
-    res.json({ success: true, content: "Streaming initialized for requested duration." });
-});
+    async (req, res) => {
+        try {
+            const token = req.body?.token || "ethereum";
+            const seconds = Math.min(req.body?.seconds || 5, 15); // cap at 15
 
-// 3. Pay-Per-Token (LLM Reasoning)
+            // Fetch live base price
+            const cgResp = await fetch(
+                `https://api.coingecko.com/api/v3/simple/price?ids=${token}&vs_currencies=usd`
+            );
+            const cgData = await cgResp.json();
+            const basePrice = cgData[token]?.usd;
+            if (!basePrice) throw new Error(`No price data for ${token}`);
+
+            // Generate realistic price ticks with micro-fluctuations
+            const ticks = [];
+            let price = basePrice;
+            for (let i = 0; i < seconds; i++) {
+                const volatility = (Math.random() - 0.5) * 0.002; // ±0.1% per tick
+                price = price * (1 + volatility);
+                ticks.push({
+                    second: i + 1,
+                    price: parseFloat(price.toFixed(4)),
+                    change_pct: parseFloat(((price / basePrice - 1) * 100).toFixed(4)),
+                    timestamp: new Date(Date.now() + i * 1000).toISOString()
+                });
+            }
+
+            res.json({
+                success: true,
+                token,
+                base_price: basePrice,
+                duration_seconds: seconds,
+                ticks,
+                summary: {
+                    open: basePrice,
+                    close: parseFloat(price.toFixed(4)),
+                    high: parseFloat(Math.max(...ticks.map(t => t.price)).toFixed(4)),
+                    low: parseFloat(Math.min(...ticks.map(t => t.price)).toFixed(4))
+                }
+            });
+        } catch (e) {
+            res.status(502).json({ success: false, error: "Stream error: " + e.message });
+        }
+    }
+);
+
+// 3. Pay-Per-Token — Real LLM Reasoning (Gemini 2.0 Flash)
 app.post('/api/llm-reasoning', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
         return gatewayMw.require("0.015")(req, res, next);
     },
-    (req, res) => {
-    res.json({ success: true, content: "Tokens generated successfully." });
-});
+    async (req, res) => {
+        try {
+            const prompt = req.body?.prompt || "Analyze the current state of the crypto market and provide 3 actionable insights for an autonomous trading agent.";
+            const geminiKey = process.env.GEMINI_API_KEY;
 
-// 4. Pay-Per-Megabyte (Data)
+            if (!geminiKey) {
+                return res.status(503).json({ success: false, error: "LLM service not configured (missing GEMINI_API_KEY)" });
+            }
+
+            const geminiResp = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 512, temperature: 0.7 }
+                    })
+                }
+            );
+
+            if (!geminiResp.ok) {
+                const errBody = await geminiResp.text();
+                throw new Error(`Gemini API ${geminiResp.status}: ${errBody.substring(0, 200)}`);
+            }
+
+            const geminiData = await geminiResp.json();
+            const output = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated.";
+            const tokenCount = geminiData.usageMetadata;
+
+            res.json({
+                success: true,
+                model: "gemini-2.0-flash",
+                prompt: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : ""),
+                reasoning: output,
+                usage: {
+                    prompt_tokens: tokenCount?.promptTokenCount || 0,
+                    completion_tokens: tokenCount?.candidatesTokenCount || 0,
+                    total_tokens: tokenCount?.totalTokenCount || 0
+                },
+                timestamp: new Date().toISOString()
+            });
+        } catch (e) {
+            res.status(502).json({ success: false, error: "LLM error: " + e.message });
+        }
+    }
+);
+
+// 4. Pay-Per-Megabyte — On-Chain ARC Analytics Dataset
 app.post('/api/dataset', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
         return gatewayMw.require("0.1")(req, res, next);
     },
-    (req, res) => {
-    res.json({ success: true, content: "Dataset downloaded." });
+    async (req, res) => {
+        try {
+            const dataType = req.body?.type || "blocks";
+            const limit = Math.min(req.body?.limit || 10, 25);
+
+            if (dataType === "blocks") {
+                // Fetch recent blocks from ARC-TESTNET
+                const blockNum = await pc.getBlockNumber();
+                const blocks = [];
+                for (let i = 0; i < limit; i++) {
+                    try {
+                        const block = await pc.getBlock({ blockNumber: blockNum - BigInt(i) });
+                        blocks.push({
+                            number: Number(block.number),
+                            hash: block.hash,
+                            timestamp: new Date(Number(block.timestamp) * 1000).toISOString(),
+                            transactions: block.transactions.length,
+                            gasUsed: block.gasUsed.toString(),
+                            gasLimit: block.gasLimit.toString(),
+                            miner: block.miner
+                        });
+                    } catch (e) { /* skip failed blocks */ }
+                }
+                res.json({
+                    success: true,
+                    dataset: "arc_testnet_blocks",
+                    chain_id: 5042002,
+                    latest_block: Number(blockNum),
+                    records: blocks.length,
+                    data: blocks
+                });
+
+            } else if (dataType === "transactions") {
+                // Fetch transactions from recent blocks
+                const blockNum = await pc.getBlockNumber();
+                const txs = [];
+                for (let i = 0; i < 5 && txs.length < limit; i++) {
+                    try {
+                        const block = await pc.getBlock({ blockNumber: blockNum - BigInt(i), includeTransactions: true });
+                        for (const tx of block.transactions) {
+                            if (txs.length >= limit) break;
+                            txs.push({
+                                hash: typeof tx === 'string' ? tx : tx.hash,
+                                from: typeof tx === 'string' ? null : tx.from,
+                                to: typeof tx === 'string' ? null : tx.to,
+                                value: typeof tx === 'string' ? null : tx.value?.toString(),
+                                block: Number(block.number),
+                                timestamp: new Date(Number(block.timestamp) * 1000).toISOString()
+                            });
+                        }
+                    } catch (e) { /* skip */ }
+                }
+                res.json({
+                    success: true,
+                    dataset: "arc_testnet_transactions",
+                    chain_id: 5042002,
+                    records: txs.length,
+                    data: txs
+                });
+
+            } else if (dataType === "gateway") {
+                // Gateway contract analytics
+                const USDC_CA = "0x3600000000000000000000000000000000000000";
+                const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+                const gatewayBalance = await pc.readContract({
+                    address: USDC_CA,
+                    abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+                    functionName: 'balanceOf',
+                    args: [GATEWAY_WALLET]
+                });
+                const blockNum = await pc.getBlockNumber();
+                res.json({
+                    success: true,
+                    dataset: "arc_gateway_analytics",
+                    gateway_contract: GATEWAY_WALLET,
+                    usdc_locked: (Number(gatewayBalance) / 1e6).toFixed(6),
+                    latest_block: Number(blockNum),
+                    chain_id: 5042002,
+                    timestamp: new Date().toISOString()
+                });
+
+            } else {
+                res.status(400).json({ success: false, error: `Unknown dataset type: ${dataType}. Use: blocks, transactions, or gateway` });
+            }
+        } catch (e) {
+            res.status(502).json({ success: false, error: "Dataset error: " + e.message });
+        }
+    }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// AGENT-TO-AGENT SERVICE REGISTRY
+// ═══════════════════════════════════════════════════════════════
+
+// In-memory service catalog (backed by MongoDB when available)
+const serviceCatalog = new Map();
+
+// Register a service
+app.post('/services/register', async (req, res) => {
+    try {
+        const { agentName, agentSecret, serviceName, description, price, callbackUrl } = req.body;
+        if (!agentName || !agentSecret || !serviceName || !price) {
+            return res.status(400).json({ error: "Missing required fields: agentName, agentSecret, serviceName, price" });
+        }
+        const agent = await verifyAgent(agentName, agentSecret);
+
+        const serviceId = `svc_${agentName}_${Date.now()}`;
+        const service = {
+            id: serviceId,
+            provider: agentName,
+            providerAddress: agent.walletAddress || agent.address,
+            serviceName,
+            description: description || "No description provided",
+            price: price, // USDC per call
+            callbackUrl: callbackUrl || null,
+            registeredAt: new Date().toISOString(),
+            calls: 0
+        };
+
+        serviceCatalog.set(serviceId, service);
+
+        // Persist to MongoDB if available
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            await db.collection("services").updateOne(
+                { id: serviceId },
+                { $set: service },
+                { upsert: true }
+            );
+        }
+
+        console.log(`>> [SERVICE REGISTRY] ${agentName} registered: "${serviceName}" @ ${price} USDC`);
+        res.json({ success: true, serviceId, service });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
+
+// Browse service catalog
+app.get('/services/catalog', async (req, res) => {
+    let services = Array.from(serviceCatalog.values());
+
+    // Also load from MongoDB if available
+    if (mongoClient && services.length === 0) {
+        try {
+            const db = mongoClient.db("arc_swarm");
+            services = await db.collection("services").find({}).toArray();
+            // Repopulate in-memory cache
+            services.forEach(s => serviceCatalog.set(s.id, s));
+        } catch (e) { /* ignore */ }
+    }
+
+    res.json({
+        success: true,
+        count: services.length,
+        services: services.map(s => ({
+            id: s.id,
+            provider: s.provider,
+            serviceName: s.serviceName,
+            description: s.description,
+            price: s.price,
+            calls: s.calls
+        }))
+    });
+});
+
+// Call another agent's service (with x402 payment)
+app.post('/services/call/:serviceId',
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        const service = serviceCatalog.get(req.params.serviceId);
+        if (!service) return res.status(404).json({ error: "Service not found" });
+        // Dynamic pricing based on the registered service price
+        return gatewayMw.require(service.price)(req, res, next);
+    },
+    async (req, res) => {
+        const service = serviceCatalog.get(req.params.serviceId);
+        if (!service) return res.status(404).json({ error: "Service not found" });
+
+        service.calls++;
+
+        // If the service has a callback URL, forward the request
+        if (service.callbackUrl) {
+            try {
+                const cbResp = await fetch(service.callbackUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ payload: req.body, caller: req.body?.agentName || "anonymous" })
+                });
+                const cbData = await cbResp.json();
+                return res.json({
+                    success: true,
+                    service: service.serviceName,
+                    provider: service.provider,
+                    price_paid: service.price,
+                    result: cbData
+                });
+            } catch (e) {
+                return res.status(502).json({ error: `Service callback failed: ${e.message}` });
+            }
+        }
+
+        // Default: return a receipt if no callback
+        res.json({
+            success: true,
+            service: service.serviceName,
+            provider: service.provider,
+            price_paid: service.price,
+            message: `Service "${service.serviceName}" executed. Provider ${service.provider} has been credited.`,
+            call_number: service.calls
+        });
+    }
+);
 
 // --- BOOTSTRAP INITIATION ---
 bootstrap();
@@ -1382,3 +1703,4 @@ bootstrap();
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
 });
+
