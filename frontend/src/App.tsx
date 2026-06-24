@@ -521,6 +521,8 @@ INSTRUCTIONS:
       </div>
     </div>
   );
+}
+
 function AgentExplorer() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
