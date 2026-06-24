@@ -1708,9 +1708,18 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
         const db = mongoClient.db("arc_swarm");
 
         // 1. Find the agent in MongoDB
-        const agent = await db.collection("agents").findOne({
+        let agent = await db.collection("agents").findOne({
             $or: [{ agentName: query }, { walletAddress: query }, { walletId: query }]
         });
+
+        // 1.b Fallback for the Master Treasury (which isn't stored in MongoDB)
+        if (!agent && (query.toLowerCase() === 'admin' || query === process.env.MASTER_WALLET_ID || (MASTER_ADDRESS && query.toLowerCase() === MASTER_ADDRESS.toLowerCase()))) {
+            agent = {
+                agentName: "Admin (Sovereign Treasury)",
+                walletAddress: MASTER_ADDRESS,
+                walletId: process.env.MASTER_WALLET_ID
+            };
+        }
 
         if (!agent) {
             return res.status(404).json({ error: "Agent not found" });
