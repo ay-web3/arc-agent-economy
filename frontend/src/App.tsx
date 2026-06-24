@@ -388,29 +388,37 @@ function SwarmMonitor({ history }: { history: any[] }) {
                 initial={{ opacity: 0, x: -10 }} 
                 animate={{ opacity: 1, x: 0 }} 
                 key={idx} 
-                className="group p-4 bg-industrial-border/5 border border-industrial-border/30 hover:border-industrial-gold/30 transition-all rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="group p-4 bg-industrial-border/5 border border-industrial-border/30 hover:border-industrial-gold/30 transition-all rounded-sm flex flex-col gap-4"
               >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-industrial-gold italic tracking-widest uppercase">SETTLED</span>
-                    <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-green-500/20 text-green-500">
-                      SUCCESS
-                    </span>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-industrial-gold italic tracking-widest uppercase">SETTLED</span>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-green-500/20 text-green-500">
+                        SUCCESS
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-industrial-argent/80 uppercase italic">{tx.service || 'Service Call'}</span>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[8px] text-industrial-argent/30 font-mono">PROVIDER: {tx.provider}</span>
+                      <span className="text-[8px] text-industrial-argent/30 font-mono">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+                    </div>
                   </div>
-                  <span className="text-[11px] font-bold text-industrial-argent/80 uppercase italic">{tx.service || 'Service Call'}</span>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[8px] text-industrial-argent/30 font-mono">PROVIDER: {tx.provider}</span>
-                    <span className="text-[8px] text-industrial-argent/30 font-mono">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+                  
+                  <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">PAID (USDC)</span>
+                      <span className="text-sm font-bold text-industrial-gold italic">{tx.price} USDC</span>
+                    </div>
+                    <Zap size={16} className="text-industrial-gold transition-colors" />
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-6">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">PAID (USDC)</span>
-                    <span className="text-sm font-bold text-industrial-gold italic">{tx.price} USDC</span>
+                {tx.payloadPreview && (
+                  <div className="w-full mt-1 p-2.5 rounded-sm bg-black/60 border border-industrial-border/30 text-[10px] font-mono text-industrial-argent/80 overflow-x-auto whitespace-pre-wrap shadow-inner">
+                    <span className="text-industrial-gold/70 select-none mr-2">PAYLOAD_ACK //</span>
+                    <span className="text-green-400/80">{tx.payloadPreview}</span>
                   </div>
-                  <Zap size={16} className="text-industrial-gold transition-colors" />
-                </div>
+                )}
               </motion.div>
             ))
           )}

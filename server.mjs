@@ -1365,6 +1365,7 @@ app.get('/api/crypto-insights',
                 service: "Crypto Insights",
                 price: 0.005,
                 provider: "CoinGecko",
+                payloadPreview: JSON.stringify({ symbol: data.symbol?.toUpperCase(), price: data.market_data?.current_price?.usd }),
                 timestamp: new Date().toISOString()
             });
 
@@ -1423,6 +1424,7 @@ app.post('/api/stream',
                 price: 0.02,
                 provider: "CoinGecko Stream",
                 duration: seconds,
+                payloadPreview: `Stream for ${token}: Base $${data.market_data?.current_price?.usd} + ${seconds} ticks`,
                 timestamp: new Date().toISOString()
             });
 
@@ -1486,6 +1488,7 @@ app.post('/api/llm-reasoning',
                 price: 0.015,
                 provider: "Gemini 2.0 Flash",
                 tokens: tokenCount?.totalTokenCount || 0,
+                payloadPreview: output.substring(0, 150) + (output.length > 150 ? "..." : ""),
                 timestamp: new Date().toISOString()
             });
 
@@ -1603,6 +1606,7 @@ app.post('/api/dataset',
                 price: 0.1,
                 provider: "ARC Testnet RPC",
                 dataset: dataType,
+                payloadPreview: `Chain 5042002: Latest Block #${blockNum}`,
                 timestamp: new Date().toISOString()
             });
         } catch (e) {
