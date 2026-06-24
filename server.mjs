@@ -428,8 +428,6 @@ app.post('/agent/gateway-withdraw', async (req, res) => {
 
         console.log(`>> [GATEWAY WITHDRAW] Agent ${agentName}: Withdrawing ${amount} USDC from GatewayWallet...`);
 
-        const withdrawAmount = parseUnits(amount, 6);
-
         // Initiate Withdrawal (locks funds for the withdrawal delay)
         const withdrawResp = await client.createContractExecutionTransaction({
             idempotencyKey: uuidv4(),
