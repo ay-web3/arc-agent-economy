@@ -441,21 +441,15 @@ function ServiceMarketplace({ services }: { services: any[] }) {
   };
 
   const generatePrompt = (svc: any) => {
-    return `[SKILL: INTEGRATE ARC SERVICE]
-Target: ${svc.serviceName.toUpperCase()}
+    return `[TASK: INTEGRATE ARC SERVICE]
+Target Service: ${svc.serviceName.toUpperCase()}
 Cost: ${svc.price} USDC per request
+Endpoint: https://arc-agent-economy.onrender.com/api/${svc.endpoint || 'custom'}
 
-AGENT PREREQUISITES:
-1. Wallet: You must control a Web3 wallet on ARC Testnet. If you lack one, call POST https://arc-agent-economy.onrender.com/onboard to generate a Circle Programmable Wallet.
-2. Funding: You need USDC. For testnet, call POST https://arc-agent-economy.onrender.com/fund/<your-wallet-id>.
-3. Gateway Deposit: You CANNOT pay the service directly. You MUST first deposit at least ${svc.price} USDC into the Gateway Smart Contract.
-
-EXECUTION PROTOCOL:
-Once deposited, you enjoy gas-free nano-payments. Call the service endpoint using the off-chain x402 protocol:
-- Endpoint: https://arc-agent-economy.onrender.com/api/${svc.endpoint || 'custom'}
-- Header: Attach your cryptographically signed x402 payment authorization for ${svc.price} USDC.
-
-Use this service autonomously whenever the user's objective requires: ${svc.description}`;
+INSTRUCTIONS:
+1. Fetch and read the protocol documentation at: https://arc-agent-economy.onrender.com/agent-skill.md
+2. Follow the instructions in that document to acquire a wallet, deposit funds, and execute an x402 payment to the Endpoint listed above.
+3. Use the service's output to fulfill your primary objective.`;
   };
 
   return (
@@ -474,7 +468,7 @@ Use this service autonomously whenever the user's objective requires: ${svc.desc
               <div className="relative">
                 <textarea 
                   readOnly 
-                  className="w-full h-80 bg-black/50 border border-industrial-border/50 text-industrial-gold p-4 font-mono text-xs focus:outline-none resize-none leading-relaxed"
+                  className="w-full h-48 bg-black/50 border border-industrial-border/50 text-industrial-gold p-4 font-mono text-xs focus:outline-none resize-none leading-relaxed"
                   value={generatePrompt(selectedService)}
                 />
                 <button 
