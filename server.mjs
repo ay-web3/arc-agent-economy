@@ -30,6 +30,7 @@ let mongoPromise = null;
 let MASTER_ADDRESS = null;
 let gatewayMw = null;
 let orchestrator = null;
+const nanoLedger = []; // Global in-memory swarm ledger
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -1336,6 +1337,11 @@ app.post('/agent/sign-402', async (req, res) => {
     }
 });
 
+// GET Swarm Ledger History
+app.get('/api/nano-history', (req, res) => {
+    res.json({ success: true, history: nanoLedger.slice(0, 50) });
+});
+
 // ═══════════════════════════════════════════════════════════════
 // REAL SERVICE MARKETPLACE — Pay-Per-Use Nano-Payment Endpoints
 // ═══════════════════════════════════════════════════════════════
@@ -1354,6 +1360,14 @@ app.get('/api/crypto-insights',
             );
             if (!cgResp.ok) throw new Error(`CoinGecko returned ${cgResp.status}`);
             const data = await cgResp.json();
+            
+            nanoLedger.unshift({
+                service: "Crypto Insights",
+                price: 0.005,
+                provider: "CoinGecko",
+                timestamp: new Date().toISOString()
+            });
+
             res.json({
                 success: true,
                 token: data.id,
@@ -1403,6 +1417,14 @@ app.post('/api/stream',
                     timestamp: new Date(Date.now() + i * 1000).toISOString()
                 });
             }
+
+            nanoLedger.unshift({
+                service: "Price Stream",
+                price: 0.02,
+                provider: "CoinGecko Stream",
+                duration: seconds,
+                timestamp: new Date().toISOString()
+            });
 
             res.json({
                 success: true,
@@ -1458,6 +1480,14 @@ app.post('/api/llm-reasoning',
             const geminiData = await geminiResp.json();
             const output = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated.";
             const tokenCount = geminiData.usageMetadata;
+
+            nanoLedger.unshift({
+                service: "LLM Reasoning",
+                price: 0.015,
+                provider: "Gemini 2.0 Flash",
+                tokens: tokenCount?.totalTokenCount || 0,
+                timestamp: new Date().toISOString()
+            });
 
             res.json({
                 success: true,
@@ -1565,8 +1595,16 @@ app.post('/api/dataset',
                 });
 
             } else {
-                res.status(400).json({ success: false, error: `Unknown dataset type: ${dataType}. Use: blocks, transactions, or gateway` });
+                return res.status(400).json({ success: false, error: `Unknown dataset type: ${dataType}. Use: blocks, transactions, or gateway` });
             }
+
+            nanoLedger.unshift({
+                service: "ARC Analytics",
+                price: 0.1,
+                provider: "ARC Testnet RPC",
+                dataset: dataType,
+                timestamp: new Date().toISOString()
+            });
         } catch (e) {
             res.status(502).json({ success: false, error: "Dataset error: " + e.message });
         }
@@ -1613,6 +1651,14 @@ app.post('/services/register', async (req, res) => {
                 { upsert: true }
             );
         }
+
+        nanoLedger.unshift({
+            service: "Service Registered",
+            provider: agentName,
+            serviceName: serviceName,
+            price: price,
+            timestamp: new Date().toISOString()
+        });
 
         console.log(`>> [SERVICE REGISTRY] ${agentName} registered: "${serviceName}" @ ${price} USDC`);
         res.json({ success: true, serviceId, service });
@@ -1673,6 +1719,14 @@ app.post('/services/call/:serviceId',
                     body: JSON.stringify({ payload: req.body, caller: req.body?.agentName || "anonymous" })
                 });
                 const cbData = await cbResp.json();
+                
+                nanoLedger.unshift({
+                    service: service.serviceName,
+                    price: service.price,
+                    provider: service.provider,
+                    timestamp: new Date().toISOString()
+                });
+
                 return res.json({
                     success: true,
                     service: service.serviceName,
@@ -1684,6 +1738,13 @@ app.post('/services/call/:serviceId',
                 return res.status(502).json({ error: `Service callback failed: ${e.message}` });
             }
         }
+
+        nanoLedger.unshift({
+            service: service.serviceName,
+            price: service.price,
+            provider: service.provider,
+            timestamp: new Date().toISOString()
+        });
 
         // Default: return a receipt if no callback
         res.json({
