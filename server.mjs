@@ -432,8 +432,8 @@ app.post('/agent/gateway-withdraw', async (req, res) => {
             idempotencyKey: uuidv4(),
             walletId: agent.walletId,
             blockchain: "ARC-TESTNET",
-            abiFunctionSignature: "withdraw(address,uint256)",
-            abiParameters: [USDC_CA, withdrawAmount],
+            abiFunctionSignature: "withdraw(address)",
+            abiParameters: [USDC_CA],
             contractAddress: GATEWAY_WALLET,
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
