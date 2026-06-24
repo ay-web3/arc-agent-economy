@@ -545,7 +545,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
 
         // 3. Submit to Gateway API for Settlement
         console.log(`>> [INSTANT WITHDRAW] Submitting signed intent to Gateway Operator...`);
-        const apiUrl = "https://gateway-api.testnet.circle.com"; // Testnet API
+        const apiUrl = "https://gateway-api-testnet.circle.com/v1"; // Testnet API
         const response = await fetch(`${apiUrl}/transfer`, {
             method: "POST",
             headers: {
