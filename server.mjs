@@ -533,7 +533,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
         console.log(`>> [INSTANT WITHDRAW] Signing BurnIntent via Circle Web3 Services...`);
         const signResp = await client.signTypedData({
             walletId: agent.walletId,
-            data: JSON.stringify(typedData),
+            data: JSON.stringify(typedData, (_, v) => typeof v === 'bigint' ? v.toString() : v),
             memo: "Gateway Fast Withdrawal"
         });
 
