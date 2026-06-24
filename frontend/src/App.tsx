@@ -55,13 +55,13 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
 
 function MetricCard({ label, value, sub, icon }: { label: string, value: string | number, sub?: string, icon?: any }) {
   return (
-    <div className="industrial-panel p-6 md:p-8 relative overflow-hidden group">
+    <div className="industrial-panel p-4 md:p-6 relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
         {icon}
       </div>
       <div className="flex flex-col gap-1 relative z-10">
         <span className="text-[8px] md:text-[10px] font-bold tracking-[0.3em] text-industrial-argent/40 uppercase italic">{label}</span>
-        <span className="text-2xl md:text-4xl font-bold tracking-tighter text-industrial-argent italic argent-glow tabular-nums uppercase break-all">{value}</span>
+        <span className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tighter text-industrial-argent italic argent-glow tabular-nums uppercase truncate">{value}</span>
         {sub && <span className="text-[8px] md:text-[9px] text-industrial-argent/20 tracking-[0.2em] uppercase mt-2 font-bold">{sub}</span>}
       </div>
       <div className="absolute bottom-0 left-0 w-1/4 h-1 bg-industrial-gold/10 group-hover:w-full transition-all duration-700" />
