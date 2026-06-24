@@ -193,6 +193,21 @@ async function getUsdcTokenId(walletId) {
     }
 }
 
+// --- LEDGER PERSISTENCE ---
+// Persist nanoLedger entries to MongoDB so they survive server restarts/deploys
+async function persistLedgerEntry(entry) {
+    nanoLedger.unshift(entry);
+    try {
+        if (mongoPromise) await mongoPromise;
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            await db.collection("ledger").insertOne({ ...entry, _persistedAt: new Date() });
+        }
+    } catch (e) {
+        console.error(">> [LEDGER] Failed to persist entry:", e.message);
+    }
+}
+
 // --- ENDPOINTS ---
 app.get('/debug/wallet/:id', async (req, res) => {
     if (!client) return res.json({ error: "Engines Offline" });
@@ -1361,7 +1376,7 @@ app.get('/api/crypto-insights',
             if (!cgResp.ok) throw new Error(`CoinGecko returned ${cgResp.status}`);
             const data = await cgResp.json();
             
-            nanoLedger.unshift({
+            persistLedgerEntry({
                 service: "Crypto Insights",
                 price: 0.005,
                 provider: "CoinGecko",
@@ -1419,7 +1434,7 @@ app.post('/api/stream',
                 });
             }
 
-            nanoLedger.unshift({
+            persistLedgerEntry({
                 service: "Price Stream",
                 price: 0.02,
                 provider: "CoinGecko Stream",
@@ -1483,7 +1498,7 @@ app.post('/api/llm-reasoning',
             const output = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated.";
             const tokenCount = geminiData.usageMetadata;
 
-            nanoLedger.unshift({
+            persistLedgerEntry({
                 service: "LLM Reasoning",
                 price: 0.015,
                 provider: "Gemini 2.0 Flash",
@@ -1600,7 +1615,7 @@ app.post('/api/dataset',
                 return res.status(400).json({ success: false, error: `Unknown dataset type: ${dataType}. Use: blocks, transactions, or gateway` });
             }
 
-            nanoLedger.unshift({
+            persistLedgerEntry({
                 service: "ARC Analytics",
                 price: 0.1,
                 provider: "ARC Testnet RPC",
@@ -1655,7 +1670,7 @@ app.post('/services/register', async (req, res) => {
             );
         }
 
-        nanoLedger.unshift({
+        persistLedgerEntry({
             service: "Service Registered",
             provider: agentName,
             serviceName: serviceName,
@@ -1707,16 +1722,22 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
         if (mongoPromise) await mongoPromise;
         const db = mongoClient.db("arc_swarm");
 
-        // 1. Find the agent in MongoDB
+        // 1. Find the agent in MongoDB (search both 'address' and 'walletAddress' fields)
+        const queryLower = query.toLowerCase();
         let agent = await db.collection("agents").findOne({
-            $or: [{ agentName: query }, { walletAddress: query }, { walletId: query }]
+            $or: [
+                { agentName: query },
+                { walletAddress: queryLower },
+                { address: queryLower },
+                { walletId: query }
+            ]
         });
 
         // 1.b Fallback for the Master Treasury (which isn't stored in MongoDB)
-        if (!agent && (query.toLowerCase() === 'admin' || query === process.env.MASTER_WALLET_ID || (MASTER_ADDRESS && query.toLowerCase() === MASTER_ADDRESS.toLowerCase()))) {
+        if (!agent && (queryLower === 'admin' || query === process.env.MASTER_WALLET_ID || (MASTER_ADDRESS && queryLower === MASTER_ADDRESS.toLowerCase()))) {
             agent = {
                 agentName: "Admin (Sovereign Treasury)",
-                walletAddress: MASTER_ADDRESS,
+                address: MASTER_ADDRESS,
                 walletId: process.env.MASTER_WALLET_ID
             };
         }
@@ -1725,28 +1746,35 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             return res.status(404).json({ error: "Agent not found" });
         }
 
+        // Normalize: MongoDB stores 'address', not 'walletAddress'
+        const agentAddr = (agent.walletAddress || agent.address || '').toLowerCase();
+
         // 2. Fetch on-chain USDC Balance & Gateway Balance
         const USDC_CA = "0x3600000000000000000000000000000000000000";
-        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+        const GATEWAY_WALLET_ADDR = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
         let usdcBalance = "0.000000";
         let gatewayBalance = "0.000000";
         try {
-            if (agent.walletAddress) {
+            if (agentAddr) {
                 const bal = await pc.readContract({
                     address: USDC_CA,
                     abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
                     functionName: 'balanceOf',
-                    args: [agent.walletAddress]
+                    args: [agentAddr]
                 });
                 usdcBalance = (Number(bal) / 1e6).toFixed(6);
 
-                const gbal = await pc.readContract({
-                    address: GATEWAY_WALLET,
-                    abi: parseAbi(['function availableBalance(address, address) view returns (uint256)']),
-                    functionName: 'availableBalance',
-                    args: [USDC_CA, agent.walletAddress]
-                });
-                gatewayBalance = (Number(gbal) / 1e6).toFixed(6);
+                try {
+                    const gbal = await pc.readContract({
+                        address: GATEWAY_WALLET_ADDR,
+                        abi: parseAbi(['function availableBalance(address, address) view returns (uint256)']),
+                        functionName: 'availableBalance',
+                        args: [USDC_CA, agentAddr]
+                    });
+                    gatewayBalance = (Number(gbal) / 1e6).toFixed(6);
+                } catch (gErr) {
+                    console.error(">> [EXPLORER] Gateway balance error (non-fatal):", gErr.message?.substring(0, 80));
+                }
             }
         } catch (e) {
             console.error(">> [EXPLORER] Error fetching balances:", e.message);
@@ -1762,25 +1790,37 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
                 serviceName: s.serviceName,
                 description: s.description,
                 price: s.price,
-                calls: s.calls
+                calls: s.calls || 0
             }));
         }
 
-        // 4. Filter nanoLedger history
-        const history = nanoLedger.filter(tx => tx.provider === agent.agentName).slice(0, 50);
+        // 4. Filter nanoLedger history — also load from MongoDB if in-memory is empty
+        let history = nanoLedger.filter(tx => tx.provider === agent.agentName).slice(0, 50);
+        let allLedger = nanoLedger;
+        if (history.length === 0) {
+            try {
+                const dbHistory = await db.collection("ledger").find({ provider: agent.agentName }).sort({ timestamp: -1 }).limit(50).toArray();
+                history = dbHistory;
+            } catch (e) { /* ignore */ }
+        }
+        if (allLedger.length === 0) {
+            try {
+                allLedger = await db.collection("ledger").find({}).sort({ timestamp: -1 }).limit(200).toArray();
+            } catch (e) { /* ignore */ }
+        }
 
-        // Calculate basic stats
-        const totalSales = agentServices.reduce((acc, curr) => acc + (curr.calls || 0), 0);
-        const totalRevenue = agentServices.reduce((acc, curr) => acc + ((curr.calls || 0) * (parseFloat(curr.price) || 0)), 0);
+        // Calculate basic stats from history
+        const totalSales = history.length;
+        const totalRevenue = history.reduce((acc, tx) => acc + (parseFloat(tx.price) || 0), 0);
         
-        // Calculate number of buying (where 'buyer' matches the agent's wallet address, or 'from' matches name)
-        const totalBuying = nanoLedger.filter(tx => tx.buyer === agent.walletAddress?.toLowerCase() || tx.from === agent.agentName).length;
+        // Calculate number of buying
+        const totalBuying = allLedger.filter(tx => tx.buyer === agentAddr || tx.from === agent.agentName).length;
 
         res.json({
             success: true,
             agent: {
                 agentName: agent.agentName,
-                walletAddress: agent.walletAddress,
+                walletAddress: agentAddr,
                 walletId: agent.walletId,
                 usdcBalance: usdcBalance,
                 gatewayBalance: gatewayBalance
@@ -1825,7 +1865,7 @@ app.post('/services/call/:serviceId',
                 });
                 const cbData = await cbResp.json();
                 
-                nanoLedger.unshift({
+                persistLedgerEntry({
                     service: service.serviceName,
                     price: service.price,
                     provider: service.provider,
@@ -1844,7 +1884,7 @@ app.post('/services/call/:serviceId',
             }
         }
 
-        nanoLedger.unshift({
+        persistLedgerEntry({
             service: service.serviceName,
             price: service.price,
             provider: service.provider,
