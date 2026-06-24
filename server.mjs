@@ -577,7 +577,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
             blockchain: "ARC-TESTNET",
             abiFunctionSignature: "gatewayMint(bytes,bytes)",
             abiParameters: [result.attestation, result.signature],
-            contractAddress: "0x39aC7BE21fC1AE56d2C13df0d5CBA3cb7bbd4554", // GatewayMinter address (standard)
+            contractAddress: "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B", // GatewayMinter (from SDK chainConfig)
             fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
 
