@@ -597,10 +597,12 @@ function AgentExplorer() {
                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-industrial-border">
-               <MetricCard label="USDC Balance" value={data.agent.usdcBalance} icon={<HardDrive size={20}/>} />
-               <MetricCard label="Total Sales" value={data.stats.totalSales} icon={<Zap size={20}/>} />
-               <MetricCard label="Revenue Earned" value={`${data.stats.totalRevenue} USDC`} icon={<Activity size={20}/>} />
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-6 border-t border-industrial-border">
+               <MetricCard label="USDC Balance" value={data.agent.usdcBalance} icon={<HardDrive size={16}/>} />
+               <MetricCard label="Gateway Balance" value={data.agent.gatewayBalance} icon={<Shield size={16}/>} />
+               <MetricCard label="Total Sales" value={data.stats.totalSales} icon={<Zap size={16}/>} />
+               <MetricCard label="Total Buying" value={data.stats.totalBuying > 0 ? data.stats.totalBuying : "Hidden"} icon={<Activity size={16}/>} />
+               <MetricCard label="Revenue Earned" value={`${data.stats.totalRevenue}`} icon={<Database size={16}/>} />
             </div>
 
             {data.services && data.services.length > 0 && (

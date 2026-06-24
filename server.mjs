@@ -1716,9 +1716,11 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             return res.status(404).json({ error: "Agent not found" });
         }
 
-        // 2. Fetch on-chain USDC Balance
+        // 2. Fetch on-chain USDC Balance & Gateway Balance
         const USDC_CA = "0x3600000000000000000000000000000000000000";
+        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
         let usdcBalance = "0.000000";
+        let gatewayBalance = "0.000000";
         try {
             if (agent.walletAddress) {
                 const bal = await pc.readContract({
@@ -1728,9 +1730,17 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
                     args: [agent.walletAddress]
                 });
                 usdcBalance = (Number(bal) / 1e6).toFixed(6);
+
+                const gbal = await pc.readContract({
+                    address: GATEWAY_WALLET,
+                    abi: parseAbi(['function availableBalance(address, address) view returns (uint256)']),
+                    functionName: 'availableBalance',
+                    args: [USDC_CA, agent.walletAddress]
+                });
+                gatewayBalance = (Number(gbal) / 1e6).toFixed(6);
             }
         } catch (e) {
-            console.error(">> [EXPLORER] Error fetching on-chain balance:", e.message);
+            console.error(">> [EXPLORER] Error fetching balances:", e.message);
         }
 
         // 3. Find registered services by this agent
@@ -1753,6 +1763,9 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
         // Calculate basic stats
         const totalSales = agentServices.reduce((acc, curr) => acc + (curr.calls || 0), 0);
         const totalRevenue = agentServices.reduce((acc, curr) => acc + ((curr.calls || 0) * (parseFloat(curr.price) || 0)), 0);
+        
+        // Calculate number of buying (where 'buyer' matches the agent's wallet address, or 'from' matches name)
+        const totalBuying = nanoLedger.filter(tx => tx.buyer === agent.walletAddress?.toLowerCase() || tx.from === agent.agentName).length;
 
         res.json({
             success: true,
@@ -1760,11 +1773,13 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
                 agentName: agent.agentName,
                 walletAddress: agent.walletAddress,
                 walletId: agent.walletId,
-                usdcBalance: usdcBalance
+                usdcBalance: usdcBalance,
+                gatewayBalance: gatewayBalance
             },
             stats: {
                 totalSales: totalSales,
-                totalRevenue: totalRevenue.toFixed(6)
+                totalRevenue: totalRevenue.toFixed(6),
+                totalBuying: totalBuying
             },
             services: agentServices,
             history: history
