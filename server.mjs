@@ -520,13 +520,19 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
                 ]
             },
             primaryType: "BurnIntent",
-            message: gateway.createBurnIntent(
-                gateway.chainConfig,
-                gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
-                withdrawAmount,
-                recipientAddress, // recipient
-                "0" // maxFee
-            )
+            message: (() => {
+                const intent = gateway.createBurnIntent(
+                    gateway.chainConfig,
+                    gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
+                    withdrawAmount,
+                    recipientAddress, // recipient
+                    "0" // maxFee
+                );
+                const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
+                intent.spec.sourceSigner = padToBytes32(recipientAddress);
+                intent.spec.sourceDepositor = padToBytes32(recipientAddress);
+                return intent;
+            })()
         };
 
         // 2. Sign Typed Data via Circle Web3 Services
