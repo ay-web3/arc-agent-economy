@@ -597,12 +597,40 @@ function AgentExplorer() {
                </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-6 border-t border-industrial-border">
-               <MetricCard label="USDC Balance" value={data.agent.usdcBalance} icon={<HardDrive size={16}/>} />
-               <MetricCard label="Gateway Balance" value={data.agent.gatewayBalance} icon={<Shield size={16}/>} />
-               <MetricCard label="Total Sales" value={data.stats.totalSales} icon={<Zap size={16}/>} />
-               <MetricCard label="Total Buying" value={data.stats.totalBuying > 0 ? data.stats.totalBuying : "Hidden"} icon={<Activity size={16}/>} />
-               <MetricCard label="Revenue Earned" value={`${data.stats.totalRevenue}`} icon={<Database size={16}/>} />
+            <div className="pt-6 border-t border-industrial-border flex flex-col gap-4">
+               <div className="grid grid-cols-3 gap-4">
+                 <div className="industrial-panel p-4 flex flex-col gap-1">
+                   <span className="text-[9px] font-bold tracking-[0.2em] text-industrial-argent/40 uppercase">USDC Balance</span>
+                   <span className="text-2xl font-bold text-industrial-gold italic tabular-nums">{parseFloat(data.agent.usdcBalance).toFixed(4)}</span>
+                   <span className="text-[8px] text-industrial-argent/20 uppercase tracking-widest">USDC</span>
+                 </div>
+                 <div className="industrial-panel p-4 flex flex-col gap-1">
+                   <span className="text-[9px] font-bold tracking-[0.2em] text-industrial-argent/40 uppercase">Gateway Balance</span>
+                   <span className="text-2xl font-bold text-industrial-gold italic tabular-nums">{parseFloat(data.agent.gatewayBalance).toFixed(4)}</span>
+                   <span className="text-[8px] text-industrial-argent/20 uppercase tracking-widest">USDC</span>
+                 </div>
+                 <div className="industrial-panel p-4 flex flex-col gap-1">
+                   <span className="text-[9px] font-bold tracking-[0.2em] text-industrial-argent/40 uppercase">Revenue Earned</span>
+                   <span className="text-2xl font-bold text-industrial-gold italic tabular-nums">{parseFloat(data.stats.totalRevenue).toFixed(4)}</span>
+                   <span className="text-[8px] text-industrial-argent/20 uppercase tracking-widest">USDC</span>
+                 </div>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="industrial-panel p-4 flex items-center justify-between">
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[9px] font-bold tracking-[0.2em] text-industrial-argent/40 uppercase">Total Sales</span>
+                     <span className="text-[8px] text-industrial-argent/20 uppercase">Services fulfilled</span>
+                   </div>
+                   <span className="text-3xl font-bold text-industrial-argent italic tabular-nums">{data.stats.totalSales}</span>
+                 </div>
+                 <div className="industrial-panel p-4 flex items-center justify-between">
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[9px] font-bold tracking-[0.2em] text-industrial-argent/40 uppercase">Total Buying</span>
+                     <span className="text-[8px] text-industrial-argent/20 uppercase">Purchases made</span>
+                   </div>
+                   <span className={`text-3xl font-bold italic tabular-nums ${data.stats.totalBuying > 0 ? 'text-industrial-argent' : 'text-industrial-argent/20'}`}>{data.stats.totalBuying > 0 ? data.stats.totalBuying : '—'}</span>
+                 </div>
+               </div>
             </div>
 
             {data.services && data.services.length > 0 && (
