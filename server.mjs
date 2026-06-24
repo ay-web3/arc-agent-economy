@@ -479,9 +479,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
         
         console.log(`>> [INSTANT WITHDRAW] Agent ${agentName}: Requesting fast withdrawal of ${amount} USDC...`);
 
-        // 1. Generate the BurnIntent using GatewayClient
-        const withdrawAmount = Math.round(parseFloat(amount) * 1e6).toString();
-        
+        // 1. Resolve Recipient Address
         let recipientAddress = agent.walletAddress;
         if (!recipientAddress) {
             const walletResp = await client.getWallet({ id: agent.walletId });
@@ -489,100 +487,16 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
             if (!recipientAddress) throw new Error("Could not fetch wallet address for Admin.");
         }
 
-        // Construct the EIP-712 Domain and Types based on GatewayClient spec
-        const typedData = {
-            domain: { name: "GatewayWallet", version: "1" },
-            types: {
-                EIP712Domain: [
-                    { name: "name", type: "string" },
-                    { name: "version", type: "string" }
-                ],
-                TransferSpec: [
-                    { name: "version", type: "uint32" },
-                    { name: "sourceDomain", type: "uint32" },
-                    { name: "destinationDomain", type: "uint32" },
-                    { name: "sourceContract", type: "bytes32" },
-                    { name: "destinationContract", type: "bytes32" },
-                    { name: "sourceToken", type: "bytes32" },
-                    { name: "destinationToken", type: "bytes32" },
-                    { name: "sourceDepositor", type: "bytes32" },
-                    { name: "destinationRecipient", type: "bytes32" },
-                    { name: "sourceSigner", type: "bytes32" },
-                    { name: "destinationCaller", type: "bytes32" },
-                    { name: "value", type: "uint256" },
-                    { name: "salt", type: "bytes32" },
-                    { name: "hookData", type: "bytes" }
-                ],
-                BurnIntent: [
-                    { name: "maxBlockHeight", type: "uint256" },
-                    { name: "maxFee", type: "uint256" },
-                    { name: "spec", type: "TransferSpec" }
-                ]
-            },
-            primaryType: "BurnIntent",
-            message: (() => {
-                const intent = gateway.createBurnIntent(
-                    gateway.chainConfig,
-                    gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
-                    withdrawAmount,
-                    recipientAddress, // recipient
-                    "2010000" // maxFee (2.01 USDC, standard default)
-                );
-                const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
-                intent.spec.sourceSigner = padToBytes32(recipientAddress);
-                intent.spec.sourceDepositor = padToBytes32(recipientAddress);
-                return intent;
-            })()
-        };
-
-        // 2. Sign Typed Data via Circle Web3 Services
-        console.log(`>> [INSTANT WITHDRAW] Signing BurnIntent via Circle Web3 Services...`);
-        const signResp = await client.signTypedData({
-            walletId: agent.walletId,
-            data: JSON.stringify(typedData, (_, v) => typeof v === 'bigint' ? v.toString() : v),
-            memo: "Gateway Fast Withdrawal"
+        // 2. Execute Fast Withdrawal from Gateway Operator to Master Wallet
+        console.log(`>> [INSTANT WITHDRAW] Operator initiating fast withdrawal to ${recipientAddress}...`);
+        
+        const result = await gateway.withdraw(amount, { 
+            recipient: recipientAddress,
+            chain: "arcTestnet"
         });
 
-        if (!signResp.data || !signResp.data.signature) {
-            throw new Error("Failed to obtain EIP-712 signature from Circle API.");
-        }
-
-        const signature = signResp.data.signature;
-
-        // 3. Submit to Gateway API for Settlement
-        console.log(`>> [INSTANT WITHDRAW] Submitting signed intent to Gateway Operator...`);
-        const apiUrl = "https://gateway-api-testnet.circle.com/v1"; // Testnet API
-        const response = await fetch(`${apiUrl}/transfer`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                ...gateway.gatewayApiHeaders()
-            },
-            body: JSON.stringify(
-                [{ burnIntent: typedData.message, signature }],
-                (_, v) => typeof v === "bigint" ? v.toString() : v
-            )
-        });
-
-        const result = await response.json();
-        if (result.success === false || result.error || !result.attestation || !result.signature) {
-            throw new Error(`Gateway API error: ${result.message || result.error || JSON.stringify(result)}`);
-        }
-
-        // 4. Mint on Destination (ARC-TESTNET)
-        console.log(`>> [INSTANT WITHDRAW] Attestation received! Executing gatewayMint on-chain...`);
-        const mintTxResp = await client.createContractExecutionTransaction({
-            idempotencyKey: uuidv4(),
-            walletId: agent.walletId,
-            blockchain: "ARC-TESTNET",
-            abiFunctionSignature: "gatewayMint(bytes,bytes)",
-            abiParameters: [result.attestation, result.signature],
-            contractAddress: "0x39aC7BE21fC1AE56d2C13df0d5CBA3cb7bbd4554", // GatewayMinter address (standard)
-            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        });
-
-        console.log("Instant Withdrawal Tx ID:", mintTxResp.data.id);
-        res.json({ success: true, withdrawTxId: mintTxResp.data.id, amount, state: mintTxResp.data.state });
+        console.log("Instant Withdrawal Mint Tx Hash:", result.mintTxHash);
+        res.json({ success: true, withdrawTxId: result.mintTxHash, amount, state: "COMPLETE" });
     } catch (err) {
         console.error("Instant Gateway Withdraw Error:", err);
         res.status(500).json({ error: "Instant Withdraw failed: " + (err.response?.data?.message || err.message) });
