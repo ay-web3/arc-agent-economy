@@ -18,7 +18,8 @@ import {
   Menu,
   X,
   ArrowRight,
-  Code
+  Code,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -520,15 +521,127 @@ INSTRUCTIONS:
       </div>
     </div>
   );
+function AgentExplorer() {
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  const searchAgent = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setError('');
+    setData(null);
+    try {
+      const res = await fetch(`/api/explorer/agent/${encodeURIComponent(query.trim())}`);
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error || 'Agent not found');
+      } else {
+        setData(json);
+      }
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-12">
+      <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6">
+        <h2 className="text-xl font-bold italic argent-glow uppercase">Agent Explorer</h2>
+        
+        <div className="flex gap-4">
+          <input 
+            type="text" 
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && searchAgent()}
+            placeholder="Search by Agent Name or Wallet Address..." 
+            className="flex-1 bg-industrial-base border border-industrial-border p-3 text-industrial-argent font-mono text-sm placeholder:text-industrial-argent/30 focus:outline-none focus:border-industrial-gold transition-colors"
+          />
+          <button 
+            onClick={searchAgent}
+            disabled={loading}
+            className="bg-industrial-gold text-industrial-base px-6 font-bold tracking-widest hover:bg-white transition-all disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? '...' : <><Search size={16} /> SEARCH</>}
+          </button>
+        </div>
+
+        {error && (
+          <div className="p-4 border border-red-900/50 bg-red-900/10 text-red-500 text-sm font-mono uppercase">
+            {error}
+          </div>
+        )}
+
+        {data && data.agent && (
+          <div className="flex flex-col gap-6 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="flex flex-col gap-1">
+                 <span className="text-[10px] text-industrial-argent/40 uppercase tracking-widest">Agent Identity</span>
+                 <span className="text-lg font-bold text-industrial-gold">{data.agent.agentName}</span>
+               </div>
+               <div className="flex flex-col gap-1">
+                 <span className="text-[10px] text-industrial-argent/40 uppercase tracking-widest">Wallet Address</span>
+                 <span className="text-sm font-bold bg-industrial-base p-2 border border-industrial-border break-all">{data.agent.walletAddress}</span>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-industrial-border">
+               <MetricCard label="USDC Balance" value={data.agent.usdcBalance} icon={<HardDrive size={20}/>} />
+               <MetricCard label="Total Sales" value={data.stats.totalSales} icon={<Zap size={20}/>} />
+               <MetricCard label="Revenue Earned" value={`${data.stats.totalRevenue} USDC`} icon={<Activity size={20}/>} />
+            </div>
+
+            {data.services && data.services.length > 0 && (
+              <div className="mt-6 flex flex-col gap-4">
+                 <h3 className="text-sm font-bold tracking-[0.2em] uppercase text-industrial-argent/60">Registered Services</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   {data.services.map((svc: any) => (
+                     <div key={svc.id} className="p-4 border border-industrial-border bg-industrial-base/50 flex flex-col gap-2">
+                        <span className="font-bold text-industrial-gold text-sm">{svc.serviceName}</span>
+                        <span className="text-xs text-industrial-argent/60 italic">{svc.description}</span>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-industrial-border/30">
+                           <span className="text-[10px] uppercase text-industrial-argent/40">{svc.calls} requests served</span>
+                           <span className="text-xs font-bold">{svc.price} USDC</span>
+                        </div>
+                     </div>
+                   ))}
+                 </div>
+              </div>
+            )}
+
+            {data.history && data.history.length > 0 && (
+              <div className="mt-6 flex flex-col gap-4">
+                 <h3 className="text-sm font-bold tracking-[0.2em] uppercase text-industrial-argent/60">Recent Sales Activity</h3>
+                 <div className="flex flex-col gap-2">
+                   {data.history.map((tx: any, i: number) => (
+                     <div key={i} className="flex justify-between items-center p-3 border border-industrial-border/50 bg-industrial-base">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-bold text-industrial-argent">{tx.service}</span>
+                          <span className="text-[9px] text-industrial-argent/40">{new Date(tx.timestamp).toLocaleString()}</span>
+                        </div>
+                        <span className="text-xs font-bold text-industrial-gold">+{tx.price} USDC</span>
+                     </div>
+                   ))}
+                 </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -617,6 +730,7 @@ function App() {
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
                 <NavBtn active={activeTab === 'marketplace'} onClick={() => toggleTab('marketplace')} icon={<Box size={18}/>} label="SERVICES" />
+                <NavBtn active={activeTab === 'explorer'} onClick={() => toggleTab('explorer')} icon={<Search size={18}/>} label="EXPLORER" />
                 <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="LEDGER" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
                 {isGovernor && <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />}
@@ -718,6 +832,11 @@ function App() {
                   {activeTab === 'swarm' && (
                     <motion.div key="swarm" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
                       <SwarmMonitor history={nanoHistory} />
+                    </motion.div>
+                  )}
+                  {activeTab === 'explorer' && (
+                    <motion.div key="explorer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
+                      <AgentExplorer />
                     </motion.div>
                   )}
                   {activeTab === 'ledger' && (

@@ -1424,7 +1424,7 @@ app.post('/api/stream',
                 price: 0.02,
                 provider: "CoinGecko Stream",
                 duration: seconds,
-                payloadPreview: `Stream for ${token}: Base $${data.market_data?.current_price?.usd} + ${seconds} ticks`,
+                payloadPreview: `Stream for ${token}: Base $${basePrice} + ${seconds} ticks`,
                 timestamp: new Date().toISOString()
             });
 
@@ -1696,6 +1696,84 @@ app.get('/services/catalog', async (req, res) => {
             calls: s.calls
         }))
     });
+});
+
+// Agent Explorer lookup
+app.get('/api/explorer/agent/:query', async (req, res) => {
+    try {
+        const query = req.params.query;
+        if (!query) return res.status(400).json({ error: "Missing query parameter" });
+
+        if (mongoPromise) await mongoPromise;
+        const db = mongoClient.db("arc_swarm");
+
+        // 1. Find the agent in MongoDB
+        const agent = await db.collection("agents").findOne({
+            $or: [{ agentName: query }, { walletAddress: query }, { walletId: query }]
+        });
+
+        if (!agent) {
+            return res.status(404).json({ error: "Agent not found" });
+        }
+
+        // 2. Fetch on-chain USDC Balance
+        const USDC_CA = "0x3600000000000000000000000000000000000000";
+        let usdcBalance = "0.000000";
+        try {
+            if (agent.walletAddress) {
+                const bal = await pc.readContract({
+                    address: USDC_CA,
+                    abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+                    functionName: 'balanceOf',
+                    args: [agent.walletAddress]
+                });
+                usdcBalance = (Number(bal) / 1e6).toFixed(6);
+            }
+        } catch (e) {
+            console.error(">> [EXPLORER] Error fetching on-chain balance:", e.message);
+        }
+
+        // 3. Find registered services by this agent
+        let agentServices = Array.from(serviceCatalog.values()).filter(s => s.provider === agent.agentName);
+        if (agentServices.length === 0) {
+            const dbServices = await db.collection("services").find({ provider: agent.agentName }).toArray();
+            agentServices = dbServices.map(s => ({
+                id: s.id,
+                provider: s.provider,
+                serviceName: s.serviceName,
+                description: s.description,
+                price: s.price,
+                calls: s.calls
+            }));
+        }
+
+        // 4. Filter nanoLedger history
+        const history = nanoLedger.filter(tx => tx.provider === agent.agentName).slice(0, 50);
+
+        // Calculate basic stats
+        const totalSales = agentServices.reduce((acc, curr) => acc + (curr.calls || 0), 0);
+        const totalRevenue = agentServices.reduce((acc, curr) => acc + ((curr.calls || 0) * (parseFloat(curr.price) || 0)), 0);
+
+        res.json({
+            success: true,
+            agent: {
+                agentName: agent.agentName,
+                walletAddress: agent.walletAddress,
+                walletId: agent.walletId,
+                usdcBalance: usdcBalance
+            },
+            stats: {
+                totalSales: totalSales,
+                totalRevenue: totalRevenue.toFixed(6)
+            },
+            services: agentServices,
+            history: history
+        });
+
+    } catch (e) {
+        console.error(">> [EXPLORER ERROR]", e.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
 
 // Call another agent's service (with x402 payment)
