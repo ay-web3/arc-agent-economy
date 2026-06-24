@@ -421,18 +421,68 @@ function SwarmMonitor({ history }: { history: any[] }) {
 }
 
 function ServiceMarketplace({ services }: { services: any[] }) {
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
+
   // Hardcoded core services
   const coreServices = [
-    { serviceName: "Crypto Market Data", provider: "CoinGecko API", price: "0.005", description: "Real-time BTC/ETH price, volume, and market cap." },
-    { serviceName: "Price Ticks Stream", provider: "Server-Sent Events", price: "0.02", description: "Simulated live tick data with micro-fluctuations." },
-    { serviceName: "LLM Reasoning", provider: "Gemini 2.0 Flash", price: "0.015", description: "AI inference for agent trading signals." },
-    { serviceName: "On-Chain Analytics", provider: "ARC Testnet RPC", price: "0.1", description: "Raw block and transaction data fetcher." }
+    { serviceName: "Crypto Market Data", provider: "CoinGecko API", price: "0.005", description: "Real-time BTC/ETH price, volume, and market cap.", endpoint: "crypto-insights" },
+    { serviceName: "Price Ticks Stream", provider: "Server-Sent Events", price: "0.02", description: "Simulated live tick data with micro-fluctuations.", endpoint: "stream" },
+    { serviceName: "LLM Reasoning", provider: "Gemini 2.0 Flash", price: "0.015", description: "AI inference for agent trading signals.", endpoint: "llm-reasoning" },
+    { serviceName: "On-Chain Analytics", provider: "ARC Testnet RPC", price: "0.1", description: "Raw block and transaction data fetcher.", endpoint: "dataset" }
   ];
 
   const allServices = [...coreServices, ...(services || [])];
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const generatePrompt = (svc: any) => {
+    return `[SKILL: USE ${svc.serviceName.toUpperCase()}]
+Description: ${svc.description}
+Cost: ${svc.price} USDC via x402 Gateway
+
+INSTRUCTIONS FOR AGENT:
+To use this service, you must execute an HTTP request using the GatewayClient to satisfy the x402 payment requirement.
+1. Target Endpoint: https://arc-agent-economy.onrender.com/api/${svc.endpoint || 'custom'}
+2. Payment: Attach exactly ${svc.price} USDC via Circle Web3 SDK.
+3. Behavior: Execute this automatically when you need ${svc.serviceName.toLowerCase()} to fulfill the user's request.`;
+  };
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 relative">
+      {selectedService && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="industrial-panel max-w-2xl w-full flex flex-col">
+            <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
+               <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-industrial-argent">Agent Prompt Integration</span>
+               <button onClick={() => setSelectedService(null)} className="text-industrial-argent/50 hover:text-industrial-gold">
+                  <X size={16} />
+               </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-industrial-argent/60 mb-4 uppercase tracking-widest">Copy this prompt and give it to your AI agent to grant it access to this service:</p>
+              <div className="relative">
+                <textarea 
+                  readOnly 
+                  className="w-full h-48 bg-black/50 border border-industrial-border/50 text-industrial-gold p-4 font-mono text-xs focus:outline-none resize-none"
+                  value={generatePrompt(selectedService)}
+                />
+                <button 
+                  onClick={() => handleCopy(generatePrompt(selectedService))}
+                  className="absolute top-2 right-2 bg-industrial-border/80 hover:bg-industrial-gold hover:text-black text-industrial-argent px-3 py-1 text-[10px] font-bold uppercase transition-all"
+                >
+                  {copied ? 'COPIED!' : 'COPY PROMPT'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div className="flex justify-between items-end mb-4 border-b border-industrial-border pb-4">
          <div>
             <h2 className="text-xl font-bold tracking-tighter uppercase italic text-industrial-argent">Agent Service Registry</h2>
@@ -455,7 +505,7 @@ function ServiceMarketplace({ services }: { services: any[] }) {
             <p className="text-xs text-industrial-argent/60 mb-6 italic">{svc.description}</p>
             <div className="flex justify-between items-center pt-4 border-t border-industrial-border/30">
                <span className="text-[8px] text-industrial-argent/30 font-bold uppercase tracking-widest">Nano-Settlement via Circle</span>
-               <button className="text-[9px] bg-industrial-border hover:bg-industrial-gold hover:text-industrial-base text-industrial-argent px-4 py-1.5 font-bold uppercase transition-all">Integrate</button>
+               <button onClick={() => setSelectedService(svc)} className="text-[9px] bg-industrial-border hover:bg-industrial-gold hover:text-industrial-base text-industrial-argent px-4 py-1.5 font-bold uppercase transition-all">Integrate</button>
             </div>
           </div>
         ))}
