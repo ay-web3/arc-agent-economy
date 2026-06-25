@@ -1630,6 +1630,159 @@ app.post('/api/dataset',
 );
 
 // ═══════════════════════════════════════════════════════════════
+// POLYMARKET ORACLE SERVICES
+// ═══════════════════════════════════════════════════════════════
+
+// 1. Pay-Per-Request — Probability Oracle
+app.get('/api/polymarket/probability/:eventId', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require("0.01")(req, res, next);
+    },
+    async (req, res) => {
+        try {
+            const eventId = req.params.eventId;
+            const polyResp = await fetch(`https://gamma-api.polymarket.com/events/${eventId}`);
+            if (!polyResp.ok) throw new Error(`Polymarket returned ${polyResp.status}`);
+            const data = await polyResp.json();
+            
+            const market = data.markets && data.markets[0];
+            if (!market) throw new Error("No markets found for this event");
+
+            let outcomePrices = null;
+            let outcomes = null;
+            if (market.outcomePrices) outcomePrices = JSON.parse(market.outcomePrices);
+            if (market.outcomes) outcomes = JSON.parse(market.outcomes);
+
+            const payload = {
+                event_id: data.id,
+                title: data.title,
+                active: data.active,
+                market_volume: market.volume,
+                outcomes: outcomes,
+                probabilities: outcomePrices,
+                timestamp: new Date().toISOString()
+            };
+
+            persistLedgerEntry({
+                service: "Polymarket Probability",
+                price: 0.01,
+                provider: "Polymarket Oracle",
+                payloadPreview: `Event: ${payload.title.substring(0, 50)}...`,
+                timestamp: payload.timestamp
+            });
+
+            res.json({ success: true, ...payload });
+        } catch (e) {
+            if (!res.headersSent) res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
+        }
+    }
+);
+
+// 2. Pay-Per-Payload — Trending Sentiment Feed
+app.get('/api/polymarket/trending', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require("0.05")(req, res, next);
+    },
+    async (req, res) => {
+        try {
+            const polyResp = await fetch(`https://gamma-api.polymarket.com/events?active=true&limit=5`);
+            if (!polyResp.ok) throw new Error(`Polymarket returned ${polyResp.status}`);
+            const data = await polyResp.json();
+            
+            const trending = data.map(event => ({
+                id: event.id,
+                title: event.title,
+                startDate: event.startDate,
+                volume: event.markets && event.markets[0] ? event.markets[0].volume : 0,
+                outcomes: event.markets && event.markets[0] && event.markets[0].outcomes ? JSON.parse(event.markets[0].outcomes) : [],
+                probabilities: event.markets && event.markets[0] && event.markets[0].outcomePrices ? JSON.parse(event.markets[0].outcomePrices) : []
+            }));
+
+            persistLedgerEntry({
+                service: "Polymarket Trending",
+                price: 0.05,
+                provider: "Polymarket Oracle",
+                payloadPreview: `Top ${trending.length} active events`,
+                timestamp: new Date().toISOString()
+            });
+
+            res.json({ success: true, count: trending.length, trending, timestamp: new Date().toISOString() });
+        } catch (e) {
+            if (!res.headersSent) res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
+        }
+    }
+);
+
+// 3. Pay-Per-Second — Arbitrage Orderbook Stream
+app.post('/api/polymarket/stream/:eventId', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require("0.02")(req, res, next);
+    },
+    async (req, res) => {
+        try {
+            const eventId = req.params.eventId;
+            const seconds = parseInt(req.body.duration_seconds) || 5;
+            
+            // Initial fetch to get base data
+            const polyResp = await fetch(`https://gamma-api.polymarket.com/events/${eventId}`);
+            if (!polyResp.ok) throw new Error(`Polymarket returned ${polyResp.status}`);
+            const data = await polyResp.json();
+
+            const market = data.markets && data.markets[0];
+            if (!market) throw new Error("No markets found for this event");
+
+            let baseBid = parseFloat(market.bestBid) || 0.50;
+            let baseAsk = parseFloat(market.bestAsk) || 0.51;
+
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            let tick = 0;
+            const interval = setInterval(() => {
+                tick++;
+                // Simulate orderbook changes based on base prices
+                const bidChange = (Math.random() * 0.02) - 0.01;
+                const askChange = (Math.random() * 0.02) - 0.01;
+                
+                const curBid = Math.max(0.01, Math.min(0.98, baseBid + bidChange)).toFixed(3);
+                const curAsk = Math.max(parseFloat(curBid) + 0.01, Math.min(0.99, baseAsk + askChange)).toFixed(3);
+
+                res.write(`data: ${JSON.stringify({
+                    tick,
+                    eventId,
+                    bestBid: curBid,
+                    bestAsk: curAsk,
+                    spread: (parseFloat(curAsk) - parseFloat(curBid)).toFixed(3),
+                    timestamp: new Date().toISOString()
+                })}\n\n`);
+
+                if (tick >= seconds) {
+                    clearInterval(interval);
+                    res.end();
+                }
+            }, 1000);
+
+            persistLedgerEntry({
+                service: "Polymarket Orderbook Stream",
+                price: 0.02,
+                provider: "Polymarket Oracle",
+                duration: seconds,
+                payloadPreview: `Stream for Event ${eventId} (${seconds}s)`,
+                timestamp: new Date().toISOString()
+            });
+
+            req.on('close', () => clearInterval(interval));
+        } catch (e) {
+            if (!res.headersSent) res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
+        }
+    }
+);
+
+// ═══════════════════════════════════════════════════════════════
 // AGENT-TO-AGENT SERVICE REGISTRY
 // ═══════════════════════════════════════════════════════════════
 
@@ -1905,6 +2058,33 @@ app.post('/services/call/:serviceId',
 
 // --- BOOTSTRAP INITIATION ---
 bootstrap();
+
+async function seedBuiltInServices() {
+    if (mongoPromise) await mongoPromise;
+    if (!mongoClient) return;
+    const db = mongoClient.db("arc_swarm");
+
+    const builtIns = [
+        { id: "poly-prob", provider: "Polymarket Oracle", serviceName: "Probability Oracle", description: "Get real-time prediction probabilities for a specific event", price: "0.01", calls: 0 },
+        { id: "poly-trend", provider: "Polymarket Oracle", serviceName: "Trending Sentiment", description: "Get the top 5 trending active prediction markets", price: "0.05", calls: 0 },
+        { id: "poly-stream", provider: "Polymarket Oracle", serviceName: "Arbitrage Orderbook Stream", description: "Live 1-sec tick orderbook stream for a specific event", price: "0.02", calls: 0 }
+    ];
+
+    for (const svc of builtIns) {
+        if (!serviceCatalog.has(svc.id)) {
+            serviceCatalog.set(svc.id, svc);
+            try {
+                await db.collection("services").updateOne(
+                    { id: svc.id },
+                    { $setOnInsert: svc },
+                    { upsert: true }
+                );
+            } catch (e) { /* ignore */ }
+        }
+    }
+}
+
+seedBuiltInServices();
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);

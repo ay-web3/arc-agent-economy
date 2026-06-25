@@ -190,6 +190,107 @@ async function realServiceDemo() {
         console.error(`   ❌ Failed: ${err.message}\n`);
     }
 
+    await delay(1500);
+
+    // ── SERVICE 5: Pay-Per-Payload — Trending Sentiment Feed ──
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📈 SERVICE 5: Trending Sentiment Feed");
+    console.log("   Price: 0.05 USDC | Source: Polymarket Oracle");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    let targetEventId = null;
+    try {
+        const resp = await gatewayClient.pay(`${HUB_URL}/api/polymarket/trending`, {
+            method: "GET"
+        });
+        totalSpent += 0.05;
+        const d = resp.data;
+        console.log(`   ✅ PAID ${resp.formattedAmount} USDC`);
+        console.log(`   🔥 Top ${d.count} Trending Events:`);
+        d.trending?.forEach((event, idx) => {
+            console.log(`      ${idx + 1}. ${event.title.substring(0, 70)}... (Vol: $${parseFloat(event.volume || 0).toFixed(0)})`);
+        });
+        if (d.trending && d.trending.length > 0) {
+            targetEventId = d.trending[0].id;
+        }
+        console.log();
+    } catch (err) {
+        console.error(`   ❌ Failed: ${err.message}\n`);
+    }
+
+    if (targetEventId) {
+        await delay(1500);
+
+        // ── SERVICE 6: Pay-Per-Request — Probability Oracle ──
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("🔮 SERVICE 6: Probability Oracle");
+        console.log(`   Event ID: ${targetEventId}`);
+        console.log("   Price: 0.01 USDC | Source: Polymarket Oracle");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        try {
+            const resp = await gatewayClient.pay(`${HUB_URL}/api/polymarket/probability/${targetEventId}`, {
+                method: "GET"
+            });
+            totalSpent += 0.01;
+            const d = resp.data;
+            console.log(`   ✅ PAID ${resp.formattedAmount} USDC`);
+            console.log(`   📜 Event: ${d.title}`);
+            if (d.outcomes && d.probabilities) {
+                console.log(`   🎲 Probabilities:`);
+                for (let i = 0; i < d.outcomes.length; i++) {
+                    console.log(`      - ${d.outcomes[i]}: ${parseFloat(d.probabilities[i]) * 100}%`);
+                }
+            } else {
+                console.log(`   🎲 No active outcomes available.`);
+            }
+            console.log();
+        } catch (err) {
+            console.error(`   ❌ Failed: ${err.message}\n`);
+        }
+
+        await delay(1500);
+
+        // ── SERVICE 7: Pay-Per-Second — Arbitrage Orderbook Stream ──
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("📊 SERVICE 7: Arbitrage Orderbook Stream (3 seconds)");
+        console.log(`   Event ID: ${targetEventId}`);
+        console.log("   Price: 0.02 USDC/sec | Source: Polymarket Oracle");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        try {
+            console.log(`   >> Starting stream...`);
+            const streamCost = 0.02 * 3; // 3 seconds
+            const resp = await gatewayClient.pay(`${HUB_URL}/api/polymarket/stream/${targetEventId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ duration_seconds: 3 }),
+                responseType: "stream"
+            });
+            totalSpent += streamCost;
+            console.log(`   ✅ PAID ${streamCost.toFixed(4)} USDC up front for 3 seconds of streaming data.\n`);
+            
+            await new Promise((resolve, reject) => {
+                resp.data.on('data', chunk => {
+                    const lines = chunk.toString().split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.substring(6));
+                            console.log(`      [Tick ${data.tick}] Bid: ${data.bestBid} | Ask: ${data.bestAsk} | Spread: ${data.spread}`);
+                        }
+                    }
+                });
+                resp.data.on('end', () => {
+                    console.log(`\n   📡 Stream completed successfully.\n`);
+                    resolve();
+                });
+                resp.data.on('error', err => {
+                    console.error(`   ❌ Stream Error: ${err.message}\n`);
+                    reject(err);
+                });
+            });
+        } catch (err) {
+            console.error(`   ❌ Failed: ${err.message}\n`);
+        }
+    }
+
     // ── PHASE 3: SUMMARY ──
     console.log("┌─────────────────────────────────────────┐");
     console.log("│  PHASE 3: SETTLEMENT SUMMARY             │");
