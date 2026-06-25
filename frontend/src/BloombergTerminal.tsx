@@ -27,9 +27,8 @@ export function BloombergTerminal() {
   const [polyData, setPolyData] = useState<{ eventId: string, ticks: PolyTick[] }>({ eventId: '-', ticks: [] });
 
   useEffect(() => {
-    // If running on Render, use the current hostname, else use localhost
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const sseUrl = isLocalhost ? 'http://localhost:8080/api/admin-monitor' : `https://${window.location.hostname}/api/admin-monitor`;
+    // Connect directly to the backend HUB_URL instead of the local hostname
+    const sseUrl = `${HUB_URL}/api/admin-monitor`;
     
     console.log("Connecting to SSE:", sseUrl);
     const eventSource = new EventSource(sseUrl);
