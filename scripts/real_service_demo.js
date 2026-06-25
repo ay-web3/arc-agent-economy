@@ -113,24 +113,76 @@ async function realServiceDemo() {
 
     // ── SERVICE 2: Pay-Per-Second — Live Price Stream ──
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔴 SERVICE 2: Pay-Per-Second — ETH Price Stream (5 ticks)");
+    console.log("🔴 SERVICE 2: Pay-Per-Second — ETH Price Stream (5 seconds)");
     console.log("   Price: 0.02 USDC | Source: CoinGecko + simulated ticks");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     try {
-        const resp = await gatewayClient.pay(`${HUB_URL}/api/stream`, {
+        console.log(`   >> Starting stream...`);
+        const streamCost = 0.02;
+        
+        // 1. Initial request to trigger 402
+        const initialResp = await fetch(`${HUB_URL}/api/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token: "ethereum", seconds: 5 })
         });
-        totalSpent += 0.02;
-        const d = resp.data;
-        console.log(`   ✅ PAID ${resp.formattedAmount} USDC`);
-        console.log(`   📡 Base price: $${d.base_price}`);
-        d.ticks?.forEach(t => {
-            const arrow = t.change_pct >= 0 ? "▲" : "▼";
-            console.log(`   ⏱️  Tick ${t.second}: $${t.price} (${arrow} ${t.change_pct}%)`);
+        if (initialResp.status !== 402) throw new Error(`Expected 402 Payment Required, got ${initialResp.status}`);
+        
+        // 2. Generate payment receipt manually via X402 headers
+        const paymentRequiredHeader = initialResp.headers.get("PAYMENT-REQUIRED");
+        const paymentRequired = JSON.parse(Buffer.from(paymentRequiredHeader, "base64").toString("utf-8"));
+        const batchingOption = paymentRequired.accepts.find(opt => opt.extra?.name === "GatewayWalletBatched");
+        
+        const paymentPayload = await gatewayClient.batchScheme.createPaymentPayload(
+            paymentRequired.x402Version || 2,
+            batchingOption
+        );
+        const paymentHeader = Buffer.from(JSON.stringify({
+            ...paymentPayload,
+            resource: paymentRequired.resource,
+            accepted: batchingOption
+        })).toString("base64");
+        
+        // 3. Final request with receipt using axios for streaming
+        const resp = await axios.post(`${HUB_URL}/api/stream`, {
+            token: "ethereum", seconds: 5
+        }, {
+            headers: { "Payment-Signature": paymentHeader },
+            responseType: "stream"
         });
-        console.log(`   📊 OHLC: Open=$${d.summary?.open} Close=$${d.summary?.close} Hi=$${d.summary?.high} Lo=$${d.summary?.low}\n`);
+        
+        totalSpent += streamCost;
+        console.log(`   ✅ PAID ${streamCost.toFixed(4)} USDC up front for 5 seconds of streaming data.\n`);
+        
+        await new Promise((resolve, reject) => {
+            let buffer = '';
+            resp.data.on('data', chunk => {
+                buffer += chunk.toString();
+                let lines = buffer.split('\n');
+                buffer = lines.pop(); // keep the last partial line in the buffer
+                
+                for (const line of lines) {
+                    if (line.trim().startsWith('data: ')) {
+                        try {
+                            const payloadStr = line.trim().substring(6);
+                            const data = JSON.parse(payloadStr);
+                            const arrow = data.change_pct >= 0 ? "▲" : "▼";
+                            console.log(`      [Tick ${data.tick}] $${data.price} (${arrow} ${data.change_pct}%)`);
+                        } catch (e) {
+                            console.log(`      ⚠️ Parse error on string: '${line.trim().substring(6)}' | Error: ${e.message}`);
+                        }
+                    }
+                }
+            });
+            resp.data.on('end', () => {
+                console.log(`\n   📡 Stream completed successfully.\n`);
+                resolve();
+            });
+            resp.data.on('error', err => {
+                console.error(`   ❌ Stream Error: ${err.message}\n`);
+                reject(err);
+            });
+        });
     } catch (err) {
         console.error(`   ❌ Failed: ${err.message}\n`);
     }

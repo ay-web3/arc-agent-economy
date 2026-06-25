@@ -1424,41 +1424,43 @@ app.post('/api/stream',
             const basePrice = cgData[token]?.usd;
             if (!basePrice) throw new Error(`No price data for ${token}`);
 
-            // Generate realistic price ticks with micro-fluctuations
-            const ticks = [];
-            let price = basePrice;
-            for (let i = 0; i < seconds; i++) {
-                const volatility = (Math.random() - 0.5) * 0.002; // ±0.1% per tick
-                price = price * (1 + volatility);
-                ticks.push({
-                    second: i + 1,
-                    price: parseFloat(price.toFixed(4)),
-                    change_pct: parseFloat(((price / basePrice - 1) * 100).toFixed(4)),
-                    timestamp: new Date(Date.now() + i * 1000).toISOString()
-                });
-            }
-
             persistLedgerEntry({
                 service: "Price Stream",
                 price: 0.02,
                 provider: "CoinGecko Stream",
                 duration: seconds,
-                payloadPreview: `Stream for ${token}: Base $${basePrice} + ${seconds} ticks`,
+                payloadPreview: `Live Stream for ${token}: Base $${basePrice} for ${seconds} seconds`,
                 timestamp: new Date().toISOString()
             });
 
-            res.json({
-                success: true,
-                token,
-                base_price: basePrice,
-                duration_seconds: seconds,
-                ticks,
-                summary: {
-                    open: basePrice,
-                    close: parseFloat(price.toFixed(4)),
-                    high: parseFloat(Math.max(...ticks.map(t => t.price)).toFixed(4)),
-                    low: parseFloat(Math.min(...ticks.map(t => t.price)).toFixed(4))
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            let price = basePrice;
+            let tick = 0;
+
+            const interval = setInterval(() => {
+                tick++;
+                const volatility = (Math.random() - 0.5) * 0.002; // ±0.1% per tick
+                price = price * (1 + volatility);
+                
+                res.write(`data: ${JSON.stringify({
+                    tick,
+                    base_price: basePrice,
+                    price: parseFloat(price.toFixed(4)),
+                    change_pct: parseFloat(((price / basePrice - 1) * 100).toFixed(4)),
+                    timestamp: new Date().toISOString()
+                })}\n\n`);
+
+                if (tick >= seconds) {
+                    clearInterval(interval);
+                    res.end();
                 }
+            }, 1000);
+
+            req.on('close', () => {
+                clearInterval(interval);
             });
         } catch (e) {
             res.status(502).json({ success: false, error: "Stream error: " + e.message });
