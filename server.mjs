@@ -1493,51 +1493,56 @@ app.post('/api/llm-reasoning',
     async (req, res) => {
         try {
             const prompt = req.body?.prompt || "Analyze the current state of the crypto market and provide 3 actionable insights for an autonomous trading agent.";
-            const geminiKey = process.env.GEMINI_API_KEY;
+            const groqKey = process.env.GROQ_API_KEY;
 
-            if (!geminiKey) {
-                return res.status(503).json({ success: false, error: "LLM service not configured (missing GEMINI_API_KEY)" });
+            if (!groqKey) {
+                return res.status(503).json({ success: false, error: "LLM service not configured (missing GROQ_API_KEY)" });
             }
 
-            const geminiResp = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            const groqResp = await fetch(
+                `https://api.groq.com/openai/v1/chat/completions`,
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${groqKey}`
+                    },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { maxOutputTokens: 512, temperature: 0.7 }
+                        model: "llama3-8b-8192",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 512,
+                        temperature: 0.7
                     })
                 }
             );
 
-            if (!geminiResp.ok) {
-                const errBody = await geminiResp.text();
-                throw new Error(`Gemini API ${geminiResp.status}: ${errBody.substring(0, 200)}`);
+            if (!groqResp.ok) {
+                const errBody = await groqResp.text();
+                throw new Error(`Groq API ${groqResp.status}: ${errBody.substring(0, 200)}`);
             }
 
-            const geminiData = await geminiResp.json();
-            const output = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated.";
-            const tokenCount = geminiData.usageMetadata;
+            const groqData = await groqResp.json();
+            const output = groqData.choices?.[0]?.message?.content || "No output generated.";
+            const tokenCount = groqData.usage;
 
             persistLedgerEntry({
                 service: "LLM Reasoning",
                 price: 0.015,
-                provider: "Gemini 2.0 Flash",
-                tokens: tokenCount?.totalTokenCount || 0,
+                provider: "Groq (Llama 3)",
+                tokens: tokenCount?.total_tokens || 0,
                 payloadPreview: output.substring(0, 150) + (output.length > 150 ? "..." : ""),
                 timestamp: new Date().toISOString()
             });
 
             res.json({
                 success: true,
-                model: "gemini-2.0-flash",
+                model: "llama3-8b-8192",
                 prompt: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : ""),
                 reasoning: output,
                 usage: {
-                    prompt_tokens: tokenCount?.promptTokenCount || 0,
-                    completion_tokens: tokenCount?.candidatesTokenCount || 0,
-                    total_tokens: tokenCount?.totalTokenCount || 0
+                    prompt_tokens: tokenCount?.prompt_tokens || 0,
+                    completion_tokens: tokenCount?.completion_tokens || 0,
+                    total_tokens: tokenCount?.total_tokens || 0
                 },
                 timestamp: new Date().toISOString()
             });
