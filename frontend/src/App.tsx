@@ -713,7 +713,7 @@ function A2AMarketplace({ a2aServices }: { a2aServices: any[] }) {
                     <span className="bg-industrial-gold/20 text-industrial-gold px-2 py-0.5 rounded border border-industrial-gold/50">{svc.price} USDC</span>
                     <span className="text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded border border-green-400/30 flex items-center gap-1">
                       <ShieldCheck size={12} />
-                      STAKED 0.20 USDC
+                      STAKED 3.00 USDC
                     </span>
                   </p>
                 </div>
