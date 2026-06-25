@@ -91,12 +91,14 @@ async function realServiceDemo() {
     console.log("└─────────────────────────────────────────┘\n");
 
     // ── SERVICE 1: Pay-Per-Request — Live Crypto Data ──
+    const cryptoTokens1 = ["bitcoin", "solana", "avalanche-2", "polkadot", "dogecoin"];
+    const randomToken1 = cryptoTokens1[Math.floor(Math.random() * cryptoTokens1.length)];
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("📊 SERVICE 1: Pay-Per-Request — Live BTC Market Data");
+    console.log(`📊 SERVICE 1: Pay-Per-Request — Live Market Data (${randomToken1})`);
     console.log("   Price: 0.005 USDC | Source: CoinGecko API");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     try {
-        const resp = await gatewayClient.pay(`${HUB_URL}/api/crypto-insights?token=bitcoin`, { method: "GET" });
+        const resp = await gatewayClient.pay(`${HUB_URL}/api/crypto-insights?token=${randomToken1}`, { method: "GET" });
         totalSpent += 0.005;
         const d = resp.data;
         console.log(`   ✅ PAID ${resp.formattedAmount} USDC`);
@@ -112,8 +114,10 @@ async function realServiceDemo() {
     await delay(1500);
 
     // ── SERVICE 2: Pay-Per-Second — Live Price Stream ──
+    const cryptoTokens2 = ["ethereum", "binancecoin", "chainlink", "cardano", "ripple"];
+    const randomToken2 = cryptoTokens2[Math.floor(Math.random() * cryptoTokens2.length)];
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔴 SERVICE 2: Pay-Per-Second — ETH Price Stream (5 seconds)");
+    console.log(`🔴 SERVICE 2: Pay-Per-Second — Live Price Stream (${randomToken2.toUpperCase()} - 5 seconds)`);
     console.log("   Price: 0.02 USDC/sec | Source: CoinGecko + simulated ticks");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     try {
@@ -124,7 +128,7 @@ async function realServiceDemo() {
         const initialResp = await fetch(`${HUB_URL}/api/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: "ethereum", seconds: 5 })
+            body: JSON.stringify({ token: randomToken2, seconds: 5 })
         });
         if (initialResp.status !== 402) throw new Error(`Expected 402 Payment Required, got ${initialResp.status}`);
         
@@ -145,7 +149,7 @@ async function realServiceDemo() {
         
         // 3. Final request with receipt using axios for streaming
         const resp = await axios.post(`${HUB_URL}/api/stream`, {
-            token: "ethereum", seconds: 5
+            token: randomToken2, seconds: 5
         }, {
             headers: { "Payment-Signature": paymentHeader },
             responseType: "stream"
@@ -264,7 +268,8 @@ async function realServiceDemo() {
             console.log(`      ${idx + 1}. ${event.title.substring(0, 70)}... (Vol: $${parseFloat(event.volume || 0).toFixed(0)})`);
         });
         if (d.trending && d.trending.length > 0) {
-            targetEventId = d.trending[0].id;
+            const randomIndex = Math.floor(Math.random() * d.trending.length);
+            targetEventId = d.trending[randomIndex].id;
         }
         console.log();
     } catch (err) {
