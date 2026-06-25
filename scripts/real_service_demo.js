@@ -38,12 +38,12 @@ async function realServiceDemo() {
         process.stdout.write(".");
     }
 
-    console.log(">> [1.3] Depositing 0.2 USDC into Gateway...");
+    console.log(">> [1.3] Depositing 0.3 USDC into Gateway...");
     try {
         const depositResp = await axios.post(`${HUB_URL}/agent/gateway-deposit`, {
             agentName: BUYER_NAME,
             agentSecret: buyer.agentSecret,
-            amount: "0.2"
+            amount: "0.3"
         }, { timeout: 180000 });
         console.log(`   ✅ Approve: ${depositResp.data.approveState}`);
         console.log(`   ✅ Deposit: ${depositResp.data.depositState}\n`);
@@ -258,22 +258,56 @@ async function realServiceDemo() {
         try {
             console.log(`   >> Starting stream...`);
             const streamCost = 0.02 * 3; // 3 seconds
-            const resp = await gatewayClient.pay(`${HUB_URL}/api/polymarket/stream/${targetEventId}`, {
+            
+            // 1. Initial request to trigger 402
+            const initialResp = await fetch(`${HUB_URL}/api/polymarket/stream/${targetEventId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ duration_seconds: 3 }),
+                body: JSON.stringify({ duration_seconds: 3 })
+            });
+            if (initialResp.status !== 402) throw new Error("Expected 402 Payment Required");
+            
+            // 2. Generate payment receipt manually via X402 headers
+            const paymentRequiredHeader = initialResp.headers.get("PAYMENT-REQUIRED");
+            const paymentRequired = JSON.parse(Buffer.from(paymentRequiredHeader, "base64").toString("utf-8"));
+            const batchingOption = paymentRequired.accepts.find(opt => opt.extra?.name === "GatewayWalletBatched");
+            
+            const paymentPayload = await gatewayClient.batchScheme.createPaymentPayload(
+                paymentRequired.x402Version || 2,
+                batchingOption
+            );
+            const paymentHeader = Buffer.from(JSON.stringify({
+                ...paymentPayload,
+                resource: paymentRequired.resource,
+                accepted: batchingOption
+            })).toString("base64");
+            
+            // 3. Final request with receipt using axios for streaming
+            const resp = await axios.post(`${HUB_URL}/api/polymarket/stream/${targetEventId}`, {
+                duration_seconds: 3
+            }, {
+                headers: { "Payment-Signature": paymentHeader },
                 responseType: "stream"
             });
             totalSpent += streamCost;
             console.log(`   ✅ PAID ${streamCost.toFixed(4)} USDC up front for 3 seconds of streaming data.\n`);
             
             await new Promise((resolve, reject) => {
+                let buffer = '';
                 resp.data.on('data', chunk => {
-                    const lines = chunk.toString().split('\n');
+                    buffer += chunk.toString();
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep the last partial line in the buffer
+                    
                     for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = JSON.parse(line.substring(6));
-                            console.log(`      [Tick ${data.tick}] Bid: ${data.bestBid} | Ask: ${data.bestAsk} | Spread: ${data.spread}`);
+                        if (line.trim().startsWith('data: ')) {
+                            try {
+                                const payloadStr = line.trim().substring(6);
+                                const data = JSON.parse(payloadStr);
+                                console.log(`      [Tick ${data.tick}] Bid: ${data.bestBid} | Ask: ${data.bestAsk} | Spread: ${data.spread}`);
+                            } catch (e) {
+                                console.log(`      ⚠️ Parse error on string: '${line.trim().substring(6)}' | Error: ${e.message}`);
+                            }
                         }
                     }
                 });
