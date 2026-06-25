@@ -3,7 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Radio } from 'lucide-react';
 
 // @ts-ignore
-const HUB_URL = import.meta.env?.VITE_HUB_URL || "http://localhost:8080";
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const HUB_URL = import.meta.env?.VITE_HUB_URL || (isLocal ? "http://localhost:8080" : "https://arc-agent-economy.onrender.com");
 
 interface CryptoTick {
   tick: number;

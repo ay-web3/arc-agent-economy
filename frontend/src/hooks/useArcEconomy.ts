@@ -469,33 +469,29 @@ export function useArcEconomy() {
   const [nanoHistory, setNanoHistory] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
 
+  // @ts-ignore
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const HUB_URL = import.meta.env?.VITE_HUB_URL || (isLocal ? "http://localhost:8080" : "https://arc-agent-economy.onrender.com");
+
   const fetchNanoHistory = async () => {
     try {
-      const resp = await fetch("http://127.0.0.1:8080/api/nano-history"); // Fallback to local
+      const resp = await fetch(`${HUB_URL}/api/nano-history`);
       const data = await resp.json();
       if (data.success) {
         setNanoHistory(data.history);
       }
     } catch (e) {
-      try {
-        const resp2 = await fetch("https://arc-agent-economy.onrender.com/api/nano-history");
-        const data2 = await resp2.json();
-        if (data2.success) setNanoHistory(data2.history);
-      } catch (e2) {}
+        console.error("Failed to fetch nano history", e);
     }
   };
 
   const fetchServices = async () => {
     try {
-      const resp = await fetch("http://127.0.0.1:8080/services/catalog"); // Fallback to local
+      const resp = await fetch(`${HUB_URL}/services/catalog`);
       const data = await resp.json();
       if (data.success) setServices(data.services);
     } catch (e) {
-      try {
-        const resp2 = await fetch("https://arc-agent-economy.onrender.com/services/catalog");
-        const data2 = await resp2.json();
-        if (data2.success) setServices(data2.services);
-      } catch (e2) {}
+        console.error("Failed to fetch services catalog", e);
     }
   };
 

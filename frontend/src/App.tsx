@@ -536,8 +536,10 @@ function AgentExplorer() {
     setError('');
     setData(null);
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? 'http://127.0.0.1:8080' : 'https://arc-agent-economy.onrender.com';
-      const res = await fetch(`${baseUrl}/api/explorer/agent/${encodeURIComponent(query.trim())}`);
+      // @ts-ignore
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const HUB_URL = import.meta.env?.VITE_HUB_URL || (isLocal ? "http://localhost:8080" : "https://arc-agent-economy.onrender.com");
+      const res = await fetch(`${HUB_URL}/api/explorer/agent/${encodeURIComponent(query.trim())}`);
       
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
