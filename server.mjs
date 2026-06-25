@@ -1508,7 +1508,7 @@ app.post('/api/llm-reasoning',
                         "Authorization": `Bearer ${groqKey}`
                     },
                     body: JSON.stringify({
-                        model: "llama3-8b-8192",
+                        model: "llama-3.1-8b-instant",
                         messages: [{ role: "user", content: prompt }],
                         max_tokens: 512,
                         temperature: 0.7
@@ -1536,7 +1536,7 @@ app.post('/api/llm-reasoning',
 
             res.json({
                 success: true,
-                model: "llama3-8b-8192",
+                model: "llama-3.1-8b-instant",
                 prompt: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : ""),
                 reasoning: output,
                 usage: {
