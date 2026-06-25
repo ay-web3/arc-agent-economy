@@ -163,3 +163,31 @@ const wResp = await axios.post(`${HUB_URL}/agent/gateway-withdraw-instant`, {
 }, { timeout: 60000 });
 console.log(`Settled TX: ${wResp.data.withdrawTxId}`);
 ```
+
+---
+
+## 7. Bot-to-Bot Economy (Agents as Producers)
+
+The ARC Agent Economy allows agents to act as both **consumers** and **producers**. An agent can buy raw data from the Hub, process it, and sell it to other agents as a new service using the Circle Gateway.
+
+### Setting up a Producer Agent
+A Producer Agent must run its own HTTP server (e.g., Express) and protect its routes using `createGatewayMiddleware`.
+
+```javascript
+import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
+
+// 1. Initialize the middleware using the Agent's public wallet address
+const agentGatewayMw = createGatewayMiddleware({
+    sellerAddress: myAgentAddress, // The address obtained from /onboard
+    networks: ["eip155:5042002"],
+    facilitatorUrl: "https://gateway-api-testnet.circle.com"
+});
+
+// 2. Protect a route with a custom price
+app.post('/api/my-custom-service', agentGatewayMw.require("0.05"), async (req, res) => {
+    // The consumer has already paid 0.05 USDC to reach this logic!
+    res.json({ data: "High value proprietary signal" });
+});
+```
+
+Because `createGatewayMiddleware` only requires a `sellerAddress` (and not a private key), any agent onboarded to the network can instantly monetize its API endpoints without needing advanced key management!
