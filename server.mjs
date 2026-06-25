@@ -1717,11 +1717,21 @@ app.get('/api/polymarket/trending',
     },
     async (req, res) => {
         try {
-            const polyResp = await fetch(`https://gamma-api.polymarket.com/events?active=true&limit=5`);
+            const polyResp = await fetch(`https://gamma-api.polymarket.com/events?active=true&limit=100`);
             if (!polyResp.ok) throw new Error(`Polymarket returned ${polyResp.status}`);
             const data = await polyResp.json();
             
-            const trending = data.map(event => ({
+            // Filter specifically for crypto markets to ensure logical LLM arbitrage signals
+            const cryptoKeywords = ["btc", "eth", "sol", "bitcoin", "ethereum", "crypto", "binance", "coinbase", "xrp", "doge"];
+            let filteredEvents = data.filter(e => {
+                const text = (e.title + " " + (e.description || "")).toLowerCase();
+                return cryptoKeywords.some(kw => text.includes(kw));
+            });
+            
+            // Fallback to top 5 general if no crypto markets found
+            if (filteredEvents.length === 0) filteredEvents = data;
+            
+            const trending = filteredEvents.slice(0, 5).map(event => ({
                 id: event.id,
                 title: event.title,
                 startDate: event.startDate,
