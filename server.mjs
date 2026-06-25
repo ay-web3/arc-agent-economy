@@ -1777,14 +1777,18 @@ app.post('/api/polymarket/stream/:eventId',
                 const curBid = Math.max(0.01, Math.min(0.98, baseBid + bidChange)).toFixed(3);
                 const curAsk = Math.max(parseFloat(curBid) + 0.01, Math.min(0.99, baseAsk + askChange)).toFixed(3);
 
-                res.write(`data: ${JSON.stringify({
+                const payload = {
                     tick,
                     eventId,
                     bestBid: curBid,
                     bestAsk: curAsk,
                     spread: (parseFloat(curAsk) - parseFloat(curBid)).toFixed(3),
                     timestamp: new Date().toISOString()
-                })}\n\n`);
+                };
+                res.write(`data: ${JSON.stringify(payload)}\n\n`);
+                
+                // Broadcast to frontend
+                adminClients.forEach(c => c.write(`data: ${JSON.stringify({ type: 'POLY_TICK', eventId, data: payload })}\n\n`));
 
                 if (tick >= seconds) {
                     clearInterval(interval);
