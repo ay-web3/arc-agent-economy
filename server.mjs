@@ -886,7 +886,7 @@ app.post('/onboard', async (req, res) => {
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
                     destinationAddress: newWallet.address,
-                    amounts: [process.env.SPONSOR_AMOUNT || "0.5"],
+                    amounts: [process.env.SPONSOR_AMOUNT || "15.00"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
                 
