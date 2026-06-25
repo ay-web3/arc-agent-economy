@@ -38,6 +38,7 @@ let MASTER_ADDRESS = null;
 let gatewayMw = null;
 let orchestrator = null;
 const nanoLedger = []; // Global in-memory swarm ledger
+const adminClients = []; // SSE connections
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -2118,12 +2119,20 @@ app.get('/api/admin-monitor', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
     
     // Send initial connection success message
     res.write(`data: ${JSON.stringify({ type: 'CONNECTED', message: 'Admin monitor attached' })}\n\n`);
     
     adminClients.push(res);
+
+    // Keep-alive heartbeat every 30 seconds to prevent Cloudflare/Render from dropping the connection
+    const pingInterval = setInterval(() => {
+        res.write(`data: ${JSON.stringify({ type: 'PING' })}\n\n`);
+    }, 30000);
+
     req.on('close', () => {
+        clearInterval(pingInterval);
         const idx = adminClients.indexOf(res);
         if (idx !== -1) adminClients.splice(idx, 1);
     });
