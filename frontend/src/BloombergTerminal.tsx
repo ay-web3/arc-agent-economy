@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Radio } from 'lucide-react';
 
-const HUB_URL = import.meta.env.VITE_HUB_URL || "http://localhost:10000";
+// @ts-ignore
+const HUB_URL = import.meta.env?.VITE_HUB_URL || "http://localhost:8080";
 
 interface CryptoTick {
   tick: number;
@@ -28,7 +29,7 @@ export function BloombergTerminal() {
   useEffect(() => {
     // If running on Render, use the current hostname, else use localhost
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const sseUrl = isLocalhost ? 'http://localhost:10000/api/admin-monitor' : `https://${window.location.hostname}/api/admin-monitor`;
+    const sseUrl = isLocalhost ? 'http://localhost:8080/api/admin-monitor' : `https://${window.location.hostname}/api/admin-monitor`;
     
     console.log("Connecting to SSE:", sseUrl);
     const eventSource = new EventSource(sseUrl);
