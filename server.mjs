@@ -1423,7 +1423,7 @@ app.post('/api/stream',
     async (req, res) => {
         try {
             const token = req.body?.token || "ethereum";
-            const seconds = Math.min(req.body?.seconds || 5, 15); // cap at 15
+            const seconds = Math.min(req.body?.seconds || 5, 60); // cap at 60
 
             // Fetch live base price
             const cgHeaders = process.env.COINGECKO_API_KEY ? { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY } : {};
