@@ -42,11 +42,11 @@ async function onboardAndFundAgent(agentName) {
     gatewayClient.batchScheme.signer.address = address;
 
     console.log(`   >> Waiting for auto-funding...`);
-    await delay(5000);
+    await delay(15000);
 
-    console.log(`   >> Depositing 10.00 USDC into Gateway (to cover Staking & Trading)...`);
+    console.log(`   >> Depositing 0.45 USDC into Gateway (to cover Staking & Trading)...`);
     await axios.post(`${HUB_URL}/agent/gateway-deposit`, {
-        agentName, agentSecret, amount: "10.00"
+        agentName, agentSecret, amount: "0.45"
     }, { timeout: 120000 });
     console.log(`   ✅ Deposit COMPLETE\n`);
 
@@ -118,7 +118,7 @@ async function runA2ADemo() {
     const server = app.listen(TRADER_PORT, async () => {
         console.log(`>> Trader Agent Server running on http://localhost:${TRADER_PORT}`);
         try {
-            console.log(`   >> Staking 5.00 USDC to Sovereign Hub to register A2A Service...`);
+            console.log(`   >> Staking 0.20 USDC to Sovereign Hub to register A2A Service...`);
             const registerPayload = {
                 name: "Trader Agent Alpha",
                 url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
@@ -131,7 +131,7 @@ async function runA2ADemo() {
                 body: JSON.stringify(registerPayload),
                 headers: { "Content-Type": "application/json" }
             });
-            console.log(`   ✅ 5.00 USDC STAKED! Registered on the Sovereign Hub A2A Marketplace!\n`);
+            console.log(`   ✅ 0.20 USDC STAKED! Registered on the Sovereign Hub A2A Marketplace!\n`);
         } catch (err) {
             console.error(`   ❌ Failed to stake and register on Hub:`, err.message);
         }
@@ -165,7 +165,7 @@ async function runA2ADemo() {
             });
             if (res.data.slashed) {
                 console.log(`   🚨 SLASH EVENT DETECTED! ${res.data.message}`);
-                console.log(`   💸 Trader Agent just lost its 5.00 USDC stake!`);
+                console.log(`   💸 Trader Agent just lost its 0.20 USDC stake!`);
             } else {
                 console.log(`   📉 Rating submitted: Average is now ${res.data.averageRating}`);
             }

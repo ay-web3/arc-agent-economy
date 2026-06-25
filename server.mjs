@@ -886,7 +886,7 @@ app.post('/onboard', async (req, res) => {
                     walletId: process.env.MASTER_WALLET_ID,
                     tokenId: usdcId,
                     destinationAddress: newWallet.address,
-                    amounts: ["15.00"],
+                    amounts: ["0.50"],
                     fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                 };
                 
@@ -2136,7 +2136,7 @@ seedBuiltInServices();
 app.post('/api/registry/register', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require("5.00")(req, res, next);
+        return gatewayMw.require("0.20")(req, res, next);
     },
     (req, res) => {
     const { name, url, price, description } = req.body;
@@ -2184,8 +2184,8 @@ app.post('/api/registry/rate', (req, res) => {
         persistLedgerEntry({
             type: "a2a_slashed",
             agent: url,
-            revenue: "5.00",
-            notes: "5.00 USDC Stake Slashed due to low reputation"
+            revenue: "0.20",
+            notes: "0.20 USDC Stake Slashed due to low reputation"
         });
         
         return res.json({ 
