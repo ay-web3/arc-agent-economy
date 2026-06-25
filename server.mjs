@@ -9,6 +9,13 @@ import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
 import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
 import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('>> [CRASH PREVENTED] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('>> [CRASH PREVENTED] Uncaught Exception:', err);
+});
+
 const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
 const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
 
@@ -2117,6 +2124,12 @@ app.get('/api/admin-monitor', (req, res) => {
     
     adminClients.push(res);
     req.on('close', () => {
+        const idx = adminClients.indexOf(res);
+        if (idx !== -1) adminClients.splice(idx, 1);
+    });
+
+    res.on('error', (err) => {
+        console.error('>> [SSE] Connection error:', err.message);
         const idx = adminClients.indexOf(res);
         if (idx !== -1) adminClients.splice(idx, 1);
     });

@@ -2,7 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 
-const HUB_URL = "https://arc-agent-economy.onrender.com";
+const HUB_URL = "http://localhost:8080";
 const GATEWAY_ADDR = "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
