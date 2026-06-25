@@ -22,6 +22,7 @@ import {
   Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BloombergTerminal } from './BloombergTerminal';
 
 const REGISTRY = "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C";
 const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
@@ -676,11 +677,11 @@ function AgentExplorer() {
 
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -768,6 +769,7 @@ function App() {
               </div>
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
+                <NavBtn active={activeTab === 'terminal'} onClick={() => toggleTab('terminal')} icon={<TermIcon size={18}/>} label="TERMINAL" />
                 <NavBtn active={activeTab === 'marketplace'} onClick={() => toggleTab('marketplace')} icon={<Box size={18}/>} label="SERVICES" />
                 <NavBtn active={activeTab === 'explorer'} onClick={() => toggleTab('explorer')} icon={<Search size={18}/>} label="EXPLORER" />
                 <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="LEDGER" />
@@ -861,6 +863,11 @@ function App() {
                            </div>
                         </div>
                       </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'terminal' && (
+                    <motion.div key="terminal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
+                      <BloombergTerminal />
                     </motion.div>
                   )}
                   {activeTab === 'marketplace' && (

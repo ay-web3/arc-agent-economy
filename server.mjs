@@ -197,6 +197,7 @@ async function getUsdcTokenId(walletId) {
 // Persist nanoLedger entries to MongoDB so they survive server restarts/deploys
 async function persistLedgerEntry(entry) {
     nanoLedger.unshift(entry);
+    adminClients.forEach(c => c.write(`data: ${JSON.stringify({ type: 'LEDGER_UPDATE', entry })}\n\n`));
     try {
         if (mongoPromise) await mongoPromise;
         if (mongoClient) {
@@ -1439,21 +1440,26 @@ app.post('/api/stream',
             res.setHeader('Cache-Control', 'no-cache');
             res.setHeader('Connection', 'keep-alive');
 
-            let price = basePrice;
+            let livePrice = basePrice;
             let tick = 0;
 
             const interval = setInterval(() => {
                 tick++;
-                const volatility = (Math.random() - 0.5) * 0.002; // ±0.1% per tick
-                price = price * (1 + volatility);
+                const noise = (Math.random() - 0.5) * 0.002; // ±0.1% per tick
+                livePrice = livePrice * (1 + noise);
                 
-                res.write(`data: ${JSON.stringify({
+                const payload = JSON.stringify({
                     tick,
                     base_price: basePrice,
-                    price: parseFloat(price.toFixed(4)),
-                    change_pct: parseFloat(((price / basePrice - 1) * 100).toFixed(4)),
+                    price: parseFloat(livePrice.toFixed(4)),
+                    change_pct: parseFloat((noise * 100).toFixed(4)),
                     timestamp: new Date().toISOString()
-                })}\n\n`);
+                });
+
+                res.write(`data: ${payload}\n\n`);
+                
+                // Broadcast to frontend
+                adminClients.forEach(c => c.write(`data: ${JSON.stringify({ type: 'CRYPTO_TICK', token, data: JSON.parse(payload) })}\n\n`));
 
                 if (tick >= seconds) {
                     clearInterval(interval);
@@ -1563,14 +1569,16 @@ app.post('/api/dataset',
                         });
                     } catch (e) { /* skip failed blocks */ }
                 }
-                res.json({
+                const data = {
                     success: true,
                     dataset: "arc_testnet_blocks",
                     chain_id: 5042002,
                     latest_block: Number(blockNum),
                     records: blocks.length,
                     data: blocks
-                });
+                };
+                adminClients.forEach(c => c.write(`data: ${JSON.stringify({ type: 'DATASET_UPDATE', dataType, data })}\n\n`));
+                res.json(data);
 
             } else if (dataType === "transactions") {
                 // Fetch transactions from recent blocks
@@ -2095,6 +2103,24 @@ async function seedBuiltInServices() {
 }
 
 seedBuiltInServices();
+
+// Admin Monitor Stream (Live Dashboard Feed)
+app.get('/api/admin-monitor', (req, res) => {
+    // Add CORS headers explicitly for SSE
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // Send initial connection success message
+    res.write(`data: ${JSON.stringify({ type: 'CONNECTED', message: 'Admin monitor attached' })}\n\n`);
+    
+    adminClients.push(res);
+    req.on('close', () => {
+        const idx = adminClients.indexOf(res);
+        if (idx !== -1) adminClients.splice(idx, 1);
+    });
+});
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
