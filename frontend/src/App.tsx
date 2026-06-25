@@ -19,7 +19,8 @@ import {
   X,
   ArrowRight,
   Code,
-  Search
+  Search,
+  Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BloombergTerminal } from './BloombergTerminal';
@@ -677,11 +678,76 @@ function AgentExplorer() {
   );
 }
 
+function A2AMarketplace({ a2aServices }: { a2aServices: any[] }) {
+  return (
+    <div className="max-w-4xl mx-auto w-full mt-8">
+      <div className="flex items-center gap-2 mb-6 px-4 md:px-0">
+        <Box size={24} className="text-industrial-gold" />
+        <h2 className="text-xl font-bold tracking-widest text-industrial-argent uppercase">A2A Marketplace</h2>
+        <div className="ml-auto flex items-center gap-2 border border-industrial-gold/30 px-3 py-1 rounded bg-industrial-gold/10">
+          <span className="text-[10px] font-bold text-industrial-gold uppercase tracking-widest">Agent Producers</span>
+        </div>
+      </div>
+      
+      {a2aServices.length === 0 ? (
+        <div className="text-center p-8 border border-dashed border-industrial-border">
+          <span className="text-industrial-argent/50 font-mono text-sm uppercase">No active A2A services registered.</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 px-4 md:px-0">
+          {a2aServices.map((svc, i) => (
+            <motion.div 
+              key={svc.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="group relative border border-industrial-border bg-industrial-base p-6 overflow-hidden hover:border-industrial-gold transition-colors duration-300"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Box size={48} />
+              </div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div>
+                  <h3 className="text-lg font-bold text-industrial-argent uppercase tracking-wider">{svc.name}</h3>
+                  <p className="text-xs text-industrial-argent/60 mt-1 uppercase font-bold tracking-widest flex items-center gap-2">
+                    <span className="bg-industrial-gold/20 text-industrial-gold px-2 py-0.5 rounded border border-industrial-gold/50">{svc.price} USDC</span>
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1 text-industrial-gold">
+                        <Star size={16} fill="currentColor" />
+                        <span className="font-bold">{svc.averageRating > 0 ? svc.averageRating.toFixed(1) : "NEW"}</span>
+                    </div>
+                    <span className="text-[9px] text-industrial-argent/40">({svc.totalRatings} ratings)</span>
+                </div>
+              </div>
+              
+              <p className="text-sm text-industrial-argent/80 mb-6 max-w-2xl leading-relaxed relative z-10">
+                {svc.description}
+              </p>
+              
+              <div className="p-3 bg-black/40 border border-industrial-border rounded relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <code className="text-[10px] text-industrial-argent/70 break-all">{svc.url}</code>
+                <button 
+                  className="shrink-0 flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase text-industrial-base bg-industrial-gold px-4 py-2 hover:bg-white transition-colors"
+                >
+                  <Code size={12} />
+                  Use Service
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services } = useArcEconomy();
+  const { stats, events, account, isGovernor, connectWallet, disconnectWallet, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services, a2aServices } = useArcEconomy();
 
   const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal') => {
     setActiveTab(tab);
@@ -875,6 +941,7 @@ function App() {
                   {activeTab === 'marketplace' && (
                     <motion.div key="marketplace" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
                       <ServiceMarketplace services={services} />
+                      <A2AMarketplace a2aServices={a2aServices || []} />
                     </motion.div>
                   )}
                   {activeTab === 'swarm' && (

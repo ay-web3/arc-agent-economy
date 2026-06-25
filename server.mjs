@@ -39,6 +39,7 @@ let gatewayMw = null;
 let orchestrator = null;
 const nanoLedger = []; // Global in-memory swarm ledger
 const adminClients = []; // SSE connections
+const a2aRegistry = []; // A2A Marketplace registry
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -2120,6 +2121,52 @@ async function seedBuiltInServices() {
 }
 
 seedBuiltInServices();
+
+// --- A2A MARKETPLACE REGISTRY ---
+app.post('/api/registry/register', (req, res) => {
+    const { name, url, price, description } = req.body;
+    if (!name || !url || price === undefined) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    // Check if already registered to update it, else add new
+    const existing = a2aRegistry.find(s => s.url === url);
+    if (existing) {
+        existing.name = name;
+        existing.price = price;
+        existing.description = description || existing.description;
+    } else {
+        a2aRegistry.push({
+            id: 'a2a-' + Date.now(),
+            name, url, price, description,
+            ratings: [],
+            averageRating: 0,
+            totalRatings: 0,
+            registeredAt: new Date()
+        });
+    }
+    res.json({ success: true, message: "Service registered successfully!" });
+});
+
+app.post('/api/registry/rate', (req, res) => {
+    const { url, rating } = req.body;
+    if (!url || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Invalid rating data" });
+    }
+    
+    const service = a2aRegistry.find(s => s.url === url);
+    if (!service) return res.status(404).json({ error: "Service not found in registry" });
+    
+    service.ratings.push(rating);
+    service.totalRatings = service.ratings.length;
+    service.averageRating = service.ratings.reduce((a, b) => a + b, 0) / service.totalRatings;
+    
+    res.json({ success: true, averageRating: service.averageRating });
+});
+
+app.get('/api/registry/services', (req, res) => {
+    res.json(a2aRegistry);
+});
 
 // Admin Monitor Stream (Live Dashboard Feed)
 app.get('/api/admin-monitor', (req, res) => {

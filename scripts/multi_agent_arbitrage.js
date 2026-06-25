@@ -115,8 +115,19 @@ async function runA2ADemo() {
         }
     });
 
-    const server = app.listen(TRADER_PORT, () => {
-        console.log(`>> Trader Agent Server running on http://localhost:${TRADER_PORT}\n`);
+    const server = app.listen(TRADER_PORT, async () => {
+        console.log(`>> Trader Agent Server running on http://localhost:${TRADER_PORT}`);
+        try {
+            await axios.post(`${HUB_URL}/api/registry/register`, {
+                name: "Trader Agent Alpha",
+                url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
+                price: 0.10,
+                description: "High-accuracy A2A trade signal generation combining real-time Ethereum price ticks, Polymarket oracle sentiment, and Groq LLM inference."
+            });
+            console.log(`   ✅ Registered on the Sovereign Hub A2A Marketplace!\n`);
+        } catch (err) {
+            console.error(`   ❌ Failed to register on Hub:`, err.message);
+        }
     });
 
     // 3. Setup Consumer Agent
@@ -138,6 +149,13 @@ async function runA2ADemo() {
         console.log(`\n   ✅ CONSUMER SUCCESSFULLY PURCHASED SIGNAL!`);
         console.log(`   💰 PAID: ${finalResp.formattedAmount} USDC`);
         console.log(`   📈 TRADE SIGNAL RECEIVED:\n      "${finalResp.data.signal}"\n`);
+
+        console.log(`   >> Consumer evaluating signal quality and submitting rating...`);
+        await axios.post(`${HUB_URL}/api/registry/rate`, {
+            url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
+            rating: 5
+        });
+        console.log(`   ✅ Rated Trader Agent 5 Stars on the Hub!`);
     } catch (err) {
         console.error(`   ❌ Consumer Failed: ${err.message}\n`);
     }

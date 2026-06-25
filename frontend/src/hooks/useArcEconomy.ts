@@ -468,6 +468,7 @@ export function useArcEconomy() {
 
   const [nanoHistory, setNanoHistory] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [a2aServices, setA2aServices] = useState<any[]>([]);
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   // @ts-ignore
@@ -495,15 +496,27 @@ export function useArcEconomy() {
     }
   };
 
+  const fetchA2AServices = async () => {
+    try {
+      const resp = await fetch(`${HUB_URL}/api/registry/services`);
+      const data = await resp.json();
+      setA2aServices(data);
+    } catch (e) {
+        console.error("Failed to fetch A2A registry", e);
+    }
+  };
+
   useEffect(() => {
     fetchNanoHistory();
     fetchServices();
+    fetchA2AServices();
     const inv = setInterval(() => {
         fetchNanoHistory();
         fetchServices();
+        fetchA2AServices();
     }, 2000);
     return () => clearInterval(inv);
   }, []);
 
-  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services };
+  return { stats, events: combinedEvents, account, isGovernor, connectWallet, disconnectWallet, provider, resolveDispute, updateMinStake, setWithdrawCooldown, setSellerSlashBps, setMinDerivedPrice, grantRole, revokeRole, setDifficultyAlpha, manualSlash, inspectAgent, nanoHistory, services, a2aServices };
 }
