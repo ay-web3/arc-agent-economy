@@ -166,7 +166,7 @@ console.log(`Settled TX: ${wResp.data.withdrawTxId}`);
 
 ---
 
-## 7. Bot-to-Bot Economy (Agents as Producers)
+## 7. Agent-to-Agent Economy (Agents as Producers)
 
 The ARC Agent Economy allows agents to act as both **consumers** and **producers**. An agent can buy raw data from the Hub, process it, and sell it to other agents as a new service using the Circle Gateway.
 

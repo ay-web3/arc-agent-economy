@@ -53,9 +53,9 @@ async function onboardAndFundAgent(agentName) {
     return { gatewayClient, address, agentSecret };
 }
 
-async function runB2BDemo() {
+async function runA2ADemo() {
     console.log("\n══════════════════════════════════════════════════════════════");
-    console.log("🤖 B2B MULTI-AGENT ARBITRAGE DEMO");
+    console.log("🤖 A2A MULTI-AGENT ARBITRAGE DEMO");
     console.log("══════════════════════════════════════════════════════════════\n");
 
     // 1. Setup Trader Agent (Producer/Middleman)
@@ -147,7 +147,7 @@ async function runB2BDemo() {
     await axios.post(`${HUB_URL}/agent/gateway-withdraw-instant`, { agentName: consumerName, agentSecret: consumer.agentSecret, amount: "0.05" }, { validateStatus: false });
 
     server.close();
-    console.log("🎉 B2B DEMO COMPLETE\n");
+    console.log("🎉 A2A DEMO COMPLETE\n");
 }
 
-runB2BDemo().catch(console.error);
+runA2ADemo().catch(console.error);
