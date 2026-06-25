@@ -303,7 +303,7 @@ app.get('/admin/fuel-agent/:address', async (req, res) => {
                 idempotencyKey: uuidv4(),
                 walletId: process.env.MASTER_WALLET_ID,
                 tokenId: usdcId,
-                amounts: [amount.toString()], 
+                amounts: ["0.01"], 
                 destinationAddress: address,
                 blockchain: "ARC-TESTNET",
                 fee: { type: "level", config: { feeLevel: "MEDIUM" } }
@@ -1370,8 +1370,10 @@ app.get('/api/crypto-insights',
     async (req, res) => {
         try {
             const token = req.query.token || "bitcoin";
+            const cgHeaders = process.env.COINGECKO_API_KEY ? { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY } : {};
             const cgResp = await fetch(
-                `https://api.coingecko.com/api/v3/coins/${token}?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false`
+                `https://api.coingecko.com/api/v3/coins/${token}?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=false`,
+                { headers: cgHeaders }
             );
             if (!cgResp.ok) throw new Error(`CoinGecko returned ${cgResp.status}`);
             const data = await cgResp.json();
@@ -1413,8 +1415,10 @@ app.post('/api/stream',
             const seconds = Math.min(req.body?.seconds || 5, 15); // cap at 15
 
             // Fetch live base price
+            const cgHeaders = process.env.COINGECKO_API_KEY ? { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY } : {};
             const cgResp = await fetch(
-                `https://api.coingecko.com/api/v3/simple/price?ids=${token}&vs_currencies=usd`
+                `https://api.coingecko.com/api/v3/simple/price?ids=${token}&vs_currencies=usd`,
+                { headers: cgHeaders }
             );
             const cgData = await cgResp.json();
             const basePrice = cgData[token]?.usd;
