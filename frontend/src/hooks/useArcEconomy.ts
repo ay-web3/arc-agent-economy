@@ -469,8 +469,8 @@ export function useArcEconomy() {
   const [nanoHistory, setNanoHistory] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
 
-  // @ts-ignore
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // @ts-ignore
   const HUB_URL = import.meta.env?.VITE_HUB_URL || (isLocal ? "http://localhost:8080" : "https://arc-agent-economy.onrender.com");
 
   const fetchNanoHistory = async () => {
