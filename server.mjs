@@ -2133,7 +2133,12 @@ async function seedBuiltInServices() {
 seedBuiltInServices();
 
 // --- A2A MARKETPLACE REGISTRY ---
-app.post('/api/registry/register', (req, res) => {
+app.post('/api/registry/register', 
+    (req, res, next) => {
+        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
+        return gatewayMw.require("5.00")(req, res, next);
+    },
+    (req, res) => {
     const { name, url, price, description } = req.body;
     if (!name || !url || price === undefined) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2170,6 +2175,26 @@ app.post('/api/registry/rate', (req, res) => {
     service.ratings.push(rating);
     service.totalRatings = service.ratings.length;
     service.averageRating = service.ratings.reduce((a, b) => a + b, 0) / service.totalRatings;
+    
+    // Slashing Logic: If rating drops below 3.0 after at least 3 ratings
+    if (service.totalRatings >= 3 && service.averageRating < 3.0) {
+        const index = a2aRegistry.findIndex(s => s.url === url);
+        if (index !== -1) a2aRegistry.splice(index, 1);
+        
+        persistLedgerEntry({
+            type: "a2a_slashed",
+            agent: url,
+            revenue: "5.00",
+            notes: "5.00 USDC Stake Slashed due to low reputation"
+        });
+        
+        return res.json({ 
+            success: true, 
+            slashed: true, 
+            averageRating: service.averageRating, 
+            message: "Agent slashed and removed from registry due to low reputation." 
+        });
+    }
     
     res.json({ success: true, averageRating: service.averageRating });
 });

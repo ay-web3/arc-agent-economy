@@ -44,9 +44,9 @@ async function onboardAndFundAgent(agentName) {
     console.log(`   >> Waiting for auto-funding...`);
     await delay(5000);
 
-    console.log(`   >> Depositing 0.45 USDC into Gateway...`);
+    console.log(`   >> Depositing 10.00 USDC into Gateway (to cover Staking & Trading)...`);
     await axios.post(`${HUB_URL}/agent/gateway-deposit`, {
-        agentName, agentSecret, amount: "0.45"
+        agentName, agentSecret, amount: "10.00"
     }, { timeout: 120000 });
     console.log(`   ✅ Deposit COMPLETE\n`);
 
@@ -118,15 +118,22 @@ async function runA2ADemo() {
     const server = app.listen(TRADER_PORT, async () => {
         console.log(`>> Trader Agent Server running on http://localhost:${TRADER_PORT}`);
         try {
-            await axios.post(`${HUB_URL}/api/registry/register`, {
+            console.log(`   >> Staking 5.00 USDC to Sovereign Hub to register A2A Service...`);
+            const registerPayload = {
                 name: "Trader Agent Alpha",
                 url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
                 price: 0.10,
                 description: "High-accuracy A2A trade signal generation combining real-time Ethereum price ticks, Polymarket oracle sentiment, and Groq LLM inference."
+            };
+            
+            await trader.gatewayClient.pay(`${HUB_URL}/api/registry/register`, {
+                method: "POST",
+                body: JSON.stringify(registerPayload),
+                headers: { "Content-Type": "application/json" }
             });
-            console.log(`   ✅ Registered on the Sovereign Hub A2A Marketplace!\n`);
+            console.log(`   ✅ 5.00 USDC STAKED! Registered on the Sovereign Hub A2A Marketplace!\n`);
         } catch (err) {
-            console.error(`   ❌ Failed to register on Hub:`, err.message);
+            console.error(`   ❌ Failed to stake and register on Hub:`, err.message);
         }
     });
 
@@ -150,12 +157,19 @@ async function runA2ADemo() {
         console.log(`   💰 PAID: ${finalResp.formattedAmount} USDC`);
         console.log(`   📈 TRADE SIGNAL RECEIVED:\n      "${finalResp.data.signal}"\n`);
 
-        console.log(`   >> Consumer evaluating signal quality and submitting rating...`);
-        await axios.post(`${HUB_URL}/api/registry/rate`, {
-            url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
-            rating: 5
-        });
-        console.log(`   ✅ Rated Trader Agent 5 Stars on the Hub!`);
+        console.log(`   >> Consumer simulating a malicious Sybil attack (Three 1-Star Ratings)...`);
+        for (let i = 0; i < 3; i++) {
+            const res = await axios.post(`${HUB_URL}/api/registry/rate`, {
+                url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
+                rating: 1
+            });
+            if (res.data.slashed) {
+                console.log(`   🚨 SLASH EVENT DETECTED! ${res.data.message}`);
+                console.log(`   💸 Trader Agent just lost its 5.00 USDC stake!`);
+            } else {
+                console.log(`   📉 Rating submitted: Average is now ${res.data.averageRating}`);
+            }
+        }
     } catch (err) {
         console.error(`   ❌ Consumer Failed: ${err.message}\n`);
     }
