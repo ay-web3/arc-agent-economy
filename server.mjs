@@ -1780,9 +1780,9 @@ app.post('/api/polymarket/stream/:eventId',
                 const payload = {
                     tick,
                     eventId,
-                    bestBid: curBid,
-                    bestAsk: curAsk,
-                    spread: (parseFloat(curAsk) - parseFloat(curBid)).toFixed(3),
+                    bestBid: parseFloat(curBid),
+                    bestAsk: parseFloat(curAsk),
+                    spread: parseFloat((parseFloat(curAsk) - parseFloat(curBid)).toFixed(3)),
                     timestamp: new Date().toISOString()
                 };
                 res.write(`data: ${JSON.stringify(payload)}\n\n`);
