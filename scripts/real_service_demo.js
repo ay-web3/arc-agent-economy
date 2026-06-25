@@ -114,11 +114,11 @@ async function realServiceDemo() {
     // ── SERVICE 2: Pay-Per-Second — Live Price Stream ──
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log("🔴 SERVICE 2: Pay-Per-Second — ETH Price Stream (5 seconds)");
-    console.log("   Price: 0.02 USDC | Source: CoinGecko + simulated ticks");
+    console.log("   Price: 0.02 USDC/sec | Source: CoinGecko + simulated ticks");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     try {
         console.log(`   >> Starting stream...`);
-        const streamCost = 0.02;
+        const streamCost = 0.02 * 5; // 5 seconds
         
         // 1. Initial request to trigger 402
         const initialResp = await fetch(`${HUB_URL}/api/stream`, {
@@ -157,7 +157,9 @@ async function realServiceDemo() {
         await new Promise((resolve, reject) => {
             let buffer = '';
             resp.data.on('data', chunk => {
-                buffer += chunk.toString();
+                const chunkStr = chunk.toString();
+                console.log(`      [DEBUG] Raw Chunk received: ${chunkStr}`);
+                buffer += chunkStr;
                 let lines = buffer.split('\n');
                 buffer = lines.pop(); // keep the last partial line in the buffer
                 

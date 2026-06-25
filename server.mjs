@@ -1407,7 +1407,9 @@ app.get('/api/crypto-insights',
 app.post('/api/stream', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require("0.02")(req, res, next);
+        const seconds = Math.min(req.body?.seconds || 5, 15);
+        const cost = (seconds * 0.02).toFixed(2);
+        return gatewayMw.require(cost)(req, res, next);
     },
     async (req, res) => {
         try {
@@ -1426,7 +1428,7 @@ app.post('/api/stream',
 
             persistLedgerEntry({
                 service: "Price Stream",
-                price: 0.02,
+                price: parseFloat((seconds * 0.02).toFixed(2)),
                 provider: "CoinGecko Stream",
                 duration: seconds,
                 payloadPreview: `Live Stream for ${token}: Base $${basePrice} for ${seconds} seconds`,
@@ -1725,12 +1727,14 @@ app.get('/api/polymarket/trending',
 app.post('/api/polymarket/stream/:eventId', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require("0.02")(req, res, next);
+        const seconds = parseInt(req.body?.duration_seconds) || 5;
+        const cost = (seconds * 0.02).toFixed(2);
+        return gatewayMw.require(cost)(req, res, next);
     },
     async (req, res) => {
         try {
             const eventId = req.params.eventId;
-            const seconds = parseInt(req.body.duration_seconds) || 5;
+            const seconds = parseInt(req.body?.duration_seconds) || 5;
             
             // Initial fetch to get base data
             const polyResp = await fetch(`https://gamma-api.polymarket.com/events/${eventId}`);
@@ -1774,7 +1778,7 @@ app.post('/api/polymarket/stream/:eventId',
 
             persistLedgerEntry({
                 service: "Polymarket Orderbook Stream",
-                price: 0.02,
+                price: parseFloat((seconds * 0.02).toFixed(2)),
                 provider: "Polymarket Oracle",
                 duration: seconds,
                 payloadPreview: `Stream for Event ${eventId} (${seconds}s)`,
