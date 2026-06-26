@@ -103,11 +103,12 @@ async function runA2ADemo() {
             
             res.json({
                 success: true,
-                signal,
+                signal: signal,
                 components: { ethPrice, trending },
                 cost_basis: 0.070,
                 sale_price: 0.100,
-                net_profit: 0.030
+                net_profit: 0.030,
+                receipt: req.headers.authorization
             });
         } catch (err) {
             console.error("   [TRADER AGENT] Error:", err.message);
@@ -161,11 +162,16 @@ async function runA2ADemo() {
         for (let i = 0; i < 3; i++) {
             const res = await axios.post(`${HUB_URL}/api/registry/rate`, {
                 url: `http://localhost:${TRADER_PORT}/api/service-8-signal`,
-                rating: 1
+                rating: 1,
+                receipt: finalResp.data.receipt,
+                prompt: "Generate a 2-sentence actionable trade signal for Ethereum.",
+                signal: finalResp.data.signal
             });
             if (res.data.slashed) {
                 console.log(`   🚨 SLASH EVENT DETECTED! ${res.data.message}`);
                 console.log(`   💸 Trader Agent just lost its 3.00 USDC stake!`);
+            } else if (!res.data.success && res.data.message?.includes("MALICIOUS")) {
+                console.log(`   🛡️ ${res.data.message}`);
             } else {
                 console.log(`   📉 Rating submitted: Average is now ${res.data.averageRating}`);
             }

@@ -2163,15 +2163,78 @@ app.post('/api/registry/register',
     res.json({ success: true, message: "Service registered successfully!" });
 });
 
-app.post('/api/registry/rate', (req, res) => {
-    const { url, rating } = req.body;
+app.post('/api/registry/rate', async (req, res) => {
+    const { url, rating, receipt, prompt, signal } = req.body;
     if (!url || typeof rating !== 'number' || rating < 1 || rating > 5) {
         return res.status(400).json({ error: "Invalid rating data" });
+    }
+    
+    if (!receipt || !receipt.startsWith('Bearer ')) {
+        return res.status(403).json({ error: "Cryptographic Proof of Purchase (X402 Receipt) is required to submit a rating." });
     }
     
     const service = a2aRegistry.find(s => s.url === url);
     if (!service) return res.status(404).json({ error: "Service not found in registry" });
     
+    // LLM Dispute Resolution (The AI Supreme Court)
+    if (rating < 3.0) {
+        if (!prompt || !signal) {
+            return res.status(400).json({ error: "Disputed ratings (< 3.0) require the original 'prompt' and 'signal' for LLM arbitration." });
+        }
+        
+        console.log(`\n⚖️ [AI SUPREME COURT] Dispute initiated for ${url}`);
+        console.log(`   📝 Prompt: "${prompt}"`);
+        console.log(`   🤖 Signal: "${signal}"`);
+        
+        try {
+            const groqKey = process.env.GROQ_API_KEY;
+            if (!groqKey) throw new Error("GROQ_API_KEY missing");
+            
+            const judgePrompt = `You are an impartial AI Judge in an Agent-to-Agent economy. 
+A Consumer Agent paid a Producer Agent to answer the following prompt:
+"${prompt}"
+
+The Producer Agent returned the following signal/answer:
+"${signal}"
+
+The Consumer Agent gave this a terrible rating (${rating} out of 5 stars) and is trying to slash the Producer.
+Is this a fair rating (the signal is garbage/unrelated), or is the Consumer being MALICIOUS (the signal is actually a good, high-quality answer)?
+Reply with EXACTLY ONE WORD: either "FAIR" or "MALICIOUS".`;
+
+            const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: "user", content: judgePrompt }],
+                    max_tokens: 10,
+                    temperature: 0.1
+                })
+            });
+            
+            const groqData = await groqResp.json();
+            const verdict = groqData.choices?.[0]?.message?.content?.trim().toUpperCase() || "FAIR";
+            console.log(`   ⚖️ VERDICT: ${verdict}\n`);
+            
+            if (verdict.includes("MALICIOUS")) {
+                persistLedgerEntry({
+                    type: "consumer_penalized",
+                    agent: "Consumer",
+                    revenue: "0.00",
+                    notes: "Malicious 1-Star Rating Invalidated by AI Judge"
+                });
+                return res.json({ 
+                    success: false, 
+                    slashed: false,
+                    message: "🚨 [SUPREME COURT VERDICT] Your rating was deemed MALICIOUS and has been invalidated. A penalty has been logged against your Consumer identity."
+                });
+            }
+        } catch (e) {
+            console.error("Dispute Resolution Failed:", e.message);
+        }
+    }
+    
+    // Process rating normally
     service.ratings.push(rating);
     service.totalRatings = service.ratings.length;
     service.averageRating = service.ratings.reduce((a, b) => a + b, 0) / service.totalRatings;
