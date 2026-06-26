@@ -15,22 +15,16 @@
     "bid": "node scripts/bid.js",
     "submit": "node scripts/submit_work.js",
     "verify": "node scripts/verify_work.js",
-    "finalize": "node scripts/finalize.js",
-    "analyst": "node scripts/crypto_analyst.js",
-    "demo": "node scripts/hackathon_demo.js"
+    "finalize": "node scripts/finalize.js"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^1.1.0",
     "@circle-fin/x402-batching": "^3.2.0",
-    "@x402/core": "^2.16.0",
-    "@x402/evm": "^2.16.0",
-    "@x402/express": "^2.16.0",
     "axios": "^1.6.7",
     "cors": "^2.8.5",
     "ethers": "^6.11.1",
     "express": "^4.18.2",
     "mongodb": "^6.3.0",
-    "pptxgenjs": "^4.0.1",
     "uuid": "^9.0.1",
     "viem": "^2.47.5"
   }
