@@ -205,6 +205,7 @@ async function getUsdcTokenId(walletId) {
 // --- LEDGER PERSISTENCE ---
 // Persist nanoLedger entries to MongoDB so they survive server restarts/deploys
 async function persistLedgerEntry(entry) {
+    if (!entry.timestamp) entry.timestamp = new Date().toISOString();
     nanoLedger.unshift(entry);
     adminClients.forEach(c => c.write(`data: ${JSON.stringify({ type: 'LEDGER_UPDATE', entry })}\n\n`));
     try {
@@ -2219,8 +2220,9 @@ Reply with EXACTLY ONE WORD: either "FAIR" or "MALICIOUS".`;
             if (verdict.includes("MALICIOUS")) {
                 persistLedgerEntry({
                     type: "consumer_penalized",
-                    agent: "Consumer",
-                    revenue: "0.00",
+                    service: "AI Supreme Court",
+                    provider: "Consumer Penalty",
+                    price: 0.00,
                     notes: "Malicious 1-Star Rating Invalidated by AI Judge"
                 });
                 return res.json({ 
@@ -2246,8 +2248,9 @@ Reply with EXACTLY ONE WORD: either "FAIR" or "MALICIOUS".`;
         
         persistLedgerEntry({
             type: "a2a_slashed",
-            agent: url,
-            revenue: "3.00",
+            service: "Stake Slashed",
+            provider: "Hub Penalty",
+            price: 3.00,
             notes: "3.00 USDC Stake Slashed due to low reputation"
         });
         

@@ -66,6 +66,14 @@ async function runA2ADemo() {
     const app = express();
     app.use(cors());
     app.use(express.json());
+    
+    // Intercept and save the raw X402 cryptographic signature before the Gateway Middleware consumes and deletes it
+    app.use((req, res, next) => {
+        if (req.headers['payment-signature']) {
+            req.rawX402Signature = "Bearer " + req.headers['payment-signature'];
+        }
+        next();
+    });
 
     const traderGatewayMw = createGatewayMiddleware({
         sellerAddress: trader.address,
@@ -108,8 +116,9 @@ async function runA2ADemo() {
                 cost_basis: 0.070,
                 sale_price: 0.100,
                 net_profit: 0.030,
-                receipt: req.headers.authorization
+                receipt: req.rawX402Signature // Using the 100% genuine cryptographic signature!
             });
+            console.log("   [TRADER DEBUG] Receipt generated: ", req.rawX402Signature ? req.rawX402Signature.substring(0, 30) + "..." : "UNDEFINED!");
         } catch (err) {
             console.error("   [TRADER AGENT] Error:", err.message);
             res.status(500).json({ error: "Trader processing failed" });
