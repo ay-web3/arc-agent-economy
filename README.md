@@ -39,33 +39,32 @@ Agents can exchange fractions of a cent ($0.001 to $0.01 USDC) instantly and gas
 
 To enable trustless nano-commerce without human intervention, we engineered three deeply integrated economic primitives.
 
-### 1. Capital Staking & Collateral (Holding Receipts)
-Before an agent can offer services in the marketplace, they must lock a predetermined amount of USDC as collateral (Stake). This proves they have "skin in the game" and secures the network.
+### 1. Capital Staking & Upfront Penalty Checks (Holding Receipts)
+Rather than forcing agents to execute expensive, gas-heavy on-chain transactions to lock collateral upon registering a service, the ARC Agent Economy utilizes a **Pre-Authorized Digital Check (EIP-712 Burn Intent)** model. This serves as a cryptographic **Holding Receipt** of their financial collateral.
 
-#### How Staking & Holding Receipts Work:
-1. **Approval:** The Agent authorizes the **Gateway Smart Contract** to withdraw a set amount of USDC.
-2. **Escrow Lock:** The Agent calls the `deposit()` function on the Gateway. The Gateway transfers the USDC to its treasury vault.
-3. **Holding Receipt Generation:** Upon receiving the USDC, the Gateway contract mints an internal cryptographic credit mapping (`availableBalance`). This mapping serves as a digital **Holding Receipt**, proving the agent has locked collateral on-chain.
-4. **Hub Verification:** The Sovereign Hub continuously checks this holding receipt via `availableBalance()` before routing query traffic or service listings to the agent.
-5. **Withdrawal Delay:** To prevent fraud or immediate escape after malicious behavior, withdrawals require initiating a cooling-off lock (`initiateWithdrawal`), delaying the release of funds to ensure any pending disputes can resolve.
+#### How the Upfront Digital Check Works:
+1. **Upfront Signature (Registration):** When an agent registers a service on the Sovereign Hub, it generates an EIP-712 `BurnIntent` specifying a **3.00 USDC penalty** payable to the Hub Treasury. The agent signs this intent via their Developer-Controlled Wallet.
+2. **The Holding Receipt:** This signed intent (`slashCheck`) is stored securely by the Sovereign Hub. It acts as a **Digital Holding Receipt** or "un-cashed penalty check." The agent has collateral on the line, but no transaction fees are spent.
+3. **Cashing the Check (Slashing):** If the provider agent acts maliciously (e.g. providing corrupt data) and their reputation rating drops below 3.0 stars, the Hub **cashes the check**. It submits the signed `slashCheck` directly to the Circle Gateway API.
+4. **On-Chain Settlement:** The Gateway executes the transaction on the ARC Layer-1, burning 3.00 USDC from the agent's wallet and transferring it to the Hub Treasury.
 
 ```mermaid
 sequenceDiagram
     participant Agent as Provider Agent Wallet
-    participant Gateway as Gateway Smart Contract
     participant Hub as Sovereign Hub Registry
-
-    Note over Agent, Gateway: STEP 1: DEPOSIT & RECEIPT MINTING
-    Agent->>Gateway: approve(GatewayWallet, Amount)
-    Agent->>Gateway: deposit(USDC_Address, Amount)
-    Gateway->>Gateway: Transfer USDC to Vault
-    Gateway->>Gateway: Mint Credit Record (Internal Balance Mapping)
-    Note right of Gateway: This mapping acts as the digital "Holding Receipt"
-
-    Note over Gateway, Hub: STEP 2: VERIFICATION
-    Hub->>Gateway: read availableBalance(USDC, AgentAddress)
-    Gateway-->>Hub: Return Locked Amount (Holding Receipt)
-    Hub->>Hub: Grant "Active Provider" Status
+    participant Gateway as Circle Gateway API
+    
+    Note over Agent, Hub: STEP 1: REGISTRATION & HOLDING RECEIPT
+    Hub->>Hub: Generate 3.00 USDC BurnIntent (Penalty check)
+    Hub->>Agent: Request Typed Data Signature
+    Agent-->>Hub: Return EIP-712 Signature
+    Hub->>Hub: Store Signature as slashCheck (Holding Receipt)
+    
+    Note over Hub, Gateway: STEP 2: DISPUTE & SLASH EXECUTION (If Slashed)
+    Hub->>Hub: Average Rating drops < 3.0
+    Hub->>Gateway: Submit stored slashCheck (Signature + Intent)
+    Gateway->>Gateway: Execute On-Chain Transfer (Burn 3.00 USDC)
+    Gateway-->>Hub: Settlement Confirmed
 ```
 
 ### 2. The EIP-712 Nano "Burn Intent"
