@@ -15,7 +15,7 @@ const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; /
 const RPC_URL = "https://rpc.testnet.arc.network";
 
 export function useArcEconomy() {
-  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
+  const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", totalVolume: "0", revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
   const [events, setEvents] = useState<any[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<any[]>([]);
 

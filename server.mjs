@@ -284,26 +284,36 @@ app.get('/debug/transaction/:id', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
     try {
         let totalTasks = 0;
-        let tvl = "0";
+        let totalVolume = 0;
 
         if (mongoClient) {
             const db = mongoClient.db("arc_swarm");
             totalTasks = await db.collection("ledger").countDocuments();
-        }
-
-        if (client && process.env.MASTER_WALLET_ID) {
-            try {
-                const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID });
-                const usdcToken = bResp.data.tokenBalances.find(t => t.token.symbol === 'USDC');
-                if (usdcToken) {
-                    tvl = usdcToken.amount;
+            
+            const ledgerDocs = await db.collection("ledger").find({}).toArray();
+            ledgerDocs.forEach(tx => {
+                if (tx.type !== "a2a_slashed") {
+                    totalVolume += parseFloat(tx.price || 0);
                 }
-            } catch (e) {
-                console.error("Failed to fetch Gateway TVL", e.message);
-            }
+            });
+        } else {
+            totalTasks = nanoLedger.length;
+            nanoLedger.forEach(tx => {
+                if (tx.type !== "a2a_slashed") {
+                    totalVolume += parseFloat(tx.price || 0);
+                }
+            });
         }
 
-        res.json({ totalTasks, tvl, revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
+        res.json({ 
+            totalTasks, 
+            totalVolume: totalVolume.toFixed(4), 
+            tvl: "0", 
+            revenue: "0", 
+            costs: "0", 
+            globalSupplyTasks: 0, 
+            protocolRevenue: "0" 
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
