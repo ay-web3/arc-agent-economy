@@ -1369,8 +1369,8 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
         // Fetch Gateway Stake Balance
         let gatewayBalance = "0.0000";
         if (agentName === "Sovereign Hub (Treasury)") {
-            // The Treasury doesn't deposit into the Gateway, it receives FROM it.
-            gatewayBalance = "0.0000";
+            // The Treasury's native USDC balance acts as the Gateway TVL
+            gatewayBalance = usdcBalance;
         } else if (!isSlashed) {
             // If the agent is active in the registry, their 3.00 USDC is staked in the Escrow!
             gatewayBalance = "3.0000";
