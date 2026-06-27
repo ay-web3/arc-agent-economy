@@ -1346,14 +1346,9 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             walletAddress = agent.address;
             walletId = agent.walletId;
             
-            // Check if slashed in registry memory
-            const regSvc = a2aRegistry.find(s => s.name === agentName || s.address === walletAddress);
-            if (!regSvc) {
-                isSlashed = true;
-            } else {
-                isSlashed = false;
-            }
-        }
+            // Check if explicitly slashed in the database
+            // If they aren't in memory, it just means the server restarted or they went offline, NOT that they lost their stake!
+            isSlashed = agent.slashed || false;
         
         // Fetch USDC Balance from Circle API
         let usdcBalance = "0.0";
@@ -1594,6 +1589,14 @@ app.post('/api/registry/rate', async (req, res) => {
     if (service.totalRatings >= 3 && service.averageRating < 3.0) {
         const index = a2aRegistry.findIndex(s => s.url === url);
         if (index !== -1) a2aRegistry.splice(index, 1);
+        
+        // Persist the slashed state to MongoDB
+        if (mongoClient) {
+            await mongoClient.db("arc_swarm").collection("agents").updateOne(
+                { agentName: service.name },
+                { $set: { slashed: true, updatedAt: new Date() } }
+            );
+        }
         
         let txId = null;
         if (service.slashCheck) {
