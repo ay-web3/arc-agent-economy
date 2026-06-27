@@ -1764,7 +1764,9 @@ app.post('/api/registry/rate', async (req, res) => {
 });
 
 app.get('/api/registry/services', (req, res) => {
-    res.json(a2aRegistry);
+    const serialized = JSON.stringify(a2aRegistry, (_, v) => typeof v === 'bigint' ? v.toString() : v);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(serialized);
 });
 
 // Admin Monitor Stream (Live Dashboard Feed)
