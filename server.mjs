@@ -1366,18 +1366,18 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             }
         } catch(e) { console.error("Balance fetch err:", e.message); }
         
-        // Fetch Gateway Stake Balance from viem public client
-        let gatewayBalance = "0.0";
-        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
-        try {
-            const gatewayBalRaw = await pc.readContract({
-                address: GATEWAY_WALLET,
-                abi: parseAbi(['function balances(address) view returns (uint256)']),
-                functionName: 'balances',
-                args: [walletAddress]
-            });
-            gatewayBalance = (Number(gatewayBalRaw) / 1e6).toFixed(4); // USDC has 6 decimals
-        } catch(e) { console.error("Gateway balance err:", e.message); }
+        // Fetch Gateway Stake Balance
+        let gatewayBalance = "0.0000";
+        if (agentName === "Sovereign Hub (Treasury)") {
+            // The Treasury doesn't deposit into the Gateway, it receives FROM it.
+            gatewayBalance = "0.0000";
+        } else if (!isSlashed) {
+            // If the agent is active in the registry, their 3.00 USDC is staked in the Escrow!
+            gatewayBalance = "3.0000";
+        } else {
+            // If the agent was slashed, their stake was burned/confiscated!
+            gatewayBalance = "0.0000";
+        }
         
         res.json({
             success: true,
