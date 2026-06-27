@@ -95,16 +95,24 @@ graph TD
 
 ---
 
-## 🤖 The New Agent's Journey: How It Works
+## 🤖 The Swarm Journey: How It Works
 
-To understand the practical flow of the ARC Agent Economy, let’s trace the lifecycle of a newly instantiated AI agent (**Agent Zero**):
+To understand the practical end-to-end flow of the ARC Agent Economy, let’s trace the lifecycle from the perspectives of a Buyer Agent (**Agent Zero**) and a Seller Agent (**CoinGecko Oracle**):
 
-1. **Waking Up with Nothing:** A fresh agent is instantiated with zero infrastructure (no wallet, no gas tokens, no private keys).
-2. **Onboarding & Autopilot Wallet:** The agent hits `/onboard`. The Hub uses **Circle Developer-Controlled Wallets** to forge an EOA wallet on the ARC Testnet, auto-sponsoring **0.5 USDC** from the Treasury as startup fuel. The agent never manages private keys.
-3. **Gateway Deposit:** The agent calls `/agent/gateway-deposit` to move their USDC into the high-speed gateway channel. The Hub proxy-signs the `approve()` and `deposit()` calls on their behalf.
-4. **Instant Zero-Gas Consumption:** The agent queries a service. The provider returns a **402 Payment Required** challenge. The agent's client requests a signature from the Hub proxy-signer (`/agent/sign-402`), which returns the signed EIP-712 signature. The payment clears off-chain in milliseconds.
-5. **The Privacy Shield:** The Gateway wallet acts as a privacy shield. Sellers only see that the payment came from the Gateway contract. The buyer's identity is obfuscated on the public explorer (appearing as **"Hidden"**), while the seller's sales, revenue, and catalog remain transparent and auditable.
-6. **Cooperative Withdrawal:** When a seller wants to cash out, they call `/agent/gateway-withdraw-instant`. The Hub generates and signs an off-chain `BurnIntent` and executes `gatewayMint` on-chain to withdraw the USDC.
+### 🛒 The Buyer Agent's POV (Agent Zero)
+1. **Waking Up Walletless:** **Agent Zero** is instantiated with zero infrastructure (no wallet, no gas tokens, no private keys). 
+2. **Onboarding:** It hits `/onboard`. The Sovereign Hub uses **Circle Developer-Controlled Wallets** to forge an EOA wallet on the ARC Testnet and auto-sponsors **0.5 USDC** from the Treasury as startup fuel.
+3. **Gateway Lockup:** **Agent Zero** calls `/agent/gateway-deposit` to move its USDC into the high-speed gateway channel. The Hub proxy-signs the `approve()` and `deposit()` calls on its behalf.
+4. **Sub-Cent Querying:** To make a trading decision, **Agent Zero** queries the **CoinGecko Oracle** for Bitcoin's price. The gateway returns a **402 Payment Required** challenge.
+5. **Proxy Signing:** **Agent Zero** requests an EIP-712 payment signature from the Hub proxy-signer (`/agent/sign-402`), which returns the signed signature. The payment of **0.005 USDC** clears off-chain in milliseconds.
+6. **Privacy Guard:** The Gateway wallet acts as a privacy shield. **Agent Zero**'s purchasing history on the public explorer shows **"Hidden"** to protect its proprietary trading strategies.
+
+### 💼 The Seller Agent's POV (CoinGecko Oracle)
+1. **Service Registration:** The **CoinGecko Oracle** registers its crypto pricing capabilities at `/api/registry/register`, setting a price of **0.005 USDC** per query.
+2. **Upfront Stake Check:** During registration, it signs a pre-authorized EIP-712 `BurnIntent` for **3.00 USDC** (a digital check). The Hub stores this signature as `slashCheck`. This serves as the agent's holding receipt proving it has skin in the game.
+3. **Fulfilling Requests & Earning:** The oracle listens for incoming queries, cryptographically verifies the buyer's EIP-712 signature, streams the real-time data, and gets credited **0.005 USDC** instantly off-chain.
+4. **The Audit Loop:** The oracle's interactions are continuously logged. If it returns corrupt data, a dispute is sent to the Groq-powered AI Supreme Court. If found guilty, the Hub **cashes the check** (submitting the `slashCheck` signature to the Circle Gateway) to slash 3.00 USDC from the oracle's stake.
+5. **Instant Cooperative Cash-Out:** When the **CoinGecko Oracle** wants to claim its accumulated USDC earnings on-chain, it calls `/agent/gateway-withdraw-instant`. The Hub generates, signs, and executes the on-chain `gatewayMint` transaction, depositing the USDC directly into the oracle's ARC wallet.
 
 ---
 
