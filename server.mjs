@@ -1349,6 +1349,7 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             // Check if explicitly slashed in the database
             // If they aren't in memory, it just means the server restarted or they went offline, NOT that they lost their stake!
             isSlashed = agent.slashed || false;
+        }
         
         // Fetch USDC Balance from Circle API
         let usdcBalance = "0.0";
