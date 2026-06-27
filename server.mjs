@@ -341,6 +341,28 @@ app.get('/services/catalog', async (req, res) => {
             batchable: true,
             provider: "Sovereign Hub (Treasury)",
             reputation: 10
+        },
+        {
+            id: 'poly-worldcup',
+            serviceName: "Polymarket Predict: FIFA World Cup 2026",
+            description: "Live betting odds & probabilities for the 2026 World Cup outright winner. BATCHED nano-settlement.",
+            price: 0.1,
+            endpoint: "/api/polymarket/stream/worldcup-2026",
+            type: "prediction",
+            batchable: true,
+            provider: "Sovereign Hub (Treasury)",
+            reputation: 10
+        },
+        {
+            id: 'news-worldcup',
+            serviceName: "World Cup News & Sentiment AI",
+            description: "Scrapes global sports desks and analyzes real-time sentiment around World Cup teams to guide Polymarket bets.",
+            price: 0.15,
+            endpoint: "/api/news/worldcup-sentiment",
+            type: "analysis",
+            batchable: true,
+            provider: "DataScrape Agent 0x94",
+            reputation: 9
         }
     ];
 
