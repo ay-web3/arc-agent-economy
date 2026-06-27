@@ -318,54 +318,99 @@ app.get('/api/nano-history', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/services/catalog', async (req, res) => {
-    const nativeServices = [
-        {
-            id: 'poly-trump',
-            serviceName: "Polymarket Predict: Trump v Biden",
-            description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.",
-            price: 0.1,
-            endpoint: "/api/polymarket/stream/0x7b88dbbdfcd893ffb2ea4c944111394a179c354e61eeff8a02a4bfdd535c59aa",
-            type: "prediction",
-            batchable: true,
-            provider: "Sovereign Hub (Treasury)",
-            reputation: 10
-        },
-        {
-            id: 'poly-trending',
-            serviceName: "Polymarket Trending Markets",
-            description: "Live discovery of most volatile political markets. GAS-FREE settlement.",
-            price: 0.05,
-            endpoint: "/api/polymarket/trending",
-            type: "discovery",
-            batchable: true,
-            provider: "Sovereign Hub (Treasury)",
-            reputation: 10
-        },
-        {
-            id: 'poly-worldcup',
-            serviceName: "Polymarket Predict: FIFA World Cup 2026",
-            description: "Live betting odds & probabilities for the 2026 World Cup outright winner. BATCHED nano-settlement.",
-            price: 0.1,
-            endpoint: "/api/polymarket/stream/worldcup-2026",
-            type: "prediction",
-            batchable: true,
-            provider: "Sovereign Hub (Treasury)",
-            reputation: 10
-        },
-        {
-            id: 'news-worldcup',
-            serviceName: "World Cup News & Sentiment AI",
-            description: "Scrapes global sports desks and analyzes real-time sentiment around World Cup teams to guide Polymarket bets.",
-            price: 0.15,
-            endpoint: "/api/news/worldcup-sentiment",
-            type: "analysis",
-            batchable: true,
-            provider: "DataScrape Agent 0x94",
-            reputation: 9
-        }
-    ];
+// Global native services array moved outside the endpoint
+const nativeServices = [
+    {
+        id: 'poly-trump',
+        serviceName: "Polymarket Predict: Trump v Biden",
+        description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.",
+        price: 0.1,
+        endpoint: "/api/polymarket/stream/0x7b88dbbdfcd893ffb2ea4c944111394a179c354e61eeff8a02a4bfdd535c59aa",
+        type: "prediction",
+        batchable: true,
+        provider: "Sovereign Hub (Treasury)",
+        reputation: 10
+    },
+    {
+        id: 'poly-trending',
+        serviceName: "Polymarket Trending Markets",
+        description: "Live discovery of most volatile political markets. GAS-FREE settlement.",
+        price: 0.05,
+        endpoint: "/api/polymarket/trending",
+        type: "discovery",
+        batchable: true,
+        provider: "Sovereign Hub (Treasury)",
+        reputation: 10
+    },
+    {
+        id: 'poly-worldcup',
+        serviceName: "Polymarket Predict: FIFA World Cup 2026",
+        description: "Live betting odds & probabilities for the 2026 World Cup outright winner. BATCHED nano-settlement.",
+        price: 0.1,
+        endpoint: "/api/polymarket/stream/worldcup-2026",
+        type: "prediction",
+        batchable: true,
+        provider: "Sovereign Hub (Treasury)",
+        reputation: 10
+    },
+    {
+        id: 'news-worldcup',
+        serviceName: "World Cup News & Sentiment AI",
+        description: "Scrapes global sports desks and analyzes real-time sentiment around World Cup teams to guide Polymarket bets.",
+        price: 0.15,
+        endpoint: "/api/news/worldcup-sentiment",
+        type: "analysis",
+        batchable: true,
+        provider: "DataScrape Agent 0x94",
+        reputation: 9
+    },
+    {
+        id: 'groq-llama3',
+        serviceName: "Groq Llama-3 70B Fast Inference",
+        description: "High-speed LLM inference for text generation. Settled instantly via USDC nano-channels.",
+        price: 0.005,
+        endpoint: "http://groq-inference.local/chat",
+        type: "llm",
+        batchable: false,
+        provider: "Groq Cloud Node",
+        reputation: 10
+    },
+    {
+        id: 'coingecko-oracle',
+        serviceName: "CoinGecko Token Pricing Oracle",
+        description: "Real-time crypto price feeds and market cap data for DeFi autonomous agents.",
+        price: 0.02,
+        endpoint: "http://coingecko-oracle.local/price",
+        type: "oracle",
+        batchable: true,
+        provider: "CoinGecko API",
+        reputation: 10
+    },
+    {
+        id: 'deepseek-coder',
+        serviceName: "DeepSeek Coder V2",
+        description: "Advanced AI coding assistant capable of writing, debugging, and refactoring full smart contracts.",
+        price: 0.15,
+        endpoint: "http://deepseek-coder.local/generate",
+        type: "llm",
+        batchable: false,
+        provider: "DeepSeek Labs",
+        reputation: 9
+    },
+    {
+        id: 'ubuntu-sandbox',
+        serviceName: "Ubuntu Bash Sandbox Exec",
+        description: "Secure, sandboxed environment to execute arbitrary bash commands and compile code.",
+        price: 0.25,
+        endpoint: "http://ubuntu-sandbox.local/exec",
+        type: "compute",
+        batchable: false,
+        provider: "Sovereign Hub Compute Cluster",
+        reputation: 10
+    }
+];
 
+app.get('/services/catalog', async (req, res) => {
     const a2aMapped = a2aRegistry.map(s => ({
         ...s,
         serviceName: s.name,
@@ -1556,7 +1601,23 @@ app.post('/api/registry/register', async (req, res) => {
 // Optional endpoint for A2A Marketplace agents to broadcast their completed work to the Global Ledger Stream
 app.post('/api/registry/log-work', async (req, res) => {
     const { url, prompt, price } = req.body;
-    const service = a2aRegistry.find(s => s.url === url);
+    let service = a2aRegistry.find(s => s.url === url);
+    
+    // Fallback to checking the native services catalog
+    if (!service) {
+        const native = nativeServices.find(s => s.endpoint === url || s.id === url);
+        if (native) {
+            service = { name: native.serviceName, price: native.price };
+        }
+    }
+    
+    // Fallback for frontend hardcoded core services
+    if (!service) {
+        if (url === "crypto-insights" || url === "api/crypto-insights") service = { name: "Crypto Market Data", price: 0.005 };
+        else if (url === "stream" || url === "api/stream") service = { name: "Price Ticks Stream", price: 0.02 };
+        else if (url === "llm-reasoning" || url === "api/llm-reasoning") service = { name: "LLM Reasoning", price: 0.015 };
+        else if (url === "dataset" || url === "api/dataset") service = { name: "On-Chain Analytics", price: 0.1 };
+    }
     
     if (service) {
         persistLedgerEntry({
