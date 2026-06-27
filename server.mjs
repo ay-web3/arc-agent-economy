@@ -319,7 +319,38 @@ app.get('/api/nano-history', async (req, res) => {
 });
 
 app.get('/services/catalog', async (req, res) => {
-    res.json({ success: true, services: a2aRegistry });
+    const nativeServices = [
+        {
+            id: 'poly-trump',
+            serviceName: "Polymarket Predict: Trump v Biden",
+            description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.",
+            price: 0.1,
+            endpoint: "/api/polymarket/stream/0x7b88dbbdfcd893ffb2ea4c944111394a179c354e61eeff8a02a4bfdd535c59aa",
+            type: "prediction",
+            batchable: true,
+            provider: "Sovereign Hub (Treasury)",
+            reputation: 10
+        },
+        {
+            id: 'poly-trending',
+            serviceName: "Polymarket Trending Markets",
+            description: "Live discovery of most volatile political markets. GAS-FREE settlement.",
+            price: 0.05,
+            endpoint: "/api/polymarket/trending",
+            type: "discovery",
+            batchable: true,
+            provider: "Sovereign Hub (Treasury)",
+            reputation: 10
+        }
+    ];
+
+    const a2aMapped = a2aRegistry.map(s => ({
+        ...s,
+        serviceName: s.name,
+        provider: s.address || "A2A Custom Agent"
+    }));
+
+    res.json({ success: true, services: [...nativeServices, ...a2aMapped] });
 });
 
 app.get('/health', async (req, res) => {
