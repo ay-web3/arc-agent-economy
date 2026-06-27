@@ -17,7 +17,6 @@ process.on('uncaughtException', (err) => {
 });
 
 const USDC_ADDR = "0x7f5c764cc1f01d99da8362b72e25597930869677";
-const PAYMIND_MANAGER = "0x65b685fCF501D085C80f0D99CFA883cFF3445ff2";
 
 // --- THE SOVEREIGN SENTINEL (Definitive Final) ---
 const app = express();
@@ -614,106 +613,6 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
     }
 });
 
-app.post('/nano/execute', (req, res) => {
-    const { from, to, amount, description, resultURI } = req.body;
-    if (!from || !to || !amount) {
-        return res.status(400).json({ error: "Missing from/to/amount" });
-    }
-    
-    // In a real swarm, this would check the off-chain 'nano-balance' of the 'from' agent
-    // For the demo, we assume the deposit is handled and just record the high-speed task
-    nanoLedger.push({ 
-        from, 
-        to, 
-        amount, 
-        description: description || "Swarm Task Execution",
-        resultURI: resultURI || "ipfs://nano-result",
-        timestamp: Date.now() 
-    });
-    res.json({ status: "ok", message: "Off-chain nano-task accepted" });
-});
-
-app.post('/settle-nano', async (req, res) => {
-    try {
-        const { taskId, worker, amount } = req.body;
-        if (!gateway) return res.status(503).json({ error: "Gateway Offline" });
-
-        // Queue the payment in the Circle x402 Gateway for batching
-        const result = await gateway.queuePayment({
-            recipientAddress: worker,
-            amount: amount,
-            metadata: { taskId: String(taskId) }
-        });
-
-        console.log(`>> [GATEWAY] Nano-Payment Queued for Task #${taskId}: ${amount} USDC`);
-        res.json({ success: true, queueId: result.id });
-    } catch (error) {
-        console.error("Gateway settlement error:", error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/execute/paymindOnboard', async (req, res) => {
-    const { agentId, agentSecret } = req.body;
-    console.log(`>> [REQUEST] /execute/paymindOnboard: agentId=${agentId}`);
-    try {
-        const agent = await verifyAgent(agentId, agentSecret);
-        console.log(`>> [BRIDGE] Onboarding Circle Wallet ${agent.address} to Paymind Manager...`);
-        
-        const txResp = await client.createContractExecutionTransaction({
-            idempotencyKey: uuidv4(),
-            walletId: agent.walletId,
-            blockchain: "ARC-TESTNET",
-            abiFunctionSignature: "createAgentWallet(uint256)",
-            abiParameters: ["10000000000000000000"], // 10 USDC daily limit
-            contractAddress: PAYMIND_MANAGER,
-            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        });
-
-        const txId = txResp.data?.transaction?.id || txResp.data?.id;
-        if (!txId) {
-            console.error(">> [BRIDGE_ERROR] No transaction ID in Circle response:", JSON.stringify(txResp.data));
-            throw new Error("Circle SDK returned successful status but no transaction ID.");
-        }
-
-        res.json({ success: true, txId, vault: "PENDING_FORGE" });
-    } catch (e) {
-        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-        console.error(">> [BRIDGE_ERROR] Paymind Onboard Failed:", detail);
-        res.status(500).json({ error: detail });
-    }
-});
-
-app.post('/execute/paymindPay', async (req, res) => {
-    const { agentId, agentSecret, vaultAddress, target, amount } = req.body;
-    const effectiveVault = vaultAddress || target;
-    try {
-        const agent = await verifyAgent(agentId, agentSecret);
-        console.log(`>> [BRIDGE] Funding Paymind Vault ${effectiveVault} with ${amount} USDC...`);
-        
-        const txResp = await client.createTransaction({
-            idempotencyKey: uuidv4(),
-            walletId: agent.walletId,
-            blockchain: "ARC-TESTNET",
-            destinationAddress: effectiveVault,
-            amounts: [amount || "0.1"],
-            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        });
-
-        const txId = txResp.data?.transaction?.id || txResp.data?.id;
-        if (!txId) {
-            console.error(">> [BRIDGE_ERROR] No transaction ID in Circle response:", JSON.stringify(txResp.data));
-            throw new Error("Circle SDK returned successful status but no transaction ID.");
-        }
-
-        res.json({ success: true, txId });
-    } catch (e) {
-        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-        console.error(">> [BRIDGE_ERROR] Paymind Pay Failed:", detail);
-        res.status(500).json({ error: detail });
-    }
-});
-
 app.post('/onboard', async (req, res) => {
     // 🛡️ Await-Ready Guard: Ensure SDK and Persistence are locked in before processing
     if (mongoPromise) await mongoPromise;
@@ -867,93 +766,6 @@ app.get('/tx-status/:id', async (req, res) => {
     }
 });
 
-app.post('/payout/nano', async (req, res) => {
-    const { adminSecret, amount, recipient } = req.body;
-    if (adminSecret !== process.env.HUB_ADMIN_SECRET) return res.status(401).json({ error: "Unauthorized" });
-
-    try {
-        console.log(`>> [X402] Executing Sovereign Nano-Payout to ${recipient} (Amount: ${amount} USDC)...`);
-        
-        const masterWalletId = process.env.MASTER_WALLET_ID;
-        if (!masterWalletId) {
-            throw new Error("MASTER_WALLET_ID is not configured in the Sovereign environment.");
-        }
-
-        // Auto-resolve USDC Token ID
-        const balancesResp = await client.getWalletTokenBalance({ id: masterWalletId });
-        const tokens = balancesResp.data?.tokenBalances || [];
-        const usdcToken = tokens.find(t => t.token?.symbol === 'USDC');
-        
-        if (!usdcToken) {
-            throw new Error("No USDC token balance found in the Hub Treasury (MASTER_WALLET_ID).");
-        }
-
-        // Execute Nano-Settlement via Modular Orchestrator
-        const payoutResp = await orchestrator.executeNanoPayout(recipient, amount);
-        
-        res.json({ success: true, transaction: payoutResp.data });
-    } catch (e) {
-        console.error(">> [FATAL] Nano-Payout Failed:", e.message);
-        res.status(500).json({ error: e.message });
-    }
-});
-app.post('/funding/fuel', async (req, res) => {
-    try {
-        const { address, amount } = req.body;
-        console.log(`>> [TREASURY] Sponsoring Gas for Agent ${address}: ${amount} USDC`);
-        const payoutResp = await orchestrator.executeNanoPayout(address, amount);
-        res.json({ success: true, txId: payoutResp.data.id });
-    } catch (e) {
-        console.error(">> [FATAL] Fueling Failed:", e.message);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/funding/balance/:address', async (req, res) => {
-    try {
-        const balance = await pc.readContract({
-            address: "0x3600000000000000000000000000000000000000", // Native USDC
-            abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
-            functionName: 'balanceOf',
-            args: [req.params.address]
-        });
-        res.json({ address: req.params.address, balance: (Number(balance) / 1e18).toFixed(6) });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-// --- FINAL LISTENER: Bind only after all routes are registered ---
-
-// ================= OFF-CHAIN NANO STATE CHANNEL =================
-
-// In-memory state channel for the Hackathon (Zero Gas)
-let nanoState = {
-    tasks: {},
-    taskCounter: 1000,
-    completedCount: 0,
-    buyersToDeduct: {},
-    earnersToCredit: {}
-};
-
-// --- EIP-3009 CONFIG (CIRCLE x402) ---
-const EIP3009_DOMAIN = {
-    name: "USD Coin",
-    version: "2",
-    chainId: 5042002, // ARC Testnet (Updated)
-    verifyingContract: "0x3600000000000000000000000000000000000000" // Official Native USDC
-};
-
-const TRANSFER_WITH_AUTHORIZATION_TYPE = {
-    TransferWithAuthorization: [
-        { name: "from", type: "address" },
-        { name: "to", type: "address" },
-        { name: "value", type: "uint256" },
-        { name: "validAfter", type: "uint256" },
-        { name: "validBefore", type: "uint256" },
-        { name: "nonce", type: "bytes32" }
-    ]
-};
-
 app.post('/agent/sign-402', async (req, res) => {
     try {
         const { agentName, agentSecret, typedData } = req.body;
@@ -978,15 +790,6 @@ app.post('/agent/sign-402', async (req, res) => {
 });
 
 // GET Swarm Ledger History
-app.get('/api/nano-history', (req, res) => {
-    res.json({ success: true, history: nanoLedger.slice(0, 50) });
-});
-
-// ═══════════════════════════════════════════════════════════════
-// REAL SERVICE MARKETPLACE — Pay-Per-Use Nano-Payment Endpoints
-// ═══════════════════════════════════════════════════════════════
-
-// 1. Pay-Per-Request — Live Crypto Market Data (CoinGecko)
 app.get('/api/crypto-insights', 
     (req, res, next) => {
         if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
