@@ -387,10 +387,11 @@ app.get('/admin/swarm-fuel', async (req, res) => {
 async function verifyAgent(agentName, agentSecret) {
     if (!mongoClient) throw new Error("Database offline");
     const db = mongoClient.db("arc_swarm");
+    const hashedSecret = crypto.createHash('sha256').update(agentSecret).digest('hex');
     const agent = await db.collection("agents").findOne({ 
         $or: [
-            { agentName, agentSecret },
-            { agentId: agentName, agentSecret }
+            { agentName, hashedSecret },
+            { agentId: agentName, hashedSecret }
         ]
     });
     if (!agent) throw new Error("Invalid agent credentials");
