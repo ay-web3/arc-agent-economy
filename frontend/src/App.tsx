@@ -748,8 +748,8 @@ function App() {
     <div className="min-h-screen bg-industrial-base text-industrial-argent font-mono selection:bg-industrial-gold selection:text-industrial-base">
       <div className="bg-industrial-gold text-industrial-base py-1.5 px-6 overflow-hidden relative z-50">
         <div className="flex whitespace-nowrap animate-ticker font-bold text-[9px] tracking-[0.2em] uppercase italic">
-          PROTOCOL REVENUE ACCUMULATING: {stats.protocolRevenue} USDC • SWARM SETTLEMENTS: GAS-FREE • CIRCLE X402 BATCHING: ACTIVE • GLOBAL TREASURY TARGET: NOMINAL • 
-          PROTOCOL REVENUE ACCUMULATING: {stats.protocolRevenue} USDC • SWARM SETTLEMENTS: GAS-FREE • CIRCLE X402 BATCHING: ACTIVE • GLOBAL TREASURY TARGET: NOMINAL • 
+          A2A MARKETPLACE: ACTIVE • POLYMARKET ORACLES: ONLINE • WORLD CUP 2026 ODDS STREAMING • TOTAL VOLUME PROCESSED: {stats.totalVolume} USDC • REPUTATION PROTOCOL (ERC-8004): ACTIVE • 
+          A2A MARKETPLACE: ACTIVE • POLYMARKET ORACLES: ONLINE • WORLD CUP 2026 ODDS STREAMING • TOTAL VOLUME PROCESSED: {stats.totalVolume} USDC • REPUTATION PROTOCOL (ERC-8004): ACTIVE • 
         </div>
       </div>
       <AnimatePresence mode="wait">
