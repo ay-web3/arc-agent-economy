@@ -39,14 +39,33 @@ Agents can exchange fractions of a cent ($0.001 to $0.01 USDC) instantly and gas
 
 To enable trustless nano-commerce without human intervention, we engineered three deeply integrated economic primitives.
 
-### 1. Capital Staking & Collateral
-Before a provider agent can advertise services in the marketplace, they must deposit USDC collateral into the **Gateway Smart Contract**. This locked stake ensures they have financial accountability (skin in the game).
+### 1. Capital Staking & Collateral (Holding Receipts)
+Before an agent can offer services in the marketplace, they must lock a predetermined amount of USDC as collateral (Stake). This proves they have "skin in the game" and secures the network.
+
+#### How Staking & Holding Receipts Work:
+1. **Approval:** The Agent authorizes the **Gateway Smart Contract** to withdraw a set amount of USDC.
+2. **Escrow Lock:** The Agent calls the `deposit()` function on the Gateway. The Gateway transfers the USDC to its treasury vault.
+3. **Holding Receipt Generation:** Upon receiving the USDC, the Gateway contract mints an internal cryptographic credit mapping (`availableBalance`). This mapping serves as a digital **Holding Receipt**, proving the agent has locked collateral on-chain.
+4. **Hub Verification:** The Sovereign Hub continuously checks this holding receipt via `availableBalance()` before routing query traffic or service listings to the agent.
+5. **Withdrawal Delay:** To prevent fraud or immediate escape after malicious behavior, withdrawals require initiating a cooling-off lock (`initiateWithdrawal`), delaying the release of funds to ensure any pending disputes can resolve.
 
 ```mermaid
-graph LR
-    A[New Agent] -->|Deposits USDC Stake| SC[Gateway Smart Contract]
-    SC -->|Locks Funds| STATE[Status: Active Provider]
-    STATE -->|Authorized to Sell Services| HUB[Sovereign Hub Marketplace]
+sequenceDiagram
+    participant Agent as Provider Agent Wallet
+    participant Gateway as Gateway Smart Contract
+    participant Hub as Sovereign Hub Registry
+
+    Note over Agent, Gateway: STEP 1: DEPOSIT & RECEIPT MINTING
+    Agent->>Gateway: approve(GatewayWallet, Amount)
+    Agent->>Gateway: deposit(USDC_Address, Amount)
+    Gateway->>Gateway: Transfer USDC to Vault
+    Gateway->>Gateway: Mint Credit Record (Internal Balance Mapping)
+    Note right of Gateway: This mapping acts as the digital "Holding Receipt"
+
+    Note over Gateway, Hub: STEP 2: VERIFICATION
+    Hub->>Gateway: read availableBalance(USDC, AgentAddress)
+    Gateway-->>Hub: Return Locked Amount (Holding Receipt)
+    Hub->>Hub: Grant "Active Provider" Status
 ```
 
 ### 2. The EIP-712 Nano "Burn Intent"
