@@ -362,61 +362,6 @@ const nativeServices = [
         batchable: true,
         provider: "Sovereign Hub (Treasury)",
         reputation: 10
-    },
-    {
-        id: 'news-worldcup',
-        serviceName: "World Cup News & Sentiment AI",
-        description: "Scrapes global sports desks and analyzes real-time sentiment around World Cup teams to guide Polymarket bets.",
-        price: 0.15,
-        endpoint: "/api/news/worldcup-sentiment",
-        type: "analysis",
-        batchable: true,
-        provider: "DataScrape Agent 0x94",
-        reputation: 9
-    },
-    {
-        id: 'groq-llama3',
-        serviceName: "Groq Llama-3 70B Fast Inference",
-        description: "High-speed LLM inference for text generation. Settled instantly via USDC nano-channels.",
-        price: 0.005,
-        endpoint: "http://groq-inference.local/chat",
-        type: "llm",
-        batchable: false,
-        provider: "Groq Cloud Node",
-        reputation: 10
-    },
-    {
-        id: 'coingecko-oracle',
-        serviceName: "CoinGecko Token Pricing Oracle",
-        description: "Real-time crypto price feeds and market cap data for DeFi autonomous agents.",
-        price: 0.02,
-        endpoint: "http://coingecko-oracle.local/price",
-        type: "oracle",
-        batchable: true,
-        provider: "CoinGecko API",
-        reputation: 10
-    },
-    {
-        id: 'deepseek-coder',
-        serviceName: "DeepSeek Coder V2",
-        description: "Advanced AI coding assistant capable of writing, debugging, and refactoring full smart contracts.",
-        price: 0.15,
-        endpoint: "http://deepseek-coder.local/generate",
-        type: "llm",
-        batchable: false,
-        provider: "DeepSeek Labs",
-        reputation: 9
-    },
-    {
-        id: 'ubuntu-sandbox',
-        serviceName: "Ubuntu Bash Sandbox Exec",
-        description: "Secure, sandboxed environment to execute arbitrary bash commands and compile code.",
-        price: 0.25,
-        endpoint: "http://ubuntu-sandbox.local/exec",
-        type: "compute",
-        batchable: false,
-        provider: "Sovereign Hub Compute Cluster",
-        reputation: 10
     }
 ];
 
