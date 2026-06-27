@@ -1268,6 +1268,18 @@ app.post('/api/polymarket/stream/:eventId',
 
             req.on('close', () => clearInterval(interval));
         } catch (e) {
+            if (!res.headersSent) res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
+        }
+    }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// AGENT-TO-AGENT SERVICE REGISTRY
+// ═══════════════════════════════════════════════════════════════
+
+// In-memory service catalog (backed by MongoDB when available)
+const serviceCatalog = new Map();
+
 // Register a service
 app.post('/api/registry/register', async (req, res) => {
     const { name, url, price, description } = req.body;
