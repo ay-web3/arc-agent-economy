@@ -878,9 +878,9 @@ function App() {
                 <AnimatePresence mode="wait">
                   {activeTab === 'overview' && (
                     <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <MetricCard label="TOTAL_MACHINE_TASKS" value={stats.totalTasks} sub="Cumulative Swarm Processed" icon={<Cpu size={24}/>} />
-                         <MetricCard label="LIQUID_VAULT_CAPITAL" value={`${stats.tvl} USDC`} sub="Native Chain Registry Balance" icon={<HardDrive size={24}/>} />
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <MetricCard label="TOTAL_X402_TRANSACTIONS" value={stats.totalTasks} sub="Cumulative Nano-Payments Processed" icon={<Cpu size={24}/>} />
+                         <MetricCard label="LIQUID_VAULT_CAPITAL" value={`${stats.tvl} USDC`} sub="Off-chain Gateway Batching Pool" icon={<HardDrive size={24}/>} />
                       </div>
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
                         <div className="lg:col-span-8 flex flex-col gap-6">
@@ -893,9 +893,9 @@ function App() {
                                 <Lock className="text-industrial-gold" size={18} />
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                <ProtocolItem label="ECONOMY_SPLIT" value="90 / 4 / 4 / 2" desc="Sellers (90%), Protocol (4%), Verifiers (4%), Keepers (2%)." />
+                                <ProtocolItem label="A2A_EXCHANGE" value="100 / 0" desc="Direct 100% Peer-to-Peer settlement with 0% protocol tax." />
                                 <ProtocolItem label="SETTLEMENT" value="ZERO_GAS" desc="Authorizing settlements via Circle x402 Batching client." />
-                                <ProtocolItem label="LIVENESS" value="ACTIVE" desc="Zombie slashing protocol for inactive verification nodes." />
+                                <ProtocolItem label="SOVEREIGN_STAKE" value="DYNAMIC" desc="Dynamic agent staking based on off-chain reputation." />
                               </div>
                            </div>
                         </div>
@@ -903,10 +903,10 @@ function App() {
 
                            <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20">
                               <div className="flex items-center gap-3 mb-4 text-industrial-danger">
-                                <Shield size={18} /><span className="font-bold tracking-widest text-[10px] uppercase italic">Balanced_Audit</span>
+                                <Shield size={18} /><span className="font-bold tracking-widest text-[10px] uppercase italic">Cryptographic_Audit</span>
                               </div>
                               <p className="text-[9px] leading-relaxed text-industrial-danger/70 uppercase">
-                                Symmetric dispute rights enabled. Any party in a task cycle can flag governance oversight if verification quorum is not reached.
+                                Decentralized verification enabled. All Agent-to-Agent payments are cryptographically signed and batch-settled without centralized escrow logic.
                               </p>
                            </div>
                         </div>
