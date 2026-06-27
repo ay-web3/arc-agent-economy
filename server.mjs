@@ -384,6 +384,19 @@ app.get('/admin/swarm-fuel', async (req, res) => {
     }
 });
 
+async function verifyAgent(agentName, agentSecret) {
+    if (!mongoClient) throw new Error("Database offline");
+    const db = mongoClient.db("arc_swarm");
+    const agent = await db.collection("agents").findOne({ 
+        $or: [
+            { agentName, agentSecret },
+            { agentId: agentName, agentSecret }
+        ]
+    });
+    if (!agent) throw new Error("Invalid agent credentials");
+    return agent;
+}
+
 app.post('/agent/gateway-deposit', async (req, res) => {
     try {
         const { agentName, agentSecret, amount } = req.body;
