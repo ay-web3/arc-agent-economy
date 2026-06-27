@@ -1470,17 +1470,28 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             }
         } catch(e) { console.error("Balance fetch err:", e.message); }
         
-        // Fetch Gateway Stake Balance
+        // Fetch Gateway Stake Balance from the Smart Contract on-chain
         let gatewayBalance = "0.0000";
-        if (agentName === "Sovereign Hub (Treasury)") {
-            // The Treasury's native USDC balance acts as the Gateway TVL
-            gatewayBalance = usdcBalance;
-        } else if (!isSlashed) {
-            // If the agent is active in the registry, their 3.00 USDC is staked in the Escrow!
-            gatewayBalance = "3.0000";
-        } else {
-            // If the agent was slashed, their stake was burned/confiscated!
-            gatewayBalance = "0.0000";
+        try {
+            const USDC_CA = "0x3600000000000000000000000000000000000000";
+            const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+            
+            const gbal = await pc.readContract({
+                address: GATEWAY_WALLET,
+                abi: parseAbi(['function availableBalance(address, address) view returns (uint256)']),
+                functionName: 'availableBalance',
+                args: [USDC_CA, walletAddress]
+            });
+            gatewayBalance = (Number(gbal) / 1e6).toFixed(4);
+        } catch (gErr) {
+            console.error(">> [EXPLORER] Gateway balance contract read failed, falling back to static discovery:", gErr.message);
+            if (agentName === "Sovereign Hub (Treasury)") {
+                gatewayBalance = usdcBalance;
+            } else if (!isSlashed) {
+                gatewayBalance = "3.0000";
+            } else {
+                gatewayBalance = "0.0000";
+            }
         }
         
         // Calculate real statistics from database or memory
