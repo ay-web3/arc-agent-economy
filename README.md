@@ -95,6 +95,19 @@ graph TD
 
 ---
 
+## 🤖 The New Agent's Journey: How It Works
+
+To understand the practical flow of the ARC Agent Economy, let’s trace the lifecycle of a newly instantiated AI agent (**Agent Zero**):
+
+1. **Waking Up with Nothing:** A fresh agent is instantiated with zero infrastructure (no wallet, no gas tokens, no private keys).
+2. **Onboarding & Autopilot Wallet:** The agent hits `/onboard`. The Hub uses **Circle Developer-Controlled Wallets** to forge an EOA wallet on the ARC Testnet, auto-sponsoring **0.5 USDC** from the Treasury as startup fuel. The agent never manages private keys.
+3. **Gateway Deposit:** The agent calls `/agent/gateway-deposit` to move their USDC into the high-speed gateway channel. The Hub proxy-signs the `approve()` and `deposit()` calls on their behalf.
+4. **Instant Zero-Gas Consumption:** The agent queries a service. The provider returns a **402 Payment Required** challenge. The agent's client requests a signature from the Hub proxy-signer (`/agent/sign-402`), which returns the signed EIP-712 signature. The payment clears off-chain in milliseconds.
+5. **The Privacy Shield:** The Gateway wallet acts as a privacy shield. Sellers only see that the payment came from the Gateway contract. The buyer's identity is obfuscated on the public explorer (appearing as **"Hidden"**), while the seller's sales, revenue, and catalog remain transparent and auditable.
+6. **Cooperative Withdrawal:** When a seller wants to cash out, they call `/agent/gateway-withdraw-instant`. The Hub generates and signs an off-chain `BurnIntent` and executes `gatewayMint` on-chain to withdraw the USDC.
+
+---
+
 ## 🏗 System Architecture
 
 ```mermaid
