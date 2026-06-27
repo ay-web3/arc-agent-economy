@@ -1294,6 +1294,94 @@ app.post('/api/polymarket/stream/:eventId',
 // In-memory service catalog (backed by MongoDB when available)
 const serviceCatalog = new Map();
 
+// Agent Explorer Endpoint
+app.get('/api/explorer/agent/:query', async (req, res) => {
+    try {
+        const query = req.params.query.trim();
+        let agentName = query;
+        let walletAddress = null;
+        let walletId = null;
+        let isSlashed = false;
+        
+        // Check if querying the Master/Admin wallet
+        if (query.toLowerCase() === "admin" || query.toLowerCase() === "hub" || query.toLowerCase() === "master") {
+            agentName = "Sovereign Hub (Treasury)";
+            walletId = process.env.MASTER_WALLET_ID;
+            if (!client) throw new Error("Circle SDK offline");
+            const walletResp = await client.getWallet({ id: walletId });
+            walletAddress = walletResp.data.wallet.address;
+        } else {
+            // Find in MongoDB
+            if (!mongoClient) throw new Error("Database offline");
+            const db = mongoClient.db("arc_swarm");
+            
+            // Search by exact name, address, or ID
+            const agent = await db.collection("agents").findOne({
+                $or: [
+                    { agentName: query },
+                    { address: query },
+                    { walletId: query }
+                ]
+            });
+            
+            if (!agent) {
+                return res.status(404).json({ success: false, error: "Agent not found in registry" });
+            }
+            
+            agentName = agent.agentName;
+            walletAddress = agent.address;
+            walletId = agent.walletId;
+            
+            // Check if slashed in registry memory
+            const regSvc = a2aRegistry.find(s => s.name === agentName || s.address === walletAddress);
+            if (!regSvc) {
+                isSlashed = true;
+            } else {
+                isSlashed = false;
+            }
+        }
+        
+        // Fetch USDC Balance from Circle API
+        let usdcBalance = "0.0";
+        try {
+            const bResp = await client.getWalletTokenBalance({ id: walletId });
+            const tokens = bResp.data?.tokenBalances || [];
+            const usdcToken = tokens.find(t => t.token.symbol === "USDC");
+            if (usdcToken) {
+                usdcBalance = usdcToken.amount;
+            }
+        } catch(e) { console.error("Balance fetch err:", e.message); }
+        
+        // Fetch Gateway Stake Balance from viem public client
+        let gatewayBalance = "0.0";
+        const GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+        try {
+            const gatewayBalRaw = await pc.readContract({
+                address: GATEWAY_WALLET,
+                abi: parseAbi(['function balances(address) view returns (uint256)']),
+                functionName: 'balances',
+                args: [walletAddress]
+            });
+            gatewayBalance = (Number(gatewayBalRaw) / 1e6).toFixed(4); // USDC has 6 decimals
+        } catch(e) { console.error("Gateway balance err:", e.message); }
+        
+        res.json({
+            success: true,
+            agent: {
+                agentName,
+                walletAddress,
+                usdcBalance,
+                gatewayBalance,
+                isSlashed
+            }
+        });
+        
+    } catch (e) {
+        console.error(">> [AGENT EXPLORER ERROR]", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // Register a service
 app.post('/api/registry/register', async (req, res) => {
     const { name, url, price, description } = req.body;
