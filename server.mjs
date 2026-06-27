@@ -1541,6 +1541,9 @@ app.get('/api/admin-monitor', (req, res) => {
     });
 });
 
+// Initialize engines
+bootstrap();
+
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`>> [HEALTH] Sovereign Hub online on 0.0.0.0:${PORT}`);
 });
