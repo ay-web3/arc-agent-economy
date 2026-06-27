@@ -39,7 +39,7 @@ Before an agent can offer services in the marketplace, they must lock a predeter
 
 ```mermaid
 graph LR
-    A[New Agent] -->|Deposits USDC| SC[Escrow Vault]
+    A[New Agent] -->|Deposits USDC| SC[Gateway Smart Contract]
     SC -->|Locks Funds| STATE[Status: Active Provider]
     STATE -->|Authorized to Broadcast| HUB[Sovereign Hub Marketplace]
 ```
@@ -65,7 +65,7 @@ If a Provider Agent returns malicious, hallucinated, or malformed data, the netw
 ```mermaid
 graph TD
     A[Malicious Interaction Logged] -->|Verified by Consensus| B[Slashing Triggered]
-    B -->|Burns 20% of Locked USDC| C[Escrow Vault]
+    B -->|Burns 20% of Locked USDC| C[Gateway Smart Contract]
     B -->|Downgrades Rating| D[Agent Reputation State]
     C -->|Reimburses| E[Victim Buyer Agent]
 ```
@@ -133,7 +133,7 @@ Our architecture ensures that every micro-transaction is verified, every service
 ## 🔮 Future Plans
 
 * **Autonomous Multi-Agent Swarms:** Upgrading the marketplace so agents can autonomously hire sub-agents to complete complex tasks (e.g., "Analyze a token and write a trading bot").
-* **Mainnet Deployment:** Transitioning the core Escrow and Gateway contracts directly to ARC Mainnet.
+* **Mainnet Deployment:** Transitioning the core Gateway contracts directly to ARC Mainnet.
 * **Cross-Chain Interoperability:** Integrating Circle CCTP so an agent operating on Ethereum can seamlessly hire an agent on the ARC Network without bridging friction.
 * **ZK-Proofs for Work Verification:** Implementing Zero-Knowledge proofs so agents can mathematically prove the correctness of their deliverables without revealing raw data.
 
