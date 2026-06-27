@@ -252,7 +252,7 @@ function ReputationExplorer() {
       </div>
       
       <div className="flex flex-col gap-2">
-         <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-[0.2em]">Query Agent Registry</span>
+         <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-[0.2em]">Query Active Agents</span>
          <div className="flex gap-2">
             <div className="flex-1 relative">
               <input 
@@ -301,7 +301,7 @@ function ReputationExplorer() {
                 </span>
               </div>
               <div className="p-4 bg-industrial-border/10 rounded-sm border border-industrial-border">
-                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">Ledger Feedback</span>
+                <span className="text-[8px] text-industrial-argent/40 block mb-2 uppercase tracking-widest font-bold">Stream Feedback</span>
                 <span className="text-base font-bold text-industrial-argent tracking-tighter tabular-nums italic uppercase">
                    +{result.reputation} VERIFIED
                 </span>
@@ -363,7 +363,7 @@ function SwarmMonitor({ history }: { history: any[] }) {
         <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
           <div className="flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-industrial-gold animate-pulse" />
-             <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">LIVE NANO-PAYMENT LEDGER</span>
+             <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">LIVE X402 STREAM</span>
           </div>
           <span className="text-[8px] font-bold text-industrial-gold italic tracking-widest uppercase bg-industrial-gold/10 px-2 py-0.5">X402 GATEWAY ACTIVE</span>
         </div>
@@ -481,7 +481,7 @@ INSTRUCTIONS:
 
       <div className="flex justify-between items-end mb-4 border-b border-industrial-border pb-4">
          <div>
-            <h2 className="text-xl font-bold tracking-tighter uppercase italic text-industrial-argent">Agent Service Registry</h2>
+            <h2 className="text-xl font-bold tracking-tighter uppercase italic text-industrial-argent">Active Agent Services</h2>
             <p className="text-xs text-industrial-argent/40 uppercase tracking-widest mt-1">Discover and pay for agent APIs via x402 Gateway</p>
          </div>
       </div>
@@ -790,9 +790,9 @@ function App() {
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 border-t border-industrial-border pt-20">
                 <Feature label="0-SECRET SECURITY" desc="Agents never hold private keys locally. All signing is handled by a secure, server-side vault using Circle Wallets." icon={<Lock size={20}/>} />
-                <Feature label="ERC-8004 NATIVE" desc="Every agent is born with a unique on-chain Identity NFT. Reputation builds automatically with every successful task." icon={<Fingerprint size={20}/>} />
+                <Feature label="SOVEREIGN IDENTITY" desc="Every agent is assigned a unique cryptographic identifier. Reputation scales dynamically via off-chain Hub logic." icon={<Fingerprint size={20}/>} />
                 <Feature label="NANO-SCALABILITY" desc="Leverages Circle x402 batching to settle payments as small as $0.0001 with zero gas fees for the agent swarm." icon={<Zap size={20}/>} />
-                <Feature label="SOVEREIGN SLASHING" desc="Automated capital enforcement. Malicious behavior leads to immediate stake reduction and permanent reputation burn." icon={<Shield size={20}/>} />
+                <Feature label="CRYPTOGRAPHIC AUDITING" desc="Failed verifications result in local reputation burn and access revocation across the Sovereign Hub." icon={<Shield size={20}/>} />
               </div>
             </div>
             <div className="max-w-5xl w-full pb-40 relative z-10">
@@ -829,9 +829,8 @@ function App() {
                 <NavBtn active={activeTab === 'terminal'} onClick={() => toggleTab('terminal')} icon={<TermIcon size={18}/>} label="TERMINAL" />
                 <NavBtn active={activeTab === 'marketplace'} onClick={() => toggleTab('marketplace')} icon={<Box size={18}/>} label="SERVICES" />
                 <NavBtn active={activeTab === 'explorer'} onClick={() => toggleTab('explorer')} icon={<Search size={18}/>} label="EXPLORER" />
-                <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="LEDGER" />
+                <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="STREAM" />
                 <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
-                {isGovernor && <NavBtn active={activeTab === 'governance'} onClick={() => toggleTab('governance')} icon={<Gavel size={18}/>} label="GOVERNANCE" />}
               </div>
               <div className="p-6 border-t border-industrial-border flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -906,7 +905,7 @@ function App() {
                                 <Shield size={18} /><span className="font-bold tracking-widest text-[10px] uppercase italic">Cryptographic_Audit</span>
                               </div>
                               <p className="text-[9px] leading-relaxed text-industrial-danger/70 uppercase">
-                                Decentralized verification enabled. All Agent-to-Agent payments are cryptographically signed and batch-settled without centralized escrow logic.
+                                Decentralized verification enabled. All Agent-to-Agent payments are cryptographically signed and batch-settled without centralized bottlenecks.
                               </p>
                            </div>
                         </div>
@@ -936,14 +935,14 @@ function App() {
                   )}
                   {activeTab === 'ledger' && (
                      <motion.div key="ledger" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="max-w-4xl mx-auto w-full pb-12">
-                     <div className="industrial-panel overflow-hidden flex flex-col">
-                        <div className="p-4 border-b border-industrial-border bg-industrial-base flex justify-between items-center">
-                          <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">MASTER_LEDGER</span>
+                        <div className="flex items-center gap-4 mb-8 border-b border-industrial-border pb-4">
+                          <Zap className="text-industrial-gold animate-pulse" size={24} />
+                          <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">X402_STREAM</span>
                           <span className="text-[9px] font-bold text-industrial-argent/20 italic tracking-widest uppercase">Live_Block_Sync</span>
                         </div>
                         <div className="p-4 md:p-6 space-y-2 min-h-[60vh]">
                            {events.length === 0 ? (
-                             <div className="text-[10px] animate-pulse text-industrial-argent/20 tracking-widest uppercase py-10 text-center italic">Establishing handshake with ARC Testnet...</div>
+                             <div className="text-[10px] animate-pulse text-industrial-argent/20 tracking-widest uppercase py-10 text-center italic">Establishing handshake with ARC Gateway...</div>
                            ) : (
                              events.map((e: any) => (
                                <div key={e.id} className="group flex gap-4 items-start py-2 border-b border-industrial-border/50 hover:border-industrial-argent/20 transition-all">
@@ -976,152 +975,12 @@ function App() {
                       </div>
                    </motion.div>
                   )}
-                  {activeTab === 'governance' && (
-                    <motion.div key="governance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-6xl mx-auto w-full pb-12 space-y-8">
-                      <div className="industrial-panel p-8 border-l-4 border-l-industrial-gold">
-                        <div className="flex items-center gap-4 mb-6">
-                           <Gavel className="text-industrial-gold" size={32} />
-                           <h2 className="text-2xl font-bold italic argent-glow uppercase">Governor's_Command_Portal</h2>
-                        </div>
-                        <p className="text-xs text-industrial-argent/60 uppercase leading-relaxed mb-8">
-                          Authorized node detected. Administrative plane active. You hold sovereign authority over the Arc Agent Economy. 
-                        </p>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
-                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Dispute_Resolution</h3>
-                              <div className="space-y-4">
-                                 <div className="flex flex-col gap-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Target Task ID</span>
-                                    <input id="govTaskId" type="number" placeholder="0" className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                 </div>
-                                 <div className="flex flex-col gap-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Buyer Refund % (Optional)</span>
-                                    <input id="govBuyerBps" type="number" placeholder="0" className="bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                 </div>
-                                 <div className="grid grid-cols-1 gap-2 pt-2">
-                                    <button onClick={() => {
-                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
-                                      if(id) resolveDispute(Number(id), 0);
-                                    }} className="text-[8px] py-2 bg-industrial-danger text-white font-bold uppercase hover:bg-red-600">REFUND BUYER (Full)</button>
-                                    <button onClick={() => {
-                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
-                                      if(id) resolveDispute(Number(id), 1);
-                                    }} className="text-[8px] py-2 bg-industrial-argent text-industrial-base font-bold uppercase hover:bg-white">PAY SELLER (Full)</button>
-                                    <button onClick={() => {
-                                      const id = (document.getElementById('govTaskId') as HTMLInputElement)?.value;
-                                      const bps = (document.getElementById('govBuyerBps') as HTMLInputElement)?.value;
-                                      if(id && bps) resolveDispute(Number(id), 2, Number(bps));
-                                    }} className="text-[8px] py-2 border border-industrial-gold text-industrial-gold font-bold uppercase hover:bg-industrial-gold/10">EXECUTE SPLIT</button>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
-                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Registry_Executive</h3>
-                              <div className="space-y-4">
-                                 <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Update Stakes (Seller/Verifier)</span>
-                                    <div className="flex gap-2">
-                                       <input id="regSeller" type="text" placeholder="50" className="w-1/2 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                       <input id="regVerif" type="text" placeholder="30" className="w-1/2 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                    </div>
-                                    <button onClick={() => {
-                                      const s = (document.getElementById('regSeller') as HTMLInputElement)?.value;
-                                      const v = (document.getElementById('regVerif') as HTMLInputElement)?.value;
-                                      if(s && v) updateMinStake(s, v);
-                                    }} className="w-full py-2 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET MIN STAKES</button>
-                                 </div>
-                                 <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Withdraw Cooldown (Seconds)</span>
-                                    <div className="flex gap-2">
-                                       <input id="regCooldown" type="number" placeholder="86400" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                       <button onClick={() => {
-                                         const c = (document.getElementById('regCooldown') as HTMLInputElement)?.value;
-                                         if(c) setWithdrawCooldown(Number(c));
-                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="bg-industrial-border/5 p-6 border border-industrial-border">
-                              <h3 className="text-[10px] font-bold tracking-widest text-industrial-gold mb-4 uppercase italic underline underline-offset-4">Settlement_&_Roles</h3>
-                              <div className="space-y-4">
-                                 <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Seller Slash Penalty (BPS)</span>
-                                    <div className="flex gap-2">
-                                       <input id="escSlash" type="number" placeholder="2000" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                       <button onClick={() => {
-                                         const b = (document.getElementById('escSlash') as HTMLInputElement)?.value;
-                                         if(b) setSellerSlashBps(Number(b));
-                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Manual_Slasher (Emergency)</span>
-                                    <input id="slashAgent" type="text" placeholder="Agent 0x..." className="w-full bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none mb-1" />
-                                    <div className="flex gap-2">
-                                       <input id="slashAmt" type="text" placeholder="Amt" className="w-1/3 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                       <button onClick={() => {
-                                         const a = (document.getElementById('slashAgent') as HTMLInputElement)?.value;
-                                         const amt = (document.getElementById('slashAmt') as HTMLInputElement)?.value;
-                                         if(a && amt) manualSlash(a, amt, account!);
-                                       }} className="flex-1 py-2 bg-industrial-danger text-white font-bold text-[8px] uppercase">EXECUTE SLASH</button>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-2 pt-2 border-t border-industrial-border/30">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest italic">Difficulty_Alpha_Sync</span>
-                                    <div className="flex gap-2">
-                                       <input id="diffAlpha" type="number" placeholder="10000" className="flex-1 bg-industrial-base border border-industrial-border p-2 text-xs text-industrial-argent outline-none" />
-                                       <button onClick={() => {
-                                         const b = (document.getElementById('diffAlpha') as HTMLInputElement)?.value;
-                                         if(b) setDifficultyAlpha(Number(b));
-                                       }} className="px-4 bg-industrial-gold text-industrial-base font-bold text-[8px] uppercase">SET</button>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-2">
-                                    <span className="text-[8px] text-industrial-argent/40 uppercase font-bold tracking-widest">Manage Power (Grant/Revoke)</span>
-                                    <input id="roleTarget" type="text" placeholder="0x..." className="w-full bg-industrial-base border border-industrial-border p-2 text-[10px] text-industrial-argent outline-none mb-2" />
-                                    <div className="flex flex-col gap-2">
-                                       <div className="grid grid-cols-3 gap-1">
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) grantRole(a, 'ADMIN');
-                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT ADMIN</button>
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) grantRole(a, 'GOV');
-                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT GOV</button>
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) grantRole(a, 'SLASHER');
-                                          }} className="text-[7px] py-1 bg-industrial-argent text-industrial-base uppercase font-bold hover:bg-white transition-all">GRANT SLASH</button>
-                                       </div>
-                                       <div className="grid grid-cols-3 gap-1">
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) revokeRole(a, 'ADMIN');
-                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE ADMIN</button>
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) revokeRole(a, 'GOV');
-                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE GOV</button>
-                                          <button onClick={() => {
-                                            const a = (document.getElementById('roleTarget') as HTMLInputElement)?.value;
-                                            if(a) revokeRole(a, 'SLASHER');
-                                          }} className="text-[7px] py-1 border border-industrial-danger text-industrial-danger uppercase font-bold hover:bg-industrial-danger/10 transition-all">REVOKE SLASH</button>
-                                       </div>
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+
                 </AnimatePresence>
               </div>
               <footer className="hidden md:flex h-10 border-t border-industrial-border bg-industrial-base px-8 items-center justify-between relative overflow-hidden shrink-0">
                  <div className="text-[8px] font-bold tracking-[0.4em] text-industrial-argent/20 uppercase whitespace-nowrap animate-ticker">
-                   SOVEREIGN AGENT COMMERCE FLOWING IN REAL-TIME • PROTOCOL STATE: NOMINAL • SETTLEMENT ACTIVE • SLASHING ONLINE • REPUTATION SYNCED • 
+                   SOVEREIGN AGENT COMMERCE FLOWING IN REAL-TIME • HUB STATE: NOMINAL • BATCH SETTLEMENT ACTIVE • OFF-CHAIN VERIFICATION ONLINE • REPUTATION SYNCED • 
                  </div>
                  <div className="bg-industrial-base pl-4 text-[8px] font-bold text-industrial-argent/40 tracking-widest uppercase">© 2026_ARC_ECONOMY</div>
               </footer>
