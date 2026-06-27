@@ -1268,28 +1268,86 @@ app.post('/api/polymarket/stream/:eventId',
 
             req.on('close', () => clearInterval(interval));
         } catch (e) {
-            if (!res.headersSent) res.status(502).json({ success: false, error: "Upstream data error: " + e.message });
-        }
-    }
-);
-
-// ═══════════════════════════════════════════════════════════════
-// AGENT-TO-AGENT SERVICE REGISTRY
-// ═══════════════════════════════════════════════════════════════
-
-// In-memory service catalog (backed by MongoDB when available)
-const serviceCatalog = new Map();
-
 // Register a service
-app.post('/api/registry/register', 
-    (req, res, next) => {
-        if (!gatewayMw) return res.status(503).json({ error: "Initializing Gateway..." });
-        return gatewayMw.require("3.00")(req, res, next);
-    },
-    (req, res) => {
+app.post('/api/registry/register', async (req, res) => {
     const { name, url, price, description } = req.body;
     if (!name || !url || price === undefined) {
         return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    let slashCheck = null;
+    
+    try {
+        if (mongoClient && gateway && MASTER_ADDRESS) {
+            const db = mongoClient.db("arc_swarm");
+            const agentDoc = await db.collection("agents").findOne({ agentName: name });
+            
+            if (agentDoc && agentDoc.walletId && agentDoc.address) {
+                console.log(`>> [DIGITAL CHECK] Generating upfront 3.00 USDC BurnIntent for agent: ${agentDoc.agentName}`);
+                
+                const slashAmount = "3000000"; // 3.00 USDC
+                const typedData = {
+                    domain: { name: "GatewayWallet", version: "1" },
+                    types: {
+                        EIP712Domain: [
+                            { name: "name", type: "string" },
+                            { name: "version", type: "string" }
+                        ],
+                        TransferSpec: [
+                            { name: "version", type: "uint32" },
+                            { name: "sourceDomain", type: "uint32" },
+                            { name: "destinationDomain", type: "uint32" },
+                            { name: "sourceContract", type: "bytes32" },
+                            { name: "destinationContract", type: "bytes32" },
+                            { name: "sourceToken", type: "bytes32" },
+                            { name: "destinationToken", type: "bytes32" },
+                            { name: "sourceDepositor", type: "bytes32" },
+                            { name: "destinationRecipient", type: "bytes32" },
+                            { name: "sourceSigner", type: "bytes32" },
+                            { name: "destinationCaller", type: "bytes32" },
+                            { name: "value", type: "uint256" },
+                            { name: "salt", type: "bytes32" },
+                            { name: "hookData", type: "bytes" }
+                        ],
+                        BurnIntent: [
+                            { name: "maxBlockHeight", type: "uint256" },
+                            { name: "maxFee", type: "uint256" },
+                            { name: "spec", type: "TransferSpec" }
+                        ]
+                    },
+                    primaryType: "BurnIntent",
+                    message: (() => {
+                        const intent = gateway.createBurnIntent(
+                            gateway.chainConfig,
+                            gateway.chainConfig,
+                            slashAmount,
+                            MASTER_ADDRESS, // Send penalty to Sovereign Hub Treasury
+                            "2010000" // maxFee
+                        );
+                        const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
+                        intent.spec.sourceSigner = padToBytes32(agentDoc.address);
+                        intent.spec.sourceDepositor = padToBytes32(agentDoc.address);
+                        return intent;
+                    })()
+                };
+                
+                const signResp = await client.signTypedData({
+                    walletId: agentDoc.walletId,
+                    data: JSON.stringify(typedData, (_, v) => typeof v === 'bigint' ? v.toString() : v),
+                    memo: "Sovereign Hub Upfront Penalty Authorization"
+                });
+                
+                if (signResp.data && signResp.data.signature) {
+                    slashCheck = {
+                        burnIntent: typedData.message,
+                        signature: signResp.data.signature
+                    };
+                    console.log(`>> [DIGITAL CHECK] Upfront check successfully secured for ${name}`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error(">> [DIGITAL CHECK ERROR] Failed to generate upfront slash signature:", e.message);
     }
     
     // Check if already registered to update it, else add new
@@ -1298,17 +1356,19 @@ app.post('/api/registry/register',
         existing.name = name;
         existing.price = price;
         existing.description = description || existing.description;
+        if (slashCheck) existing.slashCheck = slashCheck;
     } else {
         a2aRegistry.push({
             id: 'a2a-' + Date.now(),
             name, url, price, description,
+            slashCheck,
             ratings: [],
             averageRating: 0,
             totalRatings: 0,
             registeredAt: new Date()
         });
     }
-    res.json({ success: true, message: "Service registered successfully!" });
+    res.json({ success: true, message: "Service registered successfully! Digital check secured." });
 });
 
 app.post('/api/registry/rate', async (req, res) => {
@@ -1331,30 +1391,20 @@ app.post('/api/registry/rate', async (req, res) => {
         }
         
         console.log(`\n⚖️ [AI SUPREME COURT] Dispute initiated for ${url}`);
-        console.log(`   📝 Prompt: "${prompt}"`);
-        console.log(`   🤖 Signal: "${signal}"`);
         
         try {
             const groqKey = process.env.GROQ_API_KEY;
             if (!groqKey) throw new Error("GROQ_API_KEY missing");
             
-            const judgePrompt = `You are an impartial AI Judge in an Agent-to-Agent economy. 
-A Consumer Agent paid a Producer Agent to answer the following prompt:
-"${prompt}"
-
-The Producer Agent returned the following signal/answer:
-"${signal}"
-
-The Consumer Agent gave this a terrible rating (${rating} out of 5 stars) and is trying to slash the Producer.
-Is this a fair rating (the signal is garbage/unrelated), or is the Consumer being MALICIOUS (the signal is actually a good, high-quality answer)?
-Reply with EXACTLY ONE WORD: either "FAIR" or "MALICIOUS".`;
-
             const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+                headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    model: "llama-3.1-8b-instant",
-                    messages: [{ role: "user", content: judgePrompt }],
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: "You are the AI Supreme Court Arbitrator. A consumer agent rated a seller agent < 3.0 stars. You must determine if the consumer is being MALICIOUS (lying about a good response to hurt the seller) or FAIR (the seller's response was genuinely bad or wrong). Respond with exactly one word: MALICIOUS or FAIR." },
+                        { role: "user", content: `Prompt requested by consumer: "${prompt}"\nResponse provided by seller: "${signal}"` }
+                    ],
                     max_tokens: 10,
                     temperature: 0.1
                 })
@@ -1393,12 +1443,43 @@ Reply with EXACTLY ONE WORD: either "FAIR" or "MALICIOUS".`;
         const index = a2aRegistry.findIndex(s => s.url === url);
         if (index !== -1) a2aRegistry.splice(index, 1);
         
+        let txId = null;
+        if (service.slashCheck) {
+            console.log(`>> [SLASH EXECUTION] Cashing upfront digital check for malicious agent...`);
+            try {
+                const apiUrl = "https://gateway-api-testnet.circle.com/v1";
+                const transferResp = await fetch(`${apiUrl}/transfer`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...gateway.gatewayApiHeaders()
+                    },
+                    body: JSON.stringify(
+                        [service.slashCheck],
+                        (_, v) => typeof v === "bigint" ? v.toString() : v
+                    )
+                });
+                
+                const transferResult = await transferResp.json();
+                if (transferResult.success !== false && transferResult.attestation) {
+                    console.log(`>> [SLASH EXECUTION] SUCCESS! Tx: ${transferResult.txHash || 'completed'}`);
+                    txId = transferResult.txHash || "GATEWAY_SETTLED";
+                } else {
+                    console.error(`>> [SLASH EXECUTION] API Error: ${JSON.stringify(transferResult)}`);
+                }
+            } catch (slashErr) {
+                console.error(">> [SLASH EXECUTION] Critical Error during check execution:", slashErr.message);
+            }
+        } else {
+            console.warn(`>> [SLASH EXECUTION] Warning: Agent was slashed but no upfront digital check was found on file.`);
+        }
+        
         persistLedgerEntry({
             type: "a2a_slashed",
             service: "Stake Slashed",
             provider: "Hub Penalty",
             price: 3.00,
-            notes: "3.00 USDC Stake Slashed due to low reputation"
+            notes: `3.00 USDC Stake Slashed due to low reputation${txId ? ` (Tx: ${txId})` : ''}`
         });
         
         return res.json({ 
