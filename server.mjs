@@ -281,6 +281,33 @@ app.get('/debug/transaction/:id', async (req, res) => {
     }
 });
 
+app.get('/api/stats', async (req, res) => {
+    try {
+        let totalTasks = 0;
+        let tvl = "0";
+
+        if (db) {
+            totalTasks = await db.collection("ledger").countDocuments();
+        }
+
+        if (client && process.env.MASTER_WALLET_ID) {
+            try {
+                const bResp = await client.getWalletTokenBalance({ id: process.env.MASTER_WALLET_ID });
+                const usdcToken = bResp.data.tokenBalances.find(t => t.token.symbol === 'USDC');
+                if (usdcToken) {
+                    tvl = usdcToken.amount;
+                }
+            } catch (e) {
+                console.error("Failed to fetch Gateway TVL", e.message);
+            }
+        }
+
+        res.json({ totalTasks, tvl, revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/health', async (req, res) => {
     if (mongoPromise) await mongoPromise;
     const isReady = client && gateway;

@@ -14,22 +14,6 @@ const IDENTITY_PROTOCOL_ADDR   = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; /
 const REPUTATION_PROTOCOL_ADDR = "0x8004B663056A597Dffe9eCcC1965A193B7388713"; // ERC-8004 official
 const RPC_URL = "https://rpc.testnet.arc.network";
 
-const ESCROW_ABI = [
-  "function taskCounter() external view returns (uint256)",
-  "function tasks(uint256 taskId) external view returns (address buyer, address seller, uint256 price, uint256 verifierPool, uint256 sellerBudget, uint64 deadline, uint64 bidDeadline, uint64 verifierDeadline, uint64 approvalTimestamp, bytes32 taskHash, bytes32 resultHash, string resultURI, uint8 state, uint8 quorumM, uint8 quorumN)",
-  "event TaskOpen(uint256 indexed taskId, uint256 totalEscrow, uint256 sellerBudget, uint256 verifierPool, uint64 bidDeadline)",
-  "event BidPlaced(uint256 indexed taskId, address indexed bidder, uint256 bidPrice, uint64 etaSeconds)",
-  "event BidSelected(uint256 indexed taskId, address indexed seller, uint256 bidPrice, uint256 refundToBuyer)",
-  "event ResultSubmitted(uint256 indexed taskId, address indexed seller, bytes32 resultHash, string resultURI)",
-  "event QuorumReached(uint256 indexed taskId)",
-  "event TaskRejected(uint256 indexed taskId)",
-  "event TaskFinalized(uint256 indexed taskId)",
-  "event TimeoutRefunded(uint256 indexed taskId, uint256 refundAmount)",
-  "event VerifierTimeoutRefunded(uint256 indexed taskId, uint256 refundAmount)",
-  "event DisputeOpened(uint256 indexed taskId, address indexed opener)",
-  "event DisputeResolved(uint256 indexed taskId, uint8 ruling)"
-];
-
 export function useArcEconomy() {
   const [stats, setStats] = useState({ totalTasks: 0, tvl: "0", revenue: "0", costs: "0", globalSupplyTasks: 0, protocolRevenue: "0" });
   const [events, setEvents] = useState<any[]>([]);
@@ -313,10 +297,6 @@ export function useArcEconomy() {
   };
 
   useEffect(() => {
-    const rpcProvider = new ethers.JsonRpcProvider(RPC_URL);
-    // Use rpcProvider instead of the shadowed provider variable from the useEffect closure
-    const escrow = new ethers.Contract(ESCROW_ADDR, ESCROW_ABI, rpcProvider);
-
     const addEvent = (msg: string) => {
       setEvents(prev => [{
         id: Date.now() + Math.random(),
@@ -327,75 +307,15 @@ export function useArcEconomy() {
 
     const fetchData = async () => {
       try {
-        const counter = await escrow.taskCounter();
-        const balance = await rpcProvider.getBalance(ESCROW_ADDR);
-        
-        let personalRevenue = 0n;
-        let totalVolume = 0n;
-        let personalSupplyChainTasks = 0;
-        let globalSupplyChainTasks = 0;
-
-        // Initial fetch of recent tasks
-        const total = Number(counter);
-        const start = Math.max(1, total - 50); // Scan more for stats
-        const fetchedHistorical: any[] = [];
-        
-        const stateLabels: {[key: number]: string} = {
-          1: "CREATED (Auction Live)",
-          2: "ACCEPTED (Worker Assigned)",
-          3: "SUBMITTED (Work Awaiting Verification)",
-          4: "QUORUM APPROVED (Yes Vote)",
-          5: "REJECTED (No Vote)",
-          6: "FINALIZED (Settled)",
-          7: "TIMEOUT REFUNDED",
-          8: "DISPUTED",
-          9: "RESOLVED"
-        };
-
-        for (let i = total; i >= start; i--) {
-          try {
-            const t = await escrow.tasks(i);
-            if (t.buyer !== ethers.ZeroAddress) {
-              const state = Number(t.state);
-              const label = stateLabels[state] || "Discovered";
-              const isPaymindPowered = t.resultURI.toLowerCase().includes("paymind");
-
-              if (state === 6) {
-                totalVolume += BigInt(t.price);
-              }
-
-              if (isPaymindPowered) {
-                globalSupplyChainTasks++;
-              }
-              
-              // Calculate revenue for connected account ONLY if they used the Paymind Supply Chain
-              if (account && t.seller.toLowerCase() === account.toLowerCase() && state === 6 && isPaymindPowered) {
-                personalRevenue += BigInt(t.price);
-                personalSupplyChainTasks++;
-              }
-
-              if (i > total - 10) { // Only show top 10 in ledger
-                fetchedHistorical.push({
-                  id: `hist-${i}`,
-                  message: `Task #${i}: ${label} (Buyer: ${t.buyer.slice(0, 6)}...)`,
-                  timestamp: "BLOCKCHAIN"
-                });
-              }
-            }
-          } catch (e) {}
+        const response = await fetch('https://arc-agent-economy.onrender.com/api/stats');
+        if (response.ok) {
+           const data = await response.json();
+           setStats(data);
+        } else {
+           console.warn("Failed to fetch Sovereign Hub stats.");
         }
-
-        setStats({
-          totalTasks: Number(counter),
-          tvl: ethers.formatUnits(balance, 18),
-          revenue: ethers.formatUnits(personalRevenue, 18),
-          costs: (personalSupplyChainTasks * 0.001).toFixed(3), // 0.001 USDC per Paymind call
-          globalSupplyTasks: globalSupplyChainTasks,
-          protocolRevenue: ethers.formatUnits((totalVolume * 2n) / 100n, 18) // 2% Protocol Fee
-        });
-        setHistoricalEvents(fetchedHistorical);
       } catch (err) {
-        console.error("Error fetching blockchain data:", err);
+        console.error("Error fetching Hub API data:", err);
       }
     };
 
@@ -444,18 +364,8 @@ export function useArcEconomy() {
       fetchData();
     };
 
-    escrow.on("TaskOpen", handleTaskOpen);
-    escrow.on("BidPlaced", handleBidPlaced);
-    escrow.on("BidSelected", handleBidSelected);
-    escrow.on("ResultSubmitted", handleResultSubmitted);
-    escrow.on("QuorumReached", handleQuorumReached);
-    escrow.on("TaskRejected", handleTaskRejected);
-    escrow.on("TaskFinalized", handleTaskFinalized);
-    escrow.on("DisputeOpened", handleDisputeOpened);
-
     return () => {
       clearInterval(interval);
-      escrow.removeAllListeners();
     };
   }, [account]); // Re-run when account changes to ensure stats are accurate
 
