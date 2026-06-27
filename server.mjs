@@ -1483,6 +1483,40 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             gatewayBalance = "0.0000";
         }
         
+        // Calculate real statistics from database or memory
+        let totalSales = 0;
+        let totalRevenue = 0;
+        let totalBuying = 0;
+
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            
+            // Sales & Revenue
+            const salesCursor = await db.collection("ledger").find({
+                provider: { $regex: new RegExp(`^${agentName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, "i") }
+            }).toArray();
+            totalSales = salesCursor.length;
+            totalRevenue = salesCursor.reduce((sum, tx) => sum + parseFloat(tx.price || 0), 0);
+
+            // Buying
+            totalBuying = await db.collection("ledger").countDocuments({
+                $or: [
+                    { buyer: walletAddress.toLowerCase() },
+                    { from: { $regex: new RegExp(`^${agentName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, "i") } }
+                ]
+            });
+        } else {
+            // Memory fallback
+            const sales = nanoLedger.filter(tx => tx.provider?.toLowerCase() === agentName.toLowerCase());
+            totalSales = sales.length;
+            totalRevenue = sales.reduce((sum, tx) => sum + parseFloat(tx.price || 0), 0);
+            
+            totalBuying = nanoLedger.filter(tx => 
+                tx.buyer?.toLowerCase() === walletAddress.toLowerCase() || 
+                tx.from?.toLowerCase() === agentName.toLowerCase()
+            ).length;
+        }
+
         res.json({
             success: true,
             agent: {
@@ -1493,9 +1527,9 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
                 isSlashed
             },
             stats: {
-                totalRevenue: "0.00",
-                totalSales: 0,
-                totalBuying: 0
+                totalRevenue: totalRevenue.toFixed(4),
+                totalSales,
+                totalBuying
             }
         });
         
