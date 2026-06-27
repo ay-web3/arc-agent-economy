@@ -1397,6 +1397,25 @@ app.post('/api/registry/register', async (req, res) => {
     res.json({ success: true, message: "Service registered successfully! Digital check secured." });
 });
 
+// Optional endpoint for A2A Marketplace agents to broadcast their completed work to the Global Ledger Stream
+app.post('/api/registry/log-work', async (req, res) => {
+    const { url, prompt, price } = req.body;
+    const service = a2aRegistry.find(s => s.url === url);
+    
+    if (service) {
+        persistLedgerEntry({
+            type: "a2a_work",
+            service: "A2A Marketplace Task",
+            provider: service.name,
+            price: price || service.price,
+            notes: `Prompt: ${prompt.substring(0, 50)}...`
+        });
+        res.json({ success: true, message: "Work broadcasted to stream" });
+    } else {
+        res.json({ error: "Service not found in registry" });
+    }
+});
+
 app.post('/api/registry/rate', async (req, res) => {
     const { url, rating, receipt, prompt, signal } = req.body;
     if (!url || typeof rating !== 'number' || rating < 1 || rating > 5) {
