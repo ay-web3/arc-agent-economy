@@ -25,8 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { BloombergTerminal } from './BloombergTerminal';
 
-const REGISTRY = "0x9C2e68251E91dD9724feD8E6D270bC7542273d0C";
-const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
+
 
 function MarketItem({ label, cost }: { label: string, cost: string }) {
   return (
@@ -81,21 +80,7 @@ function ProtocolItem({ label, value, desc }: { label: string, value: string, de
   )
 }
 
-function ContractEntry({ label, addr }: { label: string, addr: string }) {
-  return (
-    <div className="flex flex-col gap-1 overflow-hidden">
-       <span className="text-[9px] font-bold text-industrial-argent/30 uppercase tracking-[0.2em]">{label}</span>
-       <div className="flex items-center justify-between gap-4">
-          <span className="text-[10px] text-industrial-argent font-mono uppercase bg-industrial-border/30 px-2 py-0.5 rounded-sm truncate">
-            {addr.slice(0, 10)}...{addr.slice(-8)}
-          </span>
-          <a href={`https://testnet.arcscan.app/address/${addr}`} target="_blank" className="text-industrial-argent/20 hover:text-industrial-gold transition-colors shrink-0">
-            <ChevronRight size={14} />
-          </a>
-       </div>
-    </div>
-  )
-}
+
 
 function Feature({ label, desc, icon }: { label: string, desc: string, icon: any }) {
   return (
@@ -915,16 +900,7 @@ function App() {
                            </div>
                         </div>
                         <div className="lg:col-span-4 flex flex-col gap-6">
-                           <div className="industrial-panel p-6 flex flex-col gap-4">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-industrial-argent text-industrial-base rounded-sm"><Box size={18} /></div>
-                                <span className="font-bold tracking-widest text-[10px] uppercase italic">Core_Contracts</span>
-                              </div>
-                              <div className="space-y-4">
-                                 <ContractEntry label="REGISTRY_PRO" addr={REGISTRY} />
-                                 <ContractEntry label="ESCROW_PRO" addr={ESCROW} />
-                              </div>
-                           </div>
+
                            <div className="industrial-panel p-6 bg-industrial-danger/5 border-industrial-danger/20">
                               <div className="flex items-center gap-3 mb-4 text-industrial-danger">
                                 <Shield size={18} /><span className="font-bold tracking-widest text-[10px] uppercase italic">Balanced_Audit</span>
