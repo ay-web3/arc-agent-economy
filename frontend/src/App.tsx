@@ -935,6 +935,7 @@ function App() {
                   )}
                   {activeTab === 'ledger' && (
                      <motion.div key="ledger" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="max-w-4xl mx-auto w-full pb-12">
+                       <div className="industrial-panel overflow-hidden flex flex-col">
                         <div className="flex items-center gap-4 mb-8 border-b border-industrial-border pb-4">
                           <Zap className="text-industrial-gold animate-pulse" size={24} />
                           <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-industrial-argent/50">X402_STREAM</span>
@@ -953,8 +954,8 @@ function App() {
                              ))
                            )}
                         </div>
-                     </div>
-                   </motion.div>
+                       </div>
+                     </motion.div>
                   )}
                   {activeTab === 'protocol' && (
                      <motion.div key="protocol" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="max-w-4xl mx-auto w-full pb-12">
