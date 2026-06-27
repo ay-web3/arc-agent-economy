@@ -286,7 +286,8 @@ app.get('/api/stats', async (req, res) => {
         let totalTasks = 0;
         let tvl = "0";
 
-        if (db) {
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
             totalTasks = await db.collection("ledger").countDocuments();
         }
 
@@ -306,6 +307,19 @@ app.get('/api/stats', async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+app.get('/api/nano-history', async (req, res) => {
+    try {
+        if (!mongoClient) return res.json({ success: true, history: nanoLedger });
+        const db = mongoClient.db("arc_swarm");
+        const history = await db.collection("ledger").find().sort({_id:-1}).limit(100).toArray();
+        res.json({ success: true, history });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/services/catalog', async (req, res) => {
+    res.json({ success: true, services: a2aRegistry });
 });
 
 app.get('/health', async (req, res) => {
@@ -1373,6 +1387,11 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
                 usdcBalance,
                 gatewayBalance,
                 isSlashed
+            },
+            stats: {
+                totalRevenue: "0.00",
+                totalSales: 0,
+                totalBuying: 0
             }
         });
         
