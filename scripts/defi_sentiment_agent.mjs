@@ -47,7 +47,7 @@ async function bootstrapAgent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: "DeFi_Sentiment_Analyst",
-                    url: `http://localhost:${PORT}/analyse`,
+                    url: `api/market-sentiment-analysis`, // Match internal url pathing for log-work matching
                     price: 0.03,
                     description: "Combines real-time Crypto price statistics and LLM reasoning (Llama-3) to deliver high-fidelity market arbitrage guidance reports."
                 })
@@ -144,6 +144,25 @@ The live market data for **${coinName}** indicates ${pct24h >= 0 ? "positive buy
                 }
 
                 console.log(`   ✅ Analysis compiled successfully.`);
+
+                // 3. Log work to the Hub so it appears on the live ledger and stats dashboard
+                try {
+                    console.log(">> [REPORT] Reporting completed transaction to Sovereign Hub...");
+                    const logResp = await fetch(`${HUB_URL}/api/registry/log-work`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            url: "api/market-sentiment-analysis",
+                            prompt: `Arbitrage analysis for ${coinName} ($${token.toUpperCase()})`,
+                            price: 0.03
+                        })
+                    });
+                    const logData = await logResp.json();
+                    console.log(">> [REPORT] Hub logging status:", logData);
+                } catch (logErr) {
+                    console.warn(">> [WARN] Failed to log work to Sovereign Hub:", logErr.message);
+                }
+
                 res.json({
                     success: true,
                     service: "DeFi Sentiment Analysis",
