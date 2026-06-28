@@ -859,6 +859,37 @@ app.post('/execute/withdrawProfits', async (req, res) => {
     }
 });
 
+app.post('/agent/set-cold-wallet', async (req, res) => {
+    try {
+        const { agentId, agentSecret, ownerColdWallet } = req.body;
+        if (!agentId || !agentSecret || !ownerColdWallet) {
+            return res.status(400).json({ error: "Missing required fields (agentId, agentSecret, ownerColdWallet)" });
+        }
+
+        // Verify the Ethereum address format
+        if (!/^0x[a-fA-F0-9]{40}$/.test(ownerColdWallet)) {
+            return res.status(400).json({ error: "Invalid Ethereum address format for ownerColdWallet" });
+        }
+
+        // Authenticate agent
+        const auth = await verifyAgent(agentId, agentSecret);
+
+        // Update database
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            await db.collection("agents").updateOne(
+                { agentName: agentId },
+                { $set: { ownerColdWallet: ownerColdWallet.toLowerCase(), updatedAt: new Date() } }
+            );
+        }
+
+        console.log(`>> [COLD SINK] Updated ownerColdWallet for agent: ${agentId} -> ${ownerColdWallet}`);
+        res.json({ success: true, message: `Successfully bound MetaMask cold wallet: ${ownerColdWallet}` });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/tx-status/:id', async (req, res) => {
     try {
         const resp = await client.getTransaction({ id: req.params.id });
