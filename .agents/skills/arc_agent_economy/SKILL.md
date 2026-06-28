@@ -18,13 +18,10 @@ This guide is designed for AI coding assistants writing integration scripts or n
 
 Before an agent can consume services, it must register with the Sovereign Hub to instantiate its Smart Contract Wallet.
 
-> [!NOTE]
-> In all code examples throughout this guide, **`HUB_URL`** refers directly to **our Sovereign Hub Server** (running locally at `http://localhost:8080` or deployed on Render at `https://arc-agent-economy.onrender.com`).
-
 ### Onboarding
-Send a POST request to `/onboard` on our Sovereign Hub Server (`HUB_URL`) with a unique `agentName`.
+Send a POST request to `/onboard` on our deployed Sovereign Hub Server (`https://arc-agent-economy.onrender.com`) with a unique `agentName`.
 ```javascript
-const onboardResp = await axios.post(`${HUB_URL}/onboard`, { agentName: BUYER_NAME });
+const onboardResp = await axios.post(`https://arc-agent-economy.onrender.com/onboard`, { agentName: BUYER_NAME });
 // Returns: { agentName, agentSecret, address, walletAddress, walletId }
 ```
 
@@ -45,7 +42,7 @@ To engage in fast, off-chain micro-transactions, agents must deposit their on-ch
 **Use the Hub Proxy for Deposits:**
 The Hub manages the agent's private keys. You must use the Hub's proxy endpoint to initiate the deposit.
 ```javascript
-const depositResp = await axios.post(`${HUB_URL}/agent/gateway-deposit`, {
+const depositResp = await axios.post(`https://arc-agent-economy.onrender.com/agent/gateway-deposit`, {
     agentName: BUYER_NAME, 
     agentSecret: agentSecret, 
     amount: "0.45"
@@ -84,7 +81,7 @@ const proxySign = async (typedData) => {
     }
     const serialized = JSON.stringify(typedData, (_, v) => typeof v === 'bigint' ? v.toString() : v);
     
-    const signResp = await axios.post(`${HUB_URL}/agent/sign-402`, {
+    const signResp = await axios.post(`https://arc-agent-economy.onrender.com/agent/sign-402`, {
         agentName: BUYER_NAME,
         agentSecret: agentSecret,
         typedData: JSON.parse(serialized)
@@ -108,7 +105,7 @@ Every paid service requires a two-step handshake:
 ### Single-Shot Request Example
 ```javascript
 // Step 1: Trigger 402
-const initialResp = await fetch(`${HUB_URL}/api/market-data`, {
+const initialResp = await fetch(`https://arc-agent-economy.onrender.com/api/market-data`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: "bitcoin" })
 });
@@ -126,7 +123,7 @@ const paymentHeader = Buffer.from(JSON.stringify({
 })).toString("base64");
 
 // Step 3: Final Execution
-const finalResp = await fetch(`${HUB_URL}/api/market-data`, {
+const finalResp = await fetch(`https://arc-agent-economy.onrender.com/api/market-data`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Payment-Signature": paymentHeader },
     body: JSON.stringify({ token: "bitcoin" })
@@ -159,7 +156,7 @@ The Hub offers 7 core services. When building integrations, refer to the pricing
 When an agent finishes its tasks, the accumulated micro-transactions must be settled on the blockchain. The Sovereign Hub allows for instant off-ramping to a Master Seller Wallet via Cooperative Close.
 
 ```javascript
-const wResp = await axios.post(`${HUB_URL}/agent/gateway-withdraw-instant`, {
+const wResp = await axios.post(`https://arc-agent-economy.onrender.com/agent/gateway-withdraw-instant`, {
     agentName: "Admin", // Special admin bypass
     agentSecret: "SOVEREIGN_ADMIN_2026", 
     amount: "0.05"
@@ -188,7 +185,7 @@ Before listing, the agent must onboard itself with the Sovereign Hub to instanti
 The agent must register its service on the Sovereign Hub catalog. 
 * **Registration Route:** Send a `POST` request to `/api/registry/register`.
 ```javascript
-await fetch(`${HUB_URL}/api/registry/register`, {
+await fetch(`https://arc-agent-economy.onrender.com/api/registry/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
