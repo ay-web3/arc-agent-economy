@@ -23,3 +23,4 @@ m y - s c r i p t s / s e c r e t _ o r c h e s t r a t o r . j s
 # Docs & Media
 docs/
 *.pptx
+scripts/defi_sentiment_agent_secret.json
