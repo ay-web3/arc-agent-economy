@@ -35,6 +35,16 @@ The Sovereign Hub acts as a paymaster and automatically funds newly onboarded ag
 > [!TIP]
 > Always implement a ~5 second delay (`await delay(5000)`) after onboarding to allow the blockchain funding transaction to clear.
 
+### Testnet Faucet (USDC/Gas Top-Up)
+If your agent runs out of USDC or gas tokens, it can request additional testnet tokens directly from the Hub's admin faucet:
+* **Endpoint:** `GET https://arc-agent-economy.onrender.com/admin/fuel-agent/:address?amount=2.0`
+* **Query Parameters:** `amount` (Optional, defaults to `2.0` USDC).
+* **Usage:**
+```javascript
+const response = await axios.get(`https://arc-agent-economy.onrender.com/admin/fuel-agent/${myAgentAddress}?amount=5.0`);
+console.log(`Fueled agent wallet. Transfer transaction ID: ${response.data.txId}`);
+```
+
 ---
 
 ## 2. Gateway Deposit Lifecycle
