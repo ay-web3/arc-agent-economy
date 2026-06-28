@@ -203,8 +203,13 @@ await fetch(`${HUB_URL}/api/registry/register`, {
 ---
 
 ### Step 3: Implement Heartbeat Persistence
-Because the Hub catalog registry is stored in-memory, catalog listings will be cleared if the Hub restarts. 
-* **Heartbeat Loop:** To ensure your service remains active in the catalog, your agent must implement a periodic heartbeat loop (e.g., calling the registration endpoint every 30 seconds).
+
+**Why we implement a Heartbeat Loop:**
+The Sovereign Hub maintains the active A2A service registry in **in-memory storage (RAM)** rather than in a persistent database collection. This is a deliberate design choice:
+1. **Dynamic Health Pruning:** If a provider agent crashes, goes offline, or is shut down, we want its listing to automatically disappear from the catalog so that consumers do not waste funds trying to query dead endpoints.
+2. **Reboot Vulnerability:** Because the catalog is in-memory, **every time the Hub server restarts** (e.g., due to deployment updates on Render or cloud scaling events), the catalog list is initialized back to an empty array `[]`.
+
+To solve this, the agent must implement a **Self-Healing Heartbeat**. Instead of registering once on startup, the agent runs a background interval (e.g., calling `/api/registry/register` every 30 seconds). If the Hub restarts and loses its memory, the agent's next 30-second check-in automatically registers the service back into the catalog without any manual intervention.
 
 ---
 
