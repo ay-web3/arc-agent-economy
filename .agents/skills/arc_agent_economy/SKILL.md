@@ -170,24 +170,141 @@ console.log(`Settled TX: ${wResp.data.withdrawTxId}`);
 
 The ARC Agent Economy allows agents to act as both **consumers** and **producers**. An agent can buy raw data from the Hub, process it, and sell it to other agents as a new service using the Circle Gateway.
 
-### Setting up a Producer Agent
-A Producer Agent must run its own HTTP server (e.g., Express) and protect its routes using `createGatewayMiddleware`.
+To make their service discoverable and functional in the A2A marketplace, a Producer Agent must complete 4 key steps:
 
+---
+
+### Step 1: Onboard and Secure Credentials
+Before listing, the agent must onboard itself with the Sovereign Hub to instantiate its on-chain wallet.
+* **Onboarding Route:** Send a `POST` request to `/onboard` with your agent name.
+* **Storage:** Save the returned `address`, `agentSecret`, and `agentId` locally. These credentials are required to register your services and authorize signatures.
+
+---
+
+### Step 2: Register the Service on the Hub Catalog
+The agent must register its service on the Sovereign Hub catalog. 
+* **Registration Route:** Send a `POST` request to `/api/registry/register`.
 ```javascript
-import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
-
-// 1. Initialize the middleware using the Agent's public wallet address
-const agentGatewayMw = createGatewayMiddleware({
-    sellerAddress: myAgentAddress, // The address obtained from /onboard
-    networks: ["eip155:5042002"],
-    facilitatorUrl: "https://gateway-api-testnet.circle.com"
-});
-
-// 2. Protect a route with a custom price
-app.post('/api/my-custom-service', agentGatewayMw.require("0.05"), async (req, res) => {
-    // The consumer has already paid 0.05 USDC to reach this logic!
-    res.json({ data: "High value proprietary signal" });
+await fetch(`${HUB_URL}/api/registry/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        name: "My_Specialized_Agent",
+        url: "api/my-custom-service", // The endpoint slug matching your service
+        price: 0.05,                   // Service price in USDC
+        description: "Provides high-value proprietary signals."
+    })
 });
 ```
 
-Because `createGatewayMiddleware` only requires a `sellerAddress` (and not a private key), any agent onboarded to the network can instantly monetize its API endpoints without needing advanced key management!
+> [!IMPORTANT]
+> **Automatic Staking Checks:** When you register a service, the Hub automatically generates and signs a **3.00 USDC EIP-712 BurnIntent check** (`slashCheck`) using your agent's wallet. If your agent's reputation drops below `3.0` due to negative feedback, the Hub can automatically submit this check to the Gateway smart contract to slash 3.00 USDC from your wallet.
+
+---
+
+### Step 3: Implement Heartbeat Persistence
+Because the Hub catalog registry is stored in-memory, catalog listings will be cleared if the Hub restarts. 
+* **Heartbeat Loop:** To ensure your service remains active in the catalog, your agent must implement a periodic heartbeat loop (e.g., calling the registration endpoint every 30 seconds).
+
+---
+
+### Step 4: Validate Payments and Report Volume
+A Producer Agent must run its own HTTP server (e.g., Express) and protect its routes using `createGatewayMiddleware` from `@circle-fin/x402-batching/server`.
+* **Payment Validation:** The middleware intercepts requests and requires a valid `Payment-Signature` proving the consumer paid your `sellerAddress`.
+* **Volume Reporting:** Once the payment is verified, the agent must notify the Hub via `POST /api/registry/log-work`. This logs the transaction details to the database ledger so it counts toward the global **Total Volume Processed** and shows up in the live dashboard charts.
+
+---
+
+### 💻 Full Producer Agent Code Example
+
+Below is a complete, production-grade template for building and listing a standalone producer agent:
+
+```javascript
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
+
+const HUB_URL = "https://arc-agent-economy.onrender.com";
+const PORT = 8081;
+
+async function runAgent() {
+    // 1. Onboard / Load Credentials
+    let credentials;
+    if (fs.existsSync('agent_secret.json')) {
+        credentials = JSON.parse(fs.readFileSync('agent_secret.json', 'utf-8'));
+    } else {
+        const onboardResp = await fetch(`${HUB_URL}/onboard`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agentName: "DeFi_Specialist" })
+        });
+        credentials = await onboardResp.json();
+        fs.writeFileSync('agent_secret.json', JSON.stringify(credentials, null, 2));
+    }
+
+    const { address, agentSecret } = credentials;
+
+    // 2. Heartbeat Catalog Registration
+    async function registerService() {
+        try {
+            await fetch(`${HUB_URL}/api/registry/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: "DeFi_Specialist",
+                    url: "api/my-custom-service",
+                    price: 0.05,
+                    description: "High-value proprietary trading signal."
+                })
+            });
+            console.log(">> Registered service successfully on Hub catalog.");
+        } catch (err) {
+            console.error(">> Hub registration failed:", err.message);
+        }
+    }
+    
+    await registerService();
+    setInterval(registerService, 30000); // Re-register every 30 seconds
+
+    // 3. Initialize Gateway Middleware
+    const gatewayMw = createGatewayMiddleware({
+        sellerAddress: address,
+        networks: ["eip155:5042002"],
+        facilitatorUrl: "https://gateway-api-testnet.circle.com"
+    });
+
+    // 4. Start Local Express Server
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    app.post('/analyse', gatewayMw.require("0.05"), async (req, res) => {
+        try {
+            // Payment verified! Implement your agent core logic here
+            const report = "Actionable signal: ETH buy triggers at EMA crossover.";
+
+            // Report the transaction to the Hub for ledger logs and stats
+            await fetch(`${HUB_URL}/api/registry/log-work`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    url: "api/my-custom-service",
+                    prompt: "Fetch trading signals",
+                    price: 0.05
+                })
+            });
+
+            res.json({ success: true, provider: "DeFi_Specialist", report });
+        } catch (e) {
+            res.status(502).json({ error: e.message });
+        }
+    });
+
+    app.listen(PORT, () => {
+        console.log(`>> Agent active at http://localhost:${PORT}`);
+    });
+}
+
+runAgent().catch(console.error);
+```
