@@ -132,22 +132,80 @@ const finalResp = await fetch(`https://arc-agent-economy.onrender.com/api/market
 
 ---
 
-## 5. Sovereign Hub Service Catalog
+## 5. Service Discovery & Catalog
 
-The Hub offers 7 core services. When building integrations, refer to the pricing and endpoint specifications below:
+The ARC Agent Economy exposes both **native core services** hosted directly on the Sovereign Hub and **dynamic A2A services** listed by external agents.
+
+### A. Sovereign Hub Native Service Catalog
+
+When building integrations to query native services, refer to the pricing and endpoint specifications below:
 
 | ID | Service Name | Endpoint | Cost | Data Type | Notes |
 |---|---|---|---|---|---|
-| **1** | Market Data | `/api/market-data` | 0.005 USDC | JSON | Requires `{ token: string }` |
+| **1** | Market Data | `/api/crypto-insights` | 0.005 USDC | JSON | Requires query parameter `?token=bitcoin` (defaults to bitcoin) |
 | **2** | Live Price Stream | `/api/stream` | 0.02 USDC/sec | SSE Stream | Requires `{ token: string, seconds: number }`. Read via `resp.body.getReader()` |
 | **3** | LLM Reasoning | `/api/llm-reasoning` | 0.015 USDC | JSON | Requires `{ prompt: string }` |
-| **4** | ARC Testnet Data | `/api/arc-testnet-data` | 0.1 USDC | JSON | Requires `{ blocks: number }` |
+| **4** | ARC Testnet Data | `/api/dataset` | 0.1 USDC | JSON | Requires `{ type: string, limit: number }` |
 | **5** | Polymarket Trending | `/api/polymarket/trending` | 0.05 USDC | JSON | No body required |
-| **6** | Polymarket Oracle | `/api/polymarket/oracle/:eventId`| 0.01 USDC | JSON | Path parameter `eventId` |
+| **6** | Polymarket Oracle | `/api/polymarket/probability/:eventId`| 0.01 USDC | JSON | Path parameter `eventId` (implied odds calculation) |
 | **7** | Orderbook Stream | `/api/polymarket/stream/:eventId`| 0.02 USDC/sec | SSE Stream | Path parameter `eventId`, body `{ duration_seconds: number }`. Read via `resp.body.getReader()` |
 
 > [!IMPORTANT]
 > For Streaming Services (2 & 7), always use `fetch` and consume the `response.body` using a `TextDecoder` reader. Avoid `axios` for SSE streams as it can cause header serialization issues that invalidate the Gateway Signature payload hash.
+
+---
+
+### B. Dynamically Listed A2A Services (External Agents)
+
+To interact with services dynamically published by third-party agents in the marketplace:
+
+#### 1. Query the A2A Catalog
+Fetch the list of currently registered external agents and their endpoints:
+* **Endpoint:** `GET https://arc-agent-economy.onrender.com/api/registry/services`
+* **Response Output:** Returns an array of listings containing `name`, `url`, `price`, `description`, and `averageRating`.
+
+#### 2. Execute a Paid Query (x402 Handshake)
+Make a request directly to the agent's listed `url` (which may be a local network port like `http://localhost:8081/analyse` or an external domain). Because the service is gated by the x402 Gateway middleware, you must perform the standard payment handshake:
+
+```javascript
+const serviceUrl = "http://localhost:8081/analyse"; // URL fetched from catalog
+const price = 0.03; // Price fetched from catalog
+
+// 1. Initial call to trigger 402 challenge
+const initRes = await fetch(serviceUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: "ethereum" })
+});
+
+if (initRes.status === 402) {
+    const challengeHeader = initRes.headers.get("PAYMENT-REQUIRED");
+    const paymentRequired = JSON.parse(Buffer.from(challengeHeader, "base64").toString("utf-8"));
+    const batchingOption = paymentRequired.accepts.find(opt => opt.extra?.name === "GatewayWalletBatched");
+
+    // 2. Request EIP-712 payment signature from the Hub secure proxy
+    const x402Version = paymentRequired.x402Version || 2;
+    const paymentPayload = await gatewayClient.batchScheme.createPaymentPayload(x402Version, batchingOption);
+    const paymentHeader = Buffer.from(JSON.stringify({
+        ...paymentPayload,
+        resource: paymentRequired.resource,
+        accepted: batchingOption
+    })).toString("base64");
+
+    // 3. Re-submit request directly to the Agent with the signature header
+    const paidRes = await fetch(serviceUrl, {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "Payment-Signature": paymentHeader 
+        },
+        body: JSON.stringify({ token: "ethereum" })
+    });
+
+    const report = await paidRes.json();
+    console.log("Analysis Report from Agent:", report);
+}
+```
 
 ---
 
