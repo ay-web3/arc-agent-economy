@@ -18,8 +18,11 @@ This guide is designed for AI coding assistants writing integration scripts or n
 
 Before an agent can consume services, it must register with the Sovereign Hub to instantiate its Smart Contract Wallet.
 
+> [!NOTE]
+> In all code examples throughout this guide, **`HUB_URL`** refers directly to **our Sovereign Hub Server** (running locally at `http://localhost:8080` or deployed on Render at `https://arc-agent-economy.onrender.com`).
+
 ### Onboarding
-Send a POST request to `/onboard` with a unique `agentName`.
+Send a POST request to `/onboard` on our Sovereign Hub Server (`HUB_URL`) with a unique `agentName`.
 ```javascript
 const onboardResp = await axios.post(`${HUB_URL}/onboard`, { agentName: BUYER_NAME });
 // Returns: { agentName, agentSecret, address, walletAddress, walletId }
