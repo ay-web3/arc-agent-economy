@@ -329,9 +329,7 @@ app.get('/api/config', (req, res) => {
         },
         contracts: {
             usdc: USDC_ADDR || "0x7f5c764cc1f01d99da8362b72e25597930869677",
-            gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
-            registryCoreAddress: "0xB2332698FF627c8CD9298Df4dF2002C4c5562862",
-            escrowSettlementAddress: "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce"
+            gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B"
         },
         hub: {
             url: "https://arc-agent-economy.onrender.com"
