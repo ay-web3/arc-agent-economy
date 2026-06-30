@@ -319,6 +319,26 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
+app.get('/api/config', (req, res) => {
+    res.json({
+        blockchain: {
+            name: "Arc Testnet",
+            chainId: 5042002,
+            rpcUrl: "https://rpc.testnet.arc.network",
+            explorerUrl: "https://explorer.testnet.arc.network"
+        },
+        contracts: {
+            usdc: USDC_ADDR || "0x7f5c764cc1f01d99da8362b72e25597930869677",
+            gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+            registryCoreAddress: "0xB2332698FF627c8CD9298Df4dF2002C4c5562862",
+            escrowSettlementAddress: "0xeDA4d1f9d30bF0802D39F37f6B36E026555D66ce"
+        },
+        hub: {
+            url: "https://arc-agent-economy.onrender.com"
+        }
+    });
+});
+
 app.get('/api/nano-history', async (req, res) => {
     try {
         if (!mongoClient) return res.json({ success: true, history: nanoLedger });
@@ -492,11 +512,13 @@ app.post('/agent/gateway-deposit', async (req, res) => {
         
         // Wait for approve to be mined
         let approveState = "QUEUED";
+        let approveTxHash = null;
         for (let i = 0; i < 30; i++) {
             await new Promise(r => setTimeout(r, 3000));
             try {
                 const txCheck = await client.getTransaction({ id: approveTxId });
                 approveState = txCheck.data?.transaction?.state || "UNKNOWN";
+                approveTxHash = txCheck.data?.transaction?.txHash || null;
                 if (approveState === "COMPLETE" || approveState === "CONFIRMED") break;
                 if (approveState === "FAILED" || approveState === "DENIED") {
                     throw new Error(`Approve TX failed: ${approveState}`);
@@ -522,11 +544,13 @@ app.post('/agent/gateway-deposit', async (req, res) => {
 
         // Wait for deposit to be mined
         let depositState = "QUEUED";
+        let depositTxHash = null;
         for (let i = 0; i < 30; i++) {
             await new Promise(r => setTimeout(r, 3000));
             try {
                 const txCheck = await client.getTransaction({ id: depositTxId });
                 depositState = txCheck.data?.transaction?.state || "UNKNOWN";
+                depositTxHash = txCheck.data?.transaction?.txHash || null;
                 if (depositState === "COMPLETE" || depositState === "CONFIRMED") break;
                 if (depositState === "FAILED" || depositState === "DENIED") {
                     throw new Error(`Deposit TX failed: ${depositState}`);
@@ -538,7 +562,9 @@ app.post('/agent/gateway-deposit', async (req, res) => {
         res.json({ 
             success: true, 
             approveTxId, 
+            approveTxHash,
             depositTxId, 
+            depositTxHash,
             amount,
             approveState,
             depositState
@@ -766,6 +792,7 @@ app.post('/onboard', async (req, res) => {
 
         let txId = null;
         let hubError = null;
+        let txHash = null;
         if (process.env.MASTER_WALLET_ID) {
             try {
                 // 1. Hub Sponsors Gas
@@ -786,7 +813,17 @@ app.post('/onboard', async (req, res) => {
                 } else {
                     txResp = await client.createTransaction(txPayload);
                 }
-                txId = txResp?.data?.id;
+                txId = txResp?.data?.transaction?.id || txResp?.data?.id;
+
+                // Non-blocking quick poll to try to resolve the hex txHash for better explorer inspection
+                for (let i = 0; i < 5; i++) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    try {
+                        const check = await client.getTransaction({ id: txId });
+                        txHash = check.data?.transaction?.txHash || null;
+                        if (txHash) break;
+                    } catch (checkErr) {}
+                }
             } catch (e) {
                 const errBody = e.response?.data ? JSON.stringify(e.response.data) : e.message;
                 hubError = errBody;
@@ -801,6 +838,7 @@ app.post('/onboard', async (req, res) => {
             address: newWallet.address,
             walletId: newWallet.id,
             sponsorshipTxId: txId,
+            sponsorshipTxHash: txHash,
             hubError: hubError
         });
     } catch (e) {
@@ -905,7 +943,7 @@ app.get('/tx-status/:id', async (req, res) => {
     }
 });
 
-app.post('/agent/sign-402', async (req, res) => {
+app.post(['/agent/sign-402', '/agent/sign'], async (req, res) => {
     try {
         const { agentName, agentSecret, typedData } = req.body;
         // Authenticate the agent password
