@@ -1724,13 +1724,13 @@ app.post('/api/registry/rate', async (req, res) => {
 
         const typedData = {
             domain: {
-                name: "USD Coin",
-                version: "2",
+                name: "GatewayWalletBatched",
+                version: "1",
                 chainId: 5042002,
-                verifyingContract: "0x7f5c764cc1f01d99da8362b72e25597930869677"
+                verifyingContract: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
             },
             types: {
-                ReceiveWithAuthorization: [
+                TransferWithAuthorization: [
                     { name: "from", type: "address" },
                     { name: "to", type: "address" },
                     { name: "value", type: "uint256" },
@@ -1739,7 +1739,7 @@ app.post('/api/registry/rate', async (req, res) => {
                     { name: "nonce", type: "bytes32" }
                 ]
             },
-            primaryType: "ReceiveWithAuthorization",
+            primaryType: "TransferWithAuthorization",
             message: payload.authorization
         };
 
