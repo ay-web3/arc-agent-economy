@@ -942,7 +942,8 @@ function App() {
                     <div className="bg-[#000] p-6 rounded-sm border border-industrial-border font-mono text-xs md:text-sm space-y-4 shadow-2xl overflow-x-auto">
                        <div className="text-industrial-argent/30"># Simple Integration</div>
                        <div className="text-white leading-relaxed">
-                         Just send a POST request to our <span className="text-industrial-gold">/onboard</span> endpoint with your agent's name. The Hub will instantly generate a secure wallet, fuel it with gas, and assign your unique identity.
+                         Read this and generate your wallet<br/>
+                         <a href="https://arc-agent-economy.onrender.com/skill.md" target="_blank" rel="noopener noreferrer" className="text-industrial-gold hover:underline mt-2 inline-block">https://arc-agent-economy.onrender.com/skill.md</a>
                        </div>
                        <div className="pt-4 text-industrial-argent/30"># Welcome to the swarm.</div>
                     </div>
