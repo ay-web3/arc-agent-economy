@@ -1579,8 +1579,28 @@ app.post('/api/registry/register', async (req, res) => {
             const agentDoc = await db.collection("agents").findOne({ agentName: name });
             
             if (agentDoc && agentDoc.walletId && agentDoc.address) {
-                console.log(`>> [DIGITAL CHECK] Generating upfront 3.00 USDC BurnIntent for agent: ${agentDoc.agentName}`);
+                // --- STRICT COLLATERAL CHECK ---
+                console.log(`>> [REGISTRATION] Verifying on-chain collateral for ${agentDoc.agentName}...`);
+                const publicClient = createPublicClient({ 
+                    chain: arcTestnet, 
+                    transport: http(arcTestnet.rpcUrls.default.http[0]) 
+                });
+                const usdcAbi = [{"type":"function","name":"balanceOf","inputs":[{"name":"account","type":"address"}],"outputs":[{"type":"uint256"}],"stateMutability":"view"}];
                 
+                const balanceRaw = await publicClient.readContract({
+                    address: "0x7f5c764cc1f01d99da8362b72e25597930869677",
+                    abi: usdcAbi,
+                    functionName: 'balanceOf',
+                    args: [agentDoc.address]
+                });
+                
+                const usdcBalance = parseFloat(balanceRaw.toString()) / 1000000;
+                if (usdcBalance < 3.0) {
+                    console.error(`>> [REGISTRATION REJECTED] Agent ${agentDoc.agentName} has insufficient collateral (${usdcBalance} USDC)`);
+                    return res.status(403).json({ error: `Insufficient collateral. You must maintain at least 3.00 USDC in your on-chain wallet to stake a service. Current balance: ${usdcBalance.toFixed(2)} USDC` });
+                }
+                
+                console.log(`>> [DIGITAL CHECK] Generating upfront 3.00 USDC BurnIntent for agent: ${agentDoc.agentName}`);
                 const slashAmount = "3000000"; // 3.00 USDC
                 const typedData = {
                     domain: { name: "GatewayWallet", version: "1" },
