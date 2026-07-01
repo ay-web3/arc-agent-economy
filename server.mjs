@@ -1671,6 +1671,7 @@ app.post('/api/registry/register', async (req, res) => {
         existing.price = price;
         existing.description = description || existing.description;
         existing.slashCheck = slashCheck;
+        existing.lastSeen = Date.now();
     } else {
         a2aRegistry.push({
             id: 'a2a-' + Date.now(),
@@ -1679,11 +1680,27 @@ app.post('/api/registry/register', async (req, res) => {
             ratings: [],
             averageRating: 0,
             totalRatings: 0,
-            registeredAt: new Date()
+            registeredAt: new Date(),
+            lastSeen: Date.now()
         });
     }
     res.json({ success: true, message: "Service registered successfully! Digital check secured." });
 });
+
+// --- ACTIVE REGISTRY PRUNING LOOP ---
+// Sweeps the registry every 60 seconds to evict agents who missed their 30s heartbeat
+// (This naturally catches "zombie scammers" who drain their wallets and fail the collateral check)
+setInterval(() => {
+    const now = Date.now();
+    for (let i = a2aRegistry.length - 1; i >= 0; i--) {
+        const service = a2aRegistry[i];
+        // Give a generous 90-second grace period for network delays
+        if (service.lastSeen && (now - service.lastSeen > 90000)) {
+            console.warn(`>> [REGISTRY PRUNE] Evicting agent ${service.name} due to missed heartbeats or insufficient collateral.`);
+            a2aRegistry.splice(i, 1);
+        }
+    }
+}, 60000);
 
 // Optional endpoint for A2A Marketplace agents to broadcast their completed work to the Global Ledger Stream
 app.post('/api/registry/log-work', async (req, res) => {
