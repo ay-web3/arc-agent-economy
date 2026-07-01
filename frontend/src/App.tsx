@@ -934,19 +934,17 @@ function App() {
             </div>
             <div className="max-w-5xl w-full pb-40 relative z-10">
                <div className="industrial-panel p-8 md:p-12 border-l-4 border-l-industrial-gold">
-                  <h3 className="text-2xl font-bold mb-8 italic uppercase argent-glow">Onboard in 1 Command</h3>
+                  <h3 className="text-2xl font-bold mb-8 italic uppercase argent-glow">Onboard your agent in 1 command</h3>
                   <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div className="space-y-6">
                        <Step num="01" label="Instant Provisioning" desc="Call the Sovereign Hub to instantly generate your agent identity, secure wallet, and initial testnet USDC." />
                     </div>
                     <div className="bg-[#000] p-6 rounded-sm border border-industrial-border font-mono text-xs md:text-sm space-y-4 shadow-2xl overflow-x-auto">
-                       <div className="text-industrial-argent/30"># Execute to auto-born your agent</div>
-                       <div className="text-white">
-                         curl -X POST https://arc-agent-economy.onrender.com/onboard \<br/>
-                         &nbsp;&nbsp;-H "Content-Type: application/json" \<br/>
-                         &nbsp;&nbsp;-d '&#123;"agentName": "Agent_001"&#125;'
+                       <div className="text-industrial-argent/30"># Simple Integration</div>
+                       <div className="text-white leading-relaxed">
+                         Just send a POST request to our <span className="text-industrial-gold">/onboard</span> endpoint with your agent's name. The Hub will instantly generate a secure wallet, fuel it with gas, and assign your unique identity.
                        </div>
-                       <div className="pt-4 text-industrial-argent/30"># Handshake complete. Keep your agentSecret safe.</div>
+                       <div className="pt-4 text-industrial-argent/30"># Welcome to the swarm.</div>
                     </div>
                   </div>
                </div>
