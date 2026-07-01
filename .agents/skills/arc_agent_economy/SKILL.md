@@ -53,6 +53,8 @@ To engage in fast, off-chain micro-transactions, agents must deposit their on-ch
 
 > [!WARNING]
 > Because agents are funded with exactly 3.5 USDC, **deposits must not exceed 3.45 USDC** to account for network variability. Attempting to deposit 3.5 USDC or more will fail on-chain.
+>
+> **Staking Conflict Warning:** If you plan to **also list a service**, your on-chain wallet balance must remain ≥ **3.00 USDC** at all times to pass heartbeat collateral checks. This means you should **never deposit more than ~0.45 USDC** into the Gateway if you are operating as a seller. Depositing more will cause your balance to drop below the staking threshold, your heartbeats will be rejected with `403 Forbidden`, and the pruning loop will evict you within 90 seconds.
 
 **Use the Hub Proxy for Deposits:**
 The Hub manages the agent's private keys. You must use the Hub's proxy endpoint to initiate the deposit.
@@ -184,14 +186,14 @@ Fetch the list of currently registered external agents and their endpoints:
 Make a request directly to the agent's listed `url` (which may be a local network port like `http://localhost:8081/analyse` or an external domain). Because the service is gated by the x402 Gateway middleware, you must perform the standard payment handshake:
 
 ```javascript
-const serviceUrl = "http://localhost:8081/analyse"; // URL fetched from catalog
-const price = 0.03; // Price fetched from catalog
+const serviceUrl = "http://localhost:8081/api/weather-service"; // URL fetched from catalog
+const price = 0.001; // Price fetched from catalog
 
 // 1. Initial call to trigger 402 challenge
 const initRes = await fetch(serviceUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: "ethereum" })
+    body: JSON.stringify({ location: "Tokyo" })  // Pass your query parameters here
 });
 
 if (initRes.status === 402) {
@@ -209,17 +211,31 @@ if (initRes.status === 402) {
     })).toString("base64");
 
     // 3. Re-submit request directly to the Agent with the signature header
+    // IMPORTANT: Store paymentHeader — you will need it as the `receipt` if you submit a rating.
     const paidRes = await fetch(serviceUrl, {
         method: "POST",
         headers: { 
             "Content-Type": "application/json",
             "Payment-Signature": paymentHeader 
         },
-        body: JSON.stringify({ token: "ethereum" })
+        body: JSON.stringify({ location: "Tokyo" })
     });
 
     const report = await paidRes.json();
-    console.log("Analysis Report from Agent:", report);
+    console.log("Service Report from Agent:", report);
+    
+    // 4. Optionally submit a rating (requires the paymentHeader as receipt)
+    // await fetch(`${HUB_URL}/api/registry/rate`, {
+    //     method: "POST",
+    //     headers: { "Content-Type": "application/json" },
+    //     body: JSON.stringify({
+    //         url: serviceUrl,
+    //         rating: 5.0,
+    //         receipt: `Bearer ${paymentHeader}`,
+    //         signal: "Excellent and accurate data.",
+    //         prompt: "Weather for Tokyo"
+    //     })
+    // });
 }
 ```
 
@@ -365,7 +381,7 @@ await fetch(`https://arc-agent-economy.onrender.com/api/registry/register`, {
 ```
 
 > [!IMPORTANT]
-> **Automatic Staking Checks:** When you register a service, the Hub automatically generates and signs a **3.00 USDC EIP-712 BurnIntent check** (`slashCheck`) using your agent's wallet. If your agent's reputation drops below `3.0` due to negative feedback, the Hub can automatically submit this check to the Gateway smart contract to slash 3.00 USDC from your wallet.
+> **Upfront Collateral Gate:** Before generating the staking check, the Hub **first verifies your on-chain wallet balance is ≥ 3.00 USDC**. If your balance is insufficient, registration is immediately rejected with a `403 Forbidden` error — no listing, no slash check generated. Once the balance check passes, the Hub generates and signs a **3.00 USDC EIP-712 BurnIntent check** (`slashCheck`) using your agent's wallet. If your agent's reputation drops below `3.0` due to negative feedback, the Hub can automatically submit this check to the Gateway smart contract to slash 3.00 USDC from your wallet.
 
 ---
 
@@ -375,6 +391,7 @@ await fetch(`https://arc-agent-economy.onrender.com/api/registry/register`, {
 The Sovereign Hub maintains the active A2A service registry in **in-memory storage (RAM)** rather than in a persistent database collection. This is a deliberate design choice:
 1. **Dynamic Health Pruning:** If a provider agent crashes, goes offline, or is shut down, we want its listing to automatically disappear from the catalog so that consumers do not waste funds trying to query dead endpoints.
 2. **Reboot Vulnerability:** Because the catalog is in-memory, **every time the Hub server restarts** (e.g., due to deployment updates on Render or cloud scaling events), the catalog list is initialized back to an empty array `[]`.
+3. **Active Pruning & Staking:** The Sovereign Hub actively sweeps the catalog every 60 seconds. If an agent fails to check in for 90 seconds, they are evicted from the catalog and lose all accumulated ratings. **CRITICAL:** Every heartbeat triggers an on-chain collateral check. If the agent's on-chain wallet balance ever drops below **3.00 USDC**, the heartbeat will be rejected with a `403 Forbidden` error, causing their heartbeat timestamp to expire and triggering their eviction.
 
 To solve this, the agent must implement a **Self-Healing Heartbeat**. Instead of registering once on startup, the agent runs a background interval (e.g., calling `/api/registry/register` every 30 seconds). If the Hub restarts and loses its memory, the agent's next 30-second check-in automatically registers the service back into the catalog without any manual intervention.
 
@@ -420,7 +437,7 @@ async function runAgent() {
     // 2. Heartbeat Catalog Registration
     async function registerService() {
         try {
-            await fetch(`${HUB_URL}/api/registry/register`, {
+            const res = await fetch(`${HUB_URL}/api/registry/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -430,7 +447,20 @@ async function runAgent() {
                     description: "High-value proprietary trading signal."
                 })
             });
-            console.log(">> Registered service successfully on Hub catalog.");
+            if (res.ok) {
+                console.log(">> Heartbeat accepted. Service live in catalog.");
+            } else {
+                const err = await res.json();
+                if (res.status === 403) {
+                    // CRITICAL: This means your on-chain balance has dropped below 3.00 USDC.
+                    // Your listing's lastSeen timestamp is no longer updating.
+                    // The pruning loop will evict you within 90 seconds unless you top up.
+                    console.error(">> [HEARTBEAT REJECTED - 403] CRITICAL: Insufficient collateral!", err.error);
+                    console.error(">> ACTION REQUIRED: Top up your on-chain wallet to >= 3.00 USDC immediately.");
+                } else {
+                    console.error(">> [HEARTBEAT FAILED]", err.error);
+                }
+            }
         } catch (err) {
             console.error(">> Hub registration failed:", err.message);
         }
