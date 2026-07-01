@@ -6,7 +6,7 @@ import axios from 'axios';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, verifyTypedData } from 'viem';
 import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -1710,6 +1710,53 @@ app.post('/api/registry/rate', async (req, res) => {
     
     if (!receipt || !receipt.startsWith('Bearer ')) {
         return res.status(403).json({ error: "Cryptographic Proof of Purchase (X402 Receipt) is required to submit a rating." });
+    }
+
+    let decodedReceipt;
+    try {
+        const base64Str = receipt.split(' ')[1];
+        decodedReceipt = JSON.parse(Buffer.from(base64Str, 'base64').toString('utf-8'));
+        
+        const payload = decodedReceipt.payload;
+        if (!payload || !payload.authorization || !payload.signature) {
+            throw new Error("Missing authorization or signature in payload");
+        }
+
+        const typedData = {
+            domain: {
+                name: "USD Coin",
+                version: "2",
+                chainId: 5042002,
+                verifyingContract: "0x7f5c764cc1f01d99da8362b72e25597930869677"
+            },
+            types: {
+                ReceiveWithAuthorization: [
+                    { name: "from", type: "address" },
+                    { name: "to", type: "address" },
+                    { name: "value", type: "uint256" },
+                    { name: "validAfter", type: "uint256" },
+                    { name: "validBefore", type: "uint256" },
+                    { name: "nonce", type: "bytes32" }
+                ]
+            },
+            primaryType: "ReceiveWithAuthorization",
+            message: payload.authorization
+        };
+
+        const isValid = await verifyTypedData({
+            address: payload.authorization.from,
+            domain: typedData.domain,
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+            signature: payload.signature
+        });
+
+        if (!isValid) {
+            return res.status(403).json({ error: "Invalid Cryptographic Signature. Rating rejected." });
+        }
+    } catch (e) {
+        return res.status(403).json({ error: `Invalid Receipt Format: ${e.message}` });
     }
     
     const service = a2aRegistry.find(s => s.url === url);
