@@ -7,7 +7,6 @@ import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-
 import { GatewayClient } from '@circle-fin/x402-batching/client';
 import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
 import { createPublicClient, http, parseAbi, encodeFunctionData, verifyTypedData } from 'viem';
-import { SwarmOrchestrator } from './arc-sdk/src/SwarmOrchestrator.js';
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('>> [CRASH PREVENTED] Unhandled Rejection at:', promise, 'reason:', reason);
@@ -35,7 +34,6 @@ let mongoClient = null;
 let mongoPromise = null;
 let MASTER_ADDRESS = null;
 let gatewayMw = null;
-let orchestrator = null;
 const nanoLedger = []; // Global in-memory swarm ledger
 const adminClients = []; // SSE connections
 const a2aRegistry = []; // A2A Marketplace registry
@@ -67,16 +65,7 @@ async function bootstrap() {
 
         client = initiateDeveloperControlledWalletsClient({ apiKey: API_KEY, entitySecret: ENTITY_SECRET });
         
-        // Initialize Modular Orchestrator
-        orchestrator = new SwarmOrchestrator({
-            apiKey: API_KEY,
-            entitySecret: ENTITY_SECRET,
-            privateKey: process.env.CIRCLE_GATEWAY_PRIVATE_KEY,
-            gatewayAddress: process.env.CIRCLE_GATEWAY_ADDRESS || "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
-            treasuryAddress: MASTER_WALLET_ID
-        });
-
-        console.log(">> [SENTINEL] Swarm Engines Operational (Modular Mode).");
+        console.log(">> [SENTINEL] Swarm Engines Operational.");
 
         if (!process.env.MONGODB_URI) {
             throw new Error("Missing required environment variable: MONGODB_URI");
@@ -100,8 +89,7 @@ async function bootstrap() {
             privateKey: GATEWAY_KEY,
             chain: "arcTestnet"
         });
-        
-        if (orchestrator) orchestrator.setGateway(gateway);
+
         console.log(">> [SENTINEL] Circle x402 Gateway Connected.");
         // --- SELF-AUTHORIZATION (Ensure Hub has GOVERNANCE_ROLE) ---
         const ESCROW = "0xDF5455170BCE05D961c8643180f22361C0340DE0";
