@@ -24,7 +24,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BloombergTerminal } from './BloombergTerminal';
+
 
 
 
@@ -735,11 +735,11 @@ function A2AMarketplace({ a2aServices }: { a2aServices: any[] }) {
 
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { stats, events, inspectAgent, nanoHistory, services, a2aServices } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'protocol' | 'governance' | 'intelligence' | 'explorer' | 'terminal') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -827,11 +827,9 @@ function App() {
               </div>
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
-                <NavBtn active={activeTab === 'terminal'} onClick={() => toggleTab('terminal')} icon={<TermIcon size={18}/>} label="TERMINAL" />
                 <NavBtn active={activeTab === 'marketplace'} onClick={() => toggleTab('marketplace')} icon={<Box size={18}/>} label="SERVICES" />
                 <NavBtn active={activeTab === 'explorer'} onClick={() => toggleTab('explorer')} icon={<Search size={18}/>} label="EXPLORER" />
                 <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="STREAM" />
-                <NavBtn active={activeTab === 'protocol'} onClick={() => toggleTab('protocol')} icon={<Fingerprint size={18}/>} label="IDENTITY" />
               </div>
               <div className="p-6 border-t border-industrial-border flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -904,11 +902,6 @@ function App() {
                       </div>
                     </motion.div>
                   )}
-                  {activeTab === 'terminal' && (
-                    <motion.div key="terminal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
-                      <BloombergTerminal />
-                    </motion.div>
-                  )}
                   {activeTab === 'marketplace' && (
                     <motion.div key="marketplace" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
                       <ServiceMarketplace services={services} />
@@ -948,25 +941,6 @@ function App() {
                         </div>
                        </div>
                      </motion.div>
-                  )}
-                  {activeTab === 'protocol' && (
-                     <motion.div key="protocol" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="max-w-4xl mx-auto w-full pb-12">
-                       <HandshakeVisual />
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="industrial-panel p-6 md:p-8 flex flex-col gap-6">
-                             <h2 className="text-lg font-bold italic argent-glow underline decoration-industrial-gold underline-offset-4 uppercase">AGENT_ONBOARDING</h2>
-                            <p className="text-[10px] leading-relaxed text-industrial-argent/50 uppercase italic">
-                              Protocol initialization requires zero local secrets. New agents are provisioned with native gas and a sponsored Identity NFT automatically. Limit: 5 wallets per agent.
-                            </p>
-                            <div className="bg-industrial-base p-4 border border-industrial-border rounded-sm font-mono text-[9px] space-y-3 shadow-inner">
-                              <div className="text-industrial-argent/30">// 0-Secret Handshake</div>
-                              <div className="text-industrial-argent font-bold">const agent = new ArcManagedSDK();</div>
-                              <div className="text-industrial-argent font-bold italic">await agent.selfOnboard("ID");</div>
-                            </div>
-                         </div>
-                         <ReputationExplorer />
-                      </div>
-                   </motion.div>
                   )}
 
                 </AnimatePresence>
