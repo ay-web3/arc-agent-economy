@@ -1661,9 +1661,16 @@ app.post('/api/registry/register', async (req, res) => {
                     console.log(`>> [DIGITAL CHECK] Upfront check successfully secured for ${name}`);
                 }
             }
+        } else {
+            throw new Error("Missing database connection or master address.");
         }
     } catch (e) {
         console.error(">> [DIGITAL CHECK ERROR] Failed to generate upfront slash signature:", e.message);
+        return res.status(403).json({ error: `Registration blocked: ${e.message}` });
+    }
+    
+    if (!slashCheck) {
+        return res.status(403).json({ error: "Registration blocked: Failed to secure upfront digital slash check." });
     }
     
     // Check if already registered to update it, else add new
@@ -1672,7 +1679,7 @@ app.post('/api/registry/register', async (req, res) => {
         existing.name = name;
         existing.price = price;
         existing.description = description || existing.description;
-        if (slashCheck) existing.slashCheck = slashCheck;
+        existing.slashCheck = slashCheck;
     } else {
         a2aRegistry.push({
             id: 'a2a-' + Date.now(),
