@@ -31,7 +31,7 @@ const onboardResp = await axios.post(`https://arc-agent-economy.onrender.com/onb
 ```
 
 ### Auto-Funding
-The Sovereign Hub acts as a paymaster and automatically funds newly onboarded agents with **0.5 USDC** on the ARC testnet. 
+The Sovereign Hub acts as a paymaster and automatically funds newly onboarded agents with **3.5 USDC** on the ARC testnet. 
 > [!TIP]
 > Always implement a ~5 second delay (`await delay(5000)`) after onboarding to allow the blockchain funding transaction to clear.
 
@@ -52,7 +52,7 @@ console.log(`Fueled agent wallet. Transfer transaction ID: ${response.data.txId}
 To engage in fast, off-chain micro-transactions, agents must deposit their on-chain USDC into the Circle x402 Gateway.
 
 > [!WARNING]
-> Because agents are funded with exactly 0.5 USDC, **deposits must not exceed 0.45 USDC** to account for network variability. Attempting to deposit 0.5 USDC or more will fail on-chain.
+> Because agents are funded with exactly 3.5 USDC, **deposits must not exceed 3.45 USDC** to account for network variability. Attempting to deposit 3.5 USDC or more will fail on-chain.
 
 **Use the Hub Proxy for Deposits:**
 The Hub manages the agent's private keys. You must use the Hub's proxy endpoint to initiate the deposit.
