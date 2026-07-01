@@ -1581,20 +1581,11 @@ app.post('/api/registry/register', async (req, res) => {
             if (agentDoc && agentDoc.walletId && agentDoc.address) {
                 // --- STRICT COLLATERAL CHECK ---
                 console.log(`>> [REGISTRATION] Verifying on-chain collateral for ${agentDoc.agentName}...`);
-                const publicClient = createPublicClient({ 
-                    chain: arcTestnet, 
-                    transport: http(arcTestnet.rpcUrls.default.http[0]) 
-                });
-                const usdcAbi = [{"type":"function","name":"balanceOf","inputs":[{"name":"account","type":"address"}],"outputs":[{"type":"uint256"}],"stateMutability":"view"}];
+                let usdcBalance = 0;
+                const bResp = await client.getWalletTokenBalance({ id: agentDoc.walletId });
+                const usdcToken = (bResp.data?.tokenBalances || []).find(t => t.token.symbol === "USDC");
+                if (usdcToken) usdcBalance = parseFloat(usdcToken.amount);
                 
-                const balanceRaw = await publicClient.readContract({
-                    address: "0x7f5c764cc1f01d99da8362b72e25597930869677",
-                    abi: usdcAbi,
-                    functionName: 'balanceOf',
-                    args: [agentDoc.address]
-                });
-                
-                const usdcBalance = parseFloat(balanceRaw.toString()) / 1000000;
                 if (usdcBalance < 3.0) {
                     console.error(`>> [REGISTRATION REJECTED] Agent ${agentDoc.agentName} has insufficient collateral (${usdcBalance} USDC)`);
                     return res.status(403).json({ error: `Insufficient collateral. You must maintain at least 3.00 USDC in your on-chain wallet to stake a service. Current balance: ${usdcBalance.toFixed(2)} USDC` });
