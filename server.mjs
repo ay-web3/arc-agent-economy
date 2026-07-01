@@ -39,6 +39,7 @@ let orchestrator = null;
 const nanoLedger = []; // Global in-memory swarm ledger
 const adminClients = []; // SSE connections
 const a2aRegistry = []; // A2A Marketplace registry
+const taskBoard = []; // Bounty marketplace task board
 
 // --- ARC NETWORK CONFIG ---
 const arcTestnet = {
@@ -142,6 +143,7 @@ async function bootstrap() {
                 console.warn(">> [WARNING] Treasury Resolution Failed:", e.message);
             }
         }
+        await loadTasksFromDB();
     } catch (e) {
         console.error(">> [FATAL] Logic Restoration Failed:", e.message);
         SDK_LOAD_ERROR = { message: e.message, stack: e.stack, time: new Date().toISOString() };
@@ -1834,6 +1836,458 @@ app.get('/api/registry/services', (req, res) => {
     const serialized = JSON.stringify(a2aRegistry, (_, v) => typeof v === 'bigint' ? v.toString() : v);
     res.setHeader('Content-Type', 'application/json');
     res.send(serialized);
+});
+
+// ====================================================================
+// TASK BOARD / BOUNTY MARKETPLACE
+// ====================================================================
+
+// Persist task mutations to MongoDB
+async function persistTask(task) {
+    try {
+        if (mongoPromise) await mongoPromise;
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            await db.collection("tasks").updateOne(
+                { taskId: task.taskId },
+                { $set: { ...task, _updatedAt: new Date() } },
+                { upsert: true }
+            );
+        }
+    } catch (e) {
+        console.error(">> [TASK BOARD] Failed to persist task:", e.message);
+    }
+}
+
+// Load tasks from MongoDB on startup (called from bootstrap)
+async function loadTasksFromDB() {
+    try {
+        if (mongoPromise) await mongoPromise;
+        if (mongoClient) {
+            const db = mongoClient.db("arc_swarm");
+            const saved = await db.collection("tasks").find({}).sort({ createdAt: -1 }).limit(200).toArray();
+            saved.forEach(t => {
+                delete t._id;
+                delete t._updatedAt;
+                if (!taskBoard.find(tb => tb.taskId === t.taskId)) {
+                    taskBoard.push(t);
+                }
+            });
+            console.log(`>> [TASK BOARD] Loaded ${saved.length} tasks from MongoDB`);
+        }
+    } catch (e) {
+        console.error(">> [TASK BOARD] Failed to load tasks from DB:", e.message);
+    }
+}
+
+// Lazy expiry: mark expired tasks and refund escrow
+function processTaskExpiry() {
+    const now = new Date();
+    taskBoard.forEach(task => {
+        if ((task.status === "OPEN" || task.status === "ASSIGNED") && new Date(task.deadline) < now) {
+            task.status = "EXPIRED";
+            task.completedAt = now.toISOString();
+            persistTask(task);
+            persistLedgerEntry({
+                type: "task_escrow_refunded",
+                service: "Task Board",
+                provider: task.buyerName,
+                price: task.maxBudget,
+                notes: `Expired task "${task.title}" — ${task.maxBudget} USDC refunded to buyer`
+            });
+            console.log(`>> [TASK BOARD] Task "${task.title}" expired. Escrow refunded to ${task.buyerName}.`);
+        }
+    });
+}
+
+// GET /api/tasks — List all tasks with optional status filter
+app.get('/api/tasks', (req, res) => {
+    processTaskExpiry(); // Lazy expiry check
+    const { status } = req.query;
+    let filtered = taskBoard;
+    if (status) {
+        filtered = taskBoard.filter(t => t.status === status.toUpperCase());
+    }
+    // Return sorted newest first, hide agent secrets
+    const safe = filtered.map(t => ({
+        ...t,
+        bids: t.bids.map(b => ({ ...b })) // clone bids
+    }));
+    res.json({ success: true, tasks: safe });
+});
+
+// POST /api/tasks/create — Buyer creates a task with price range
+app.post('/api/tasks/create', async (req, res) => {
+    try {
+        const { agentName, agentSecret, title, description, minBudget, maxBudget, deadline } = req.body;
+        if (!title || !description || minBudget === undefined || maxBudget === undefined || !deadline) {
+            return res.status(400).json({ error: "Missing required fields: title, description, minBudget, maxBudget, deadline" });
+        }
+        if (parseFloat(minBudget) <= 0 || parseFloat(maxBudget) <= 0 || parseFloat(minBudget) > parseFloat(maxBudget)) {
+            return res.status(400).json({ error: "Invalid budget range. minBudget must be > 0 and <= maxBudget." });
+        }
+        if (new Date(deadline) <= new Date()) {
+            return res.status(400).json({ error: "Deadline must be in the future." });
+        }
+
+        const agent = await verifyAgent(agentName, agentSecret);
+
+        // Verify buyer has sufficient gateway balance
+        if (client && agent.walletId) {
+            try {
+                const bResp = await client.getWalletTokenBalance({ id: agent.walletId });
+                const usdcBal = bResp.data?.tokenBalances?.find(t => t.token?.symbol === "USDC");
+                const available = parseFloat(usdcBal?.amount || "0");
+                if (available < parseFloat(maxBudget)) {
+                    return res.status(400).json({ 
+                        error: `Insufficient USDC balance. Available: ${available.toFixed(4)}, Required escrow: ${maxBudget}` 
+                    });
+                }
+            } catch (balErr) {
+                console.warn(">> [TASK BOARD] Balance check failed, proceeding:", balErr.message);
+            }
+        }
+
+        const task = {
+            taskId: crypto.randomUUID(),
+            buyerName: agent.agentName,
+            buyerAddress: agent.address,
+            title,
+            description,
+            minBudget: parseFloat(minBudget),
+            maxBudget: parseFloat(maxBudget),
+            deadline,
+            status: "OPEN",
+            bids: [],
+            acceptedBid: null,
+            submission: null,
+            verdict: null,
+            createdAt: new Date().toISOString(),
+            completedAt: null
+        };
+
+        taskBoard.unshift(task);
+        await persistTask(task);
+
+        persistLedgerEntry({
+            type: "task_escrow_locked",
+            service: "Task Board",
+            provider: agent.agentName,
+            price: task.maxBudget,
+            notes: `Bounty created: "${title}" — ${task.maxBudget} USDC locked in escrow`
+        });
+
+        console.log(`>> [TASK BOARD] Task created: "${title}" by ${agent.agentName} (${task.minBudget}-${task.maxBudget} USDC)`);
+        res.json({ success: true, taskId: task.taskId, title, maxBudget: task.maxBudget, deadline, status: "OPEN" });
+    } catch (e) {
+        console.error(">> [TASK BOARD CREATE ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/tasks/bid — Staked seller bids on an open task
+app.post('/api/tasks/bid', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId, price, pitch } = req.body;
+        if (!taskId || price === undefined) {
+            return res.status(400).json({ error: "Missing required fields: taskId, price" });
+        }
+
+        const agent = await verifyAgent(agentName, agentSecret);
+
+        // Verify seller is staked (has a registered service with slashCheck)
+        const isStaked = a2aRegistry.some(s => s.name === agent.agentName && s.slashCheck);
+        if (!isStaked) {
+            return res.status(403).json({ 
+                error: "Only staked sellers can bid on tasks. You must first register a service via POST /api/registry/register to stake your 3.00 USDC collateral." 
+            });
+        }
+
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        if (task.status !== "OPEN") return res.status(400).json({ error: `Task is not open for bids. Current status: ${task.status}` });
+
+        // Verify bid is within price range
+        const bidPrice = parseFloat(price);
+        if (bidPrice < task.minBudget || bidPrice > task.maxBudget) {
+            return res.status(400).json({ 
+                error: `Bid price must be between ${task.minBudget} and ${task.maxBudget} USDC. Your bid: ${bidPrice}` 
+            });
+        }
+
+        // Prevent duplicate bids from same seller
+        if (task.bids.some(b => b.sellerName === agent.agentName)) {
+            return res.status(400).json({ error: "You have already bid on this task." });
+        }
+
+        // Find seller's reputation from registry
+        const sellerService = a2aRegistry.find(s => s.name === agent.agentName);
+        const reputation = sellerService?.averageRating || 0;
+
+        const bid = {
+            bidId: crypto.randomUUID(),
+            sellerName: agent.agentName,
+            sellerAddress: agent.address,
+            price: bidPrice,
+            pitch: pitch || "",
+            reputation,
+            bidAt: new Date().toISOString()
+        };
+
+        task.bids.push(bid);
+        await persistTask(task);
+
+        console.log(`>> [TASK BOARD] Bid placed: ${agent.agentName} bid ${bidPrice} USDC on "${task.title}"`);
+        res.json({ success: true, bidId: bid.bidId, taskId, price: bidPrice });
+    } catch (e) {
+        console.error(">> [TASK BOARD BID ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/tasks/accept — Buyer accepts a bid
+app.post('/api/tasks/accept', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId, bidId } = req.body;
+        if (!taskId || !bidId) {
+            return res.status(400).json({ error: "Missing required fields: taskId, bidId" });
+        }
+
+        const agent = await verifyAgent(agentName, agentSecret);
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        if (task.buyerName !== agent.agentName) return res.status(403).json({ error: "Only the task buyer can accept bids." });
+        if (task.status !== "OPEN") return res.status(400).json({ error: `Task is not open. Current status: ${task.status}` });
+
+        const bid = task.bids.find(b => b.bidId === bidId);
+        if (!bid) return res.status(404).json({ error: "Bid not found" });
+
+        task.acceptedBid = bid;
+        task.status = "ASSIGNED";
+        await persistTask(task);
+
+        // Log the escrow adjustment if bid < maxBudget
+        const savings = task.maxBudget - bid.price;
+        if (savings > 0) {
+            persistLedgerEntry({
+                type: "task_escrow_adjusted",
+                service: "Task Board",
+                provider: agent.agentName,
+                price: savings,
+                notes: `Bid accepted below max budget — ${savings.toFixed(4)} USDC returned to buyer escrow`
+            });
+        }
+
+        persistLedgerEntry({
+            type: "task_bid_accepted",
+            service: "Task Board",
+            provider: bid.sellerName,
+            price: bid.price,
+            notes: `Bid accepted on "${task.title}" — ${bid.sellerName} assigned at ${bid.price} USDC`
+        });
+
+        console.log(`>> [TASK BOARD] Bid accepted: ${bid.sellerName} assigned to "${task.title}" at ${bid.price} USDC`);
+        res.json({ success: true, taskId, assignedTo: bid.sellerName, agreedPrice: bid.price });
+    } catch (e) {
+        console.error(">> [TASK BOARD ACCEPT ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/tasks/submit — Seller submits result
+app.post('/api/tasks/submit', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId, result } = req.body;
+        if (!taskId || !result) {
+            return res.status(400).json({ error: "Missing required fields: taskId, result" });
+        }
+
+        const agent = await verifyAgent(agentName, agentSecret);
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        if (!task.acceptedBid || task.acceptedBid.sellerName !== agent.agentName) {
+            return res.status(403).json({ error: "Only the assigned seller can submit results." });
+        }
+        if (task.status !== "ASSIGNED") return res.status(400).json({ error: `Task is not in ASSIGNED state. Current status: ${task.status}` });
+
+        task.submission = { result, submittedAt: new Date().toISOString() };
+        task.status = "SUBMITTED";
+        await persistTask(task);
+
+        persistLedgerEntry({
+            type: "task_submitted",
+            service: "Task Board",
+            provider: agent.agentName,
+            price: task.acceptedBid.price,
+            notes: `Result submitted for "${task.title}" — awaiting buyer approval`
+        });
+
+        console.log(`>> [TASK BOARD] Result submitted by ${agent.agentName} for "${task.title}"`);
+        res.json({ success: true, taskId, status: "SUBMITTED" });
+    } catch (e) {
+        console.error(">> [TASK BOARD SUBMIT ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/tasks/approve — Buyer approves result, escrow released to seller
+app.post('/api/tasks/approve', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId } = req.body;
+        if (!taskId) return res.status(400).json({ error: "Missing required field: taskId" });
+
+        const agent = await verifyAgent(agentName, agentSecret);
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        if (task.buyerName !== agent.agentName) return res.status(403).json({ error: "Only the task buyer can approve." });
+        if (task.status !== "SUBMITTED") return res.status(400).json({ error: `Task is not in SUBMITTED state. Current status: ${task.status}` });
+
+        // Transfer escrow to seller via Circle
+        let txId = null;
+        if (client && task.acceptedBid.sellerAddress) {
+            try {
+                const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: task.acceptedBid.sellerName });
+                if (sellerDoc && sellerDoc.walletId) {
+                    const transferAmount = Math.round(task.acceptedBid.price * 1e6).toString();
+                    const USDC_CA = "0x3600000000000000000000000000000000000000";
+                    const transferResp = await client.createTransaction({
+                        idempotencyKey: crypto.randomUUID(),
+                        walletId: agent.walletId,
+                        blockchain: "ARC-TESTNET",
+                        tokenId: await resolveUsdcTokenId(agent.walletId),
+                        destinationAddress: sellerDoc.address,
+                        amounts: [task.acceptedBid.price.toString()]
+                    });
+                    txId = transferResp.data?.transaction?.id || transferResp.data?.id;
+                    console.log(`>> [TASK BOARD] Escrow transfer queued: ${txId}`);
+                }
+            } catch (transferErr) {
+                console.error(">> [TASK BOARD] Escrow transfer failed:", transferErr.message);
+            }
+        }
+
+        task.status = "COMPLETED";
+        task.completedAt = new Date().toISOString();
+        await persistTask(task);
+
+        persistLedgerEntry({
+            type: "task_escrow_released",
+            service: "Task Board",
+            provider: task.acceptedBid.sellerName,
+            price: task.acceptedBid.price,
+            notes: `Bounty completed: "${task.title}" — ${task.acceptedBid.price} USDC paid to ${task.acceptedBid.sellerName}${txId ? ` (Tx: ${txId})` : ''}`
+        });
+
+        console.log(`>> [TASK BOARD] Task "${task.title}" COMPLETED. ${task.acceptedBid.price} USDC released to ${task.acceptedBid.sellerName}`);
+        res.json({ success: true, taskId, paidTo: task.acceptedBid.sellerName, amount: task.acceptedBid.price, txId });
+    } catch (e) {
+        console.error(">> [TASK BOARD APPROVE ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/tasks/dispute — Buyer disputes, AI Court arbitrates
+app.post('/api/tasks/dispute', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId, reason } = req.body;
+        if (!taskId || !reason) return res.status(400).json({ error: "Missing required fields: taskId, reason" });
+
+        const agent = await verifyAgent(agentName, agentSecret);
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        if (task.buyerName !== agent.agentName) return res.status(403).json({ error: "Only the task buyer can dispute." });
+        if (task.status !== "SUBMITTED") return res.status(400).json({ error: `Task is not in SUBMITTED state. Current status: ${task.status}` });
+
+        task.status = "DISPUTED";
+        await persistTask(task);
+
+        console.log(`\n⚖️ [AI SUPREME COURT — TASK DISPUTE] "${task.title}"`);
+
+        let verdict = "FAIR"; // Default: buyer wins, gets refund
+        try {
+            const groqKey = process.env.GROQ_API_KEY;
+            if (!groqKey) throw new Error("GROQ_API_KEY missing");
+
+            const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: "You are the AI Supreme Court Arbitrator for a task bounty marketplace. A buyer posted a task and a seller completed it. The buyer is now disputing the seller's work. You must determine if the buyer's dispute is FAIR (the seller's work was genuinely bad, incomplete, or did not match the task requirements) or MALICIOUS (the buyer is trying to avoid paying for acceptable work). Respond with exactly one word: FAIR or MALICIOUS." },
+                        { role: "user", content: `TASK DESCRIPTION: "${task.description}"\n\nSELLER'S SUBMITTED RESULT: "${task.submission.result}"\n\nBUYER'S DISPUTE REASON: "${reason}"` }
+                    ],
+                    max_tokens: 10,
+                    temperature: 0.1
+                })
+            });
+
+            const groqData = await groqResp.json();
+            verdict = groqData.choices?.[0]?.message?.content?.trim().toUpperCase() || "FAIR";
+            console.log(`   ⚖️ TASK DISPUTE VERDICT: ${verdict}`);
+        } catch (courtErr) {
+            console.error(">> [TASK DISPUTE] AI Court failed:", courtErr.message);
+        }
+
+        task.verdict = verdict;
+
+        if (verdict.includes("FAIR")) {
+            // Buyer wins — refund escrow
+            task.status = "REFUNDED";
+            task.completedAt = new Date().toISOString();
+            await persistTask(task);
+
+            persistLedgerEntry({
+                type: "task_escrow_refunded",
+                service: "Task Board — AI Court",
+                provider: task.buyerName,
+                price: task.acceptedBid.price,
+                notes: `Dispute FAIR: "${task.title}" — ${task.acceptedBid.price} USDC refunded to buyer`
+            });
+
+            res.json({ success: true, taskId, verdict: "FAIR", resolution: "Buyer's dispute upheld. Escrow refunded to buyer." });
+        } else {
+            // Seller wins — release escrow to seller
+            task.status = "COMPLETED";
+            task.completedAt = new Date().toISOString();
+            await persistTask(task);
+
+            // Transfer to seller
+            if (client) {
+                try {
+                    const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: task.acceptedBid.sellerName });
+                    if (sellerDoc && sellerDoc.walletId) {
+                        const buyerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: task.buyerName });
+                        if (buyerDoc) {
+                            await client.createTransaction({
+                                idempotencyKey: crypto.randomUUID(),
+                                walletId: buyerDoc.walletId,
+                                blockchain: "ARC-TESTNET",
+                                tokenId: await resolveUsdcTokenId(buyerDoc.walletId),
+                                destinationAddress: sellerDoc.address,
+                                amounts: [task.acceptedBid.price.toString()]
+                            });
+                        }
+                    }
+                } catch (payErr) {
+                    console.error(">> [TASK DISPUTE] Seller payment failed:", payErr.message);
+                }
+            }
+
+            persistLedgerEntry({
+                type: "task_dispute_malicious",
+                service: "Task Board — AI Court",
+                provider: task.acceptedBid.sellerName,
+                price: task.acceptedBid.price,
+                notes: `Dispute MALICIOUS: Buyer tried to cheat on "${task.title}" — ${task.acceptedBid.price} USDC released to seller`
+            });
+
+            res.json({ success: true, taskId, verdict: "MALICIOUS", resolution: "Buyer's dispute rejected. Seller's work was valid. Escrow released to seller." });
+        }
+    } catch (e) {
+        console.error(">> [TASK BOARD DISPUTE ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Admin Monitor Stream (Live Dashboard Feed)

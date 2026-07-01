@@ -733,13 +733,149 @@ function A2AMarketplace({ a2aServices }: { a2aServices: any[] }) {
   );
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  OPEN: 'bg-industrial-gold/10 text-industrial-gold border-industrial-gold/30',
+  ASSIGNED: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
+  SUBMITTED: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/30',
+  COMPLETED: 'bg-green-400/10 text-green-400 border-green-400/30',
+  DISPUTED: 'bg-red-400/10 text-red-400 border-red-400/30',
+  EXPIRED: 'bg-industrial-argent/10 text-industrial-argent/40 border-industrial-argent/10',
+  CANCELLED: 'bg-industrial-argent/10 text-industrial-argent/40 border-industrial-argent/10',
+  REFUNDED: 'bg-industrial-argent/10 text-industrial-argent/40 border-industrial-argent/10',
+};
+
+function formatCountdown(deadline: string): string {
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms <= 0) return 'EXPIRED';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
+function TaskBoard({ tasks }: { tasks: any[] }) {
+  const [filter, setFilter] = useState<string>('ALL');
+  const filters = ['ALL', 'OPEN', 'ASSIGNED', 'COMPLETED'] as const;
+
+  const filtered = filter === 'ALL' ? tasks : tasks.filter(t => t.status === filter);
+
+  return (
+    <div className="max-w-4xl mx-auto w-full mt-8">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-6 px-4 md:px-0">
+        <Gavel size={24} className="text-industrial-gold" />
+        <h2 className="text-xl font-bold tracking-widest text-industrial-argent uppercase">Bounty Board</h2>
+        <div className="ml-auto flex items-center gap-2 border border-industrial-gold/30 px-3 py-1 rounded bg-industrial-gold/10">
+          <span className="text-[10px] font-bold text-industrial-gold uppercase tracking-widest">Demand Marketplace</span>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex gap-2 mb-6 px-4 md:px-0">
+        {filters.map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest border rounded-sm transition-all ${
+              filter === f
+                ? 'bg-industrial-gold text-industrial-base border-industrial-gold'
+                : 'border-industrial-border text-industrial-argent/40 hover:border-industrial-argent/30 hover:text-industrial-argent/60'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards */}
+      {filtered.length === 0 ? (
+        <div className="text-center p-8 border border-dashed border-industrial-border">
+          <span className="text-industrial-argent/50 font-mono text-sm uppercase">No bounties posted yet.</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 px-4 md:px-0">
+          {filtered.map((task, i) => (
+            <motion.div
+              key={task.taskId}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="group relative border border-industrial-border bg-industrial-base p-6 overflow-hidden hover:border-industrial-gold transition-colors duration-300"
+            >
+              {/* Background watermark */}
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Gavel size={48} />
+              </div>
+
+              {/* Top row: title + badges */}
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4 relative z-10">
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-lg font-bold text-industrial-argent uppercase tracking-wider">{task.title}</h3>
+                  <p className="text-xs text-industrial-argent/60 mt-1 max-w-lg leading-relaxed">{task.description}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {/* Budget badge */}
+                  <span className="bg-industrial-gold/20 text-industrial-gold px-2 py-0.5 rounded border border-industrial-gold/50 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                    {task.minBudget?.toFixed(2) ?? '0.00'} – {task.maxBudget?.toFixed(2) ?? '0.00'} USDC
+                  </span>
+                  {/* Status badge */}
+                  <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-widest ${STATUS_COLORS[task.status] || STATUS_COLORS.EXPIRED}`}>
+                    {task.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-widest relative z-10 mb-4">
+                <span className="text-industrial-argent/40">BY: {task.buyerName}</span>
+                <span className="bg-industrial-border/40 px-2 py-0.5 rounded text-industrial-argent/60">
+                  {task.bids?.length ?? 0} BIDS
+                </span>
+                <span className={`${
+                  formatCountdown(task.deadline) === 'EXPIRED' ? 'text-red-400' : 'text-industrial-argent/40'
+                }`}>
+                  ⏱ {formatCountdown(task.deadline)}
+                </span>
+              </div>
+
+              {/* Accepted bid details */}
+              {task.acceptedBid && (
+                <div className="p-3 bg-black/40 border border-industrial-border rounded relative z-10 mb-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck size={14} className="text-blue-400" />
+                      <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Assigned to: {task.acceptedBid.sellerName}</span>
+                    </div>
+                    <span className="text-xs font-bold text-industrial-gold italic tabular-nums">{task.acceptedBid.price} USDC</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Submission preview */}
+              {task.submission && (
+                <div className="p-3 bg-black/60 border border-industrial-border/30 rounded-sm relative z-10">
+                  <span className="text-industrial-gold/70 select-none mr-2 text-[10px] font-mono">SUBMISSION //</span>
+                  <span className="text-green-400/80 text-[10px] font-mono">
+                    {task.submission.result?.length > 100 ? task.submission.result.slice(0, 100) + '…' : task.submission.result}
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
-  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer' | 'tasks'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { stats, events, inspectAgent, nanoHistory, services, a2aServices } = useArcEconomy();
+  const { stats, events, inspectAgent, nanoHistory, services, a2aServices, tasks } = useArcEconomy();
 
-  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer') => {
+  const toggleTab = (tab: 'overview' | 'ledger' | 'marketplace' | 'swarm' | 'governance' | 'intelligence' | 'explorer' | 'tasks') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
   };
@@ -827,6 +963,7 @@ function App() {
               </div>
               <div className="flex-1 py-8 flex flex-col gap-2 px-3">
                 <NavBtn active={activeTab === 'overview'} onClick={() => toggleTab('overview')} icon={<Activity size={18}/>} label="VITALS" />
+                <NavBtn active={activeTab === 'tasks'} onClick={() => toggleTab('tasks')} icon={<Gavel size={18}/>} label="BOUNTIES" />
                 <NavBtn active={activeTab === 'marketplace'} onClick={() => toggleTab('marketplace')} icon={<Box size={18}/>} label="SERVICES" />
                 <NavBtn active={activeTab === 'explorer'} onClick={() => toggleTab('explorer')} icon={<Search size={18}/>} label="EXPLORER" />
                 <NavBtn active={activeTab === 'swarm'} onClick={() => toggleTab('swarm')} icon={<Zap size={18}/>} label="STREAM" />
@@ -900,6 +1037,11 @@ function App() {
                            </div>
                         </div>
                       </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'tasks' && (
+                    <motion.div key="tasks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="pb-12">
+                      <TaskBoard tasks={tasks} />
                     </motion.div>
                   )}
                   {activeTab === 'marketplace' && (

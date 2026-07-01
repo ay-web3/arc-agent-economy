@@ -173,6 +173,7 @@ export function useArcEconomy() {
   const [nanoHistory, setNanoHistory] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [a2aServices, setA2aServices] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   // @ts-ignore
@@ -210,17 +211,29 @@ export function useArcEconomy() {
     }
   };
 
+  const fetchTasks = async () => {
+    try {
+      const resp = await fetch(`${HUB_URL}/api/tasks`);
+      const data = await resp.json();
+      setTasks(data.tasks || data);
+    } catch (e) {
+        console.error("Failed to fetch tasks", e);
+    }
+  };
+
   useEffect(() => {
     fetchNanoHistory();
     fetchServices();
     fetchA2AServices();
+    fetchTasks();
     const inv = setInterval(() => {
         fetchNanoHistory();
         fetchServices();
         fetchA2AServices();
-    }, 2000);
+        fetchTasks();
+    }, 4000);
     return () => clearInterval(inv);
   }, []);
 
-  return { stats, events: combinedEvents, inspectAgent, nanoHistory, services, a2aServices };
+  return { stats, events: combinedEvents, inspectAgent, nanoHistory, services, a2aServices, tasks };
 }
