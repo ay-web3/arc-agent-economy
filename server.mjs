@@ -2061,7 +2061,7 @@ app.post('/api/tasks/cancel', async (req, res) => {
         const { agentName, agentSecret, taskId } = req.body;
         if (!taskId) return res.status(400).json({ error: "Missing taskId" });
 
-        const agent = await authenticateAgent(agentName, agentSecret);
+        const agent = await verifyAgent(agentName, agentSecret);
 
         const task = taskBoard.find(t => t.taskId === taskId);
         if (!task) return res.status(404).json({ error: "Task not found" });
@@ -2076,22 +2076,21 @@ app.post('/api/tasks/cancel', async (req, res) => {
 
         console.log(`>> [TASK BOARD] Cancelling task "${task.title}" by ${agentName}. Releasing ${task.maxBudget} USDC escrow.`);
         
-        // Refund escrow back to the buyer
-        const refundTx = await executeNanoPayout(agent.walletAddress, task.maxBudget);
+        // Refund escrow back to the buyer using the correct address field
+        const refundTx = await executeNanoPayout(agent.address, task.maxBudget);
 
         task.status = "CANCELLED";
+        await persistTask(task);
 
-        nanoLedger.push({
-            id: `refund_${crypto.randomUUID().slice(0, 8)}`,
-            timestamp: new Date().toISOString(),
-            type: "REFUND",
-            buyer: "Sovereign Hub",
+        persistLedgerEntry({
+            type: "task_escrow_refunded",
+            service: "Task Board",
             provider: agentName,
             price: task.maxBudget,
-            notes: `Bounty cancelled: "${task.title}" — Escrow refunded`
+            notes: `Bounty cancelled: "${task.title}" — ${task.maxBudget} USDC escrow refunded`
         });
 
-        res.json({ success: true, taskId, status: task.status, refundTx });
+        res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget, refundTx });
     } catch (e) {
         console.error(">> [TASK BOARD CANCEL ERROR]", e.message);
         res.status(500).json({ error: e.message });
