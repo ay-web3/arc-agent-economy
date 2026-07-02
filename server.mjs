@@ -2284,7 +2284,8 @@ app.post('/api/tasks/approve', async (req, res) => {
                         blockchain: "ARC-TESTNET",
                         tokenId: await resolveUsdcTokenId(agent.walletId),
                         destinationAddress: sellerDoc.address,
-                        amounts: [task.acceptedBid.price.toString()]
+                        amounts: [task.acceptedBid.price.toString()],
+                        fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                     });
                     txId = transferResp.data?.transaction?.id || transferResp.data?.id;
                     console.log(`>> [TASK BOARD] Escrow transfer queued: ${txId}`);
