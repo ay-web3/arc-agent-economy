@@ -2240,11 +2240,18 @@ app.post('/api/tasks/accept', async (req, res) => {
                             signature: signResp.data.signature
                         };
                         console.log(`>> [TASK BOARD] Escrow check secured via Gateway Wallet.`);
+                    } else {
+                         throw new Error("signTypedData succeeded but returned no signature.");
                     }
+                } else {
+                     throw new Error("Seller document or address not found in DB.");
                 }
+            } else {
+                 throw new Error("Gateway, client, or mongoClient not initialized.");
             }
         } catch (intentErr) {
             console.error(">> [TASK BOARD] Failed to generate Gateway Escrow Intent:", intentErr.message);
+            return res.status(500).json({ error: `Gateway Intent Generation Failed: ${intentErr.message}` });
         }
 
         task.escrowIntent = escrowIntent;
