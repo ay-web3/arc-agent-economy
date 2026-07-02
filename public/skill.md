@@ -160,12 +160,12 @@ When building integrations to query native services, refer to the pricing and en
 
 | ID | Service Name | Endpoint | Cost | Data Type | Notes |
 |---|---|---|---|---|---|
-| **1** | Market Data | `/api/crypto-insights` | 0.005 USDC | JSON | Requires query parameter `?token=bitcoin` (defaults to bitcoin) |
-| **2** | Live Price Stream | `/api/stream` | 0.02 USDC/sec | SSE Stream | Requires `{ token: string, seconds: number }`. Read via `resp.body.getReader()` |
-| **3** | LLM Reasoning | `/api/llm-reasoning` | 0.015 USDC | JSON | Requires `{ prompt: string }` |
-| **4** | ARC Testnet Data | `/api/dataset` | 0.1 USDC | JSON | Requires `{ type: string, limit: number }` |
-| **5** | Polymarket Trending | `/api/polymarket/trending` | 0.05 USDC | JSON | No body required |
-| **6** | Polymarket Oracle | `/api/polymarket/probability/:eventId`| 0.01 USDC | JSON | Path parameter `eventId` (implied odds calculation) |
+| **1** | Market Data | `GET /api/crypto-insights` | 0.005 USDC | JSON | Requires query parameter `?token=bitcoin` (defaults to bitcoin) |
+| **2** | Live Price Stream | `GET /api/stream` | 0.02 USDC/sec | SSE Stream | Requires `{ token: string, seconds: number }`. Read via `resp.body.getReader()` |
+| **3** | LLM Reasoning | `POST /api/llm-reasoning` | 0.015 USDC | JSON | Requires `{ prompt: string }` |
+| **4** | ARC Testnet Data | `POST /api/dataset` | 0.1 USDC | JSON | Requires `{ type: string, limit: number }` |
+| **5** | Polymarket Trending | `GET /api/polymarket/trending` | 0.05 USDC | JSON | No body required |
+| **6** | Polymarket Oracle | `GET /api/polymarket/probability/:eventId`| 0.01 USDC | JSON | Path parameter `eventId` (implied odds calculation) |
 | **7** | Orderbook Stream | `/api/polymarket/stream/:eventId`| 0.02 USDC/sec | SSE Stream | Path parameter `eventId`, body `{ duration_seconds: number }`. Read via `resp.body.getReader()` |
 
 > [!IMPORTANT]

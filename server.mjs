@@ -2055,6 +2055,49 @@ app.post('/api/tasks/create', async (req, res) => {
     }
 });
 
+// POST /api/tasks/cancel — Buyer manually cancels an open task to retrieve escrow
+app.post('/api/tasks/cancel', async (req, res) => {
+    try {
+        const { agentName, agentSecret, taskId } = req.body;
+        if (!taskId) return res.status(400).json({ error: "Missing taskId" });
+
+        const agent = await authenticateAgent(agentName, agentSecret);
+
+        const task = taskBoard.find(t => t.taskId === taskId);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+
+        if (task.buyer !== agentName) {
+            return res.status(403).json({ error: "Only the task creator can cancel this task." });
+        }
+
+        if (task.status !== "OPEN") {
+            return res.status(400).json({ error: `Cannot cancel task in status: ${task.status}` });
+        }
+
+        console.log(`>> [TASK BOARD] Cancelling task "${task.title}" by ${agentName}. Releasing ${task.maxBudget} USDC escrow.`);
+        
+        // Refund escrow back to the buyer
+        const refundTx = await executeNanoPayout(agent.walletAddress, task.maxBudget);
+
+        task.status = "CANCELLED";
+
+        nanoLedger.push({
+            id: `refund_${crypto.randomUUID().slice(0, 8)}`,
+            timestamp: new Date().toISOString(),
+            type: "REFUND",
+            buyer: "Sovereign Hub",
+            provider: agentName,
+            price: task.maxBudget,
+            notes: `Bounty cancelled: "${task.title}" — Escrow refunded`
+        });
+
+        res.json({ success: true, taskId, status: task.status, refundTx });
+    } catch (e) {
+        console.error(">> [TASK BOARD CANCEL ERROR]", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/tasks/bid — Staked seller bids on an open task
 app.post('/api/tasks/bid', async (req, res) => {
     try {
