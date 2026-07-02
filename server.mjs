@@ -2353,9 +2353,10 @@ app.post('/api/tasks/approve', async (req, res) => {
                 console.log(`>> [TASK BOARD] Gateway settlement complete! Settlement ID: ${txId}`);
             } catch (transferErr) {
                 console.error(">> [TASK BOARD] Escrow transfer failed:", transferErr.message);
+                return res.status(500).json({ error: `Gateway Settlement Failed: ${transferErr.message}` });
             }
         } else {
-             console.error(">> [TASK BOARD] Escrow transfer failed: Missing escrowIntent. Legacy tasks cannot be settled via Gateway.");
+             return res.status(500).json({ error: "Escrow transfer failed: Missing escrowIntent. Legacy tasks cannot be settled via Gateway." });
         }
 
         task.status = "COMPLETED";
