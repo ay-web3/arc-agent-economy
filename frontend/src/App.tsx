@@ -817,7 +817,7 @@ function TaskBoard({ tasks }: { tasks: any[] }) {
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {/* Budget badge */}
                   <span className="bg-industrial-gold/20 text-industrial-gold px-2 py-0.5 rounded border border-industrial-gold/50 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
-                    {task.minBudget?.toFixed(2) ?? '0.00'} – {task.maxBudget?.toFixed(2) ?? '0.00'} USDC
+                    {task.minBudget?.toFixed(5) ?? '0.00000'} - {task.maxBudget?.toFixed(5) ?? '0.00000'} USDC
                   </span>
                   {/* Status badge */}
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-widest ${STATUS_COLORS[task.status] || STATUS_COLORS.EXPIRED}`}>
