@@ -2282,7 +2282,7 @@ app.post('/api/tasks/approve', async (req, res) => {
                         idempotencyKey: crypto.randomUUID(),
                         walletId: agent.walletId,
                         blockchain: "ARC-TESTNET",
-                        tokenId: await resolveUsdcTokenId(agent.walletId),
+                        tokenId: await getUsdcTokenId(agent.walletId),
                         destinationAddress: sellerDoc.address,
                         amounts: [task.acceptedBid.price.toString()],
                         fee: { type: "level", config: { feeLevel: "MEDIUM" } }
