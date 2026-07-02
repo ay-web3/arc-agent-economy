@@ -2292,6 +2292,7 @@ app.post('/api/tasks/approve', async (req, res) => {
                 }
             } catch (transferErr) {
                 console.error(">> [TASK BOARD] Escrow transfer failed:", transferErr.message);
+                return res.status(500).json({ error: `On-Chain Payout Failed: ${transferErr.message}` });
             }
         }
 
