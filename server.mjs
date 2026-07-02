@@ -2188,7 +2188,7 @@ app.post('/api/tasks/accept', async (req, res) => {
                         gateway.chainConfig,
                         intentAmount,
                         sellerDoc.address,
-                        "2010000" // maxFee
+                        "0" // maxFee (Gasless Gateway)
                     );
                     const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
                     intent.spec.sourceSigner = padToBytes32(agent.address);
