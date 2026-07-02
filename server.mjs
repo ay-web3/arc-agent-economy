@@ -2076,8 +2076,24 @@ app.post('/api/tasks/cancel', async (req, res) => {
 
         console.log(`>> [TASK BOARD] Cancelling task "${task.title}" by ${agentName}. Releasing ${task.maxBudget} USDC escrow.`);
         
-        // Refund escrow back to the buyer using the correct address field
-        const refundTx = await executeNanoPayout(agent.address, task.maxBudget);
+        // Refund escrow back to the buyer via Circle transfer (mirrors approve endpoint pattern)
+        let refundTxId = null;
+        if (client && agent.walletId) {
+            try {
+                const transferResp = await client.createTransaction({
+                    idempotencyKey: crypto.randomUUID(),
+                    walletId: agent.walletId,
+                    blockchain: "ARC-TESTNET",
+                    tokenId: await resolveUsdcTokenId(agent.walletId),
+                    destinationAddress: agent.address,
+                    amounts: [task.maxBudget.toString()]
+                });
+                refundTxId = transferResp.data?.transaction?.id || transferResp.data?.id;
+                console.log(`>> [TASK BOARD] Escrow refund transfer queued: ${refundTxId}`);
+            } catch (transferErr) {
+                console.warn(">> [TASK BOARD] Escrow refund transfer failed (proceeding with cancel):", transferErr.message);
+            }
+        }
 
         task.status = "CANCELLED";
         await persistTask(task);
@@ -2087,10 +2103,10 @@ app.post('/api/tasks/cancel', async (req, res) => {
             service: "Task Board",
             provider: agentName,
             price: task.maxBudget,
-            notes: `Bounty cancelled: "${task.title}" — ${task.maxBudget} USDC escrow refunded`
+            notes: `Bounty cancelled: "${task.title}" — ${task.maxBudget} USDC escrow refunded${refundTxId ? ` (Tx: ${refundTxId})` : ''}`
         });
 
-        res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget, refundTx });
+        res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget, refundTxId });
     } catch (e) {
         console.error(">> [TASK BOARD CANCEL ERROR]", e.message);
         res.status(500).json({ error: e.message });
