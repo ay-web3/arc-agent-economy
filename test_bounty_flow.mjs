@@ -30,18 +30,7 @@ async function runFlow() {
     });
     console.log(await regReq.text());
 
-    // 0.5 Deposit to Gateway for Buyer
-    console.log("\n0.5 Buyer Depositing to Gateway Wallet...");
-    const depReq = await fetch(`${API_URL}/agent/gateway-deposit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            agentName: buyerName,
-            agentSecret: buyerSecret,
-            amount: "5.00"
-        })
-    });
-    console.log(await depReq.text());
+
 
     // 1. Create Task
     console.log("\n1. Creating Task...");
@@ -121,8 +110,7 @@ async function runFlow() {
     });
     const approveRes = await approveReq.json();
     console.log(approveRes);
-    
-    if (approveRes.message && approveRes.txId) {
+    if (approveRes.success && approveRes.txId) {
         console.log(`\n✅ SUCCESS! Payment executed on-chain.`);
         console.log(`Transaction ID: ${approveRes.txId}`);
     } else {
