@@ -2066,7 +2066,7 @@ app.post('/api/tasks/cancel', async (req, res) => {
         const task = taskBoard.find(t => t.taskId === taskId);
         if (!task) return res.status(404).json({ error: "Task not found" });
 
-        if (task.buyer !== agentName) {
+        if (task.buyerName !== agentName) {
             return res.status(403).json({ error: "Only the task creator can cancel this task." });
         }
 
