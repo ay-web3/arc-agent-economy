@@ -2452,20 +2452,7 @@ app.get('/api/admin-monitor', (req, res) => {
     });
 });
 
-app.get('/admin/wipe-history', async (req, res) => {
-    try {
-        if (mongoClient) {
-            await mongoClient.db("arc_swarm").collection("tasks").deleteMany({});
-            await mongoClient.db("arc_swarm").collection("ledger").deleteMany({});
-            taskBoard.length = 0;
-            res.json({ success: true, message: "Task and Ledger history wiped cleanly." });
-        } else {
-            res.status(500).json({ error: "DB Offline" });
-        }
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+
 // Initialize engines
 bootstrap();
 
