@@ -2074,23 +2074,6 @@ app.post('/api/tasks/cancel', async (req, res) => {
             return res.status(400).json({ error: `Cannot cancel task in status: ${task.status}` });
         }
 
-        console.log(`>> [TASK BOARD] Cancelling task "${task.title}" by ${agentName}. Releasing ${task.maxBudget} USDC escrow.`);
-        
-        // Refund escrow back to the buyer via Circle transfer (mirrors approve endpoint pattern)
-        let refundTxId = null;
-        if (client && agent.walletId) {
-            try {
-                const transferResp = await client.createTransaction({
-                    idempotencyKey: crypto.randomUUID(),
-                    walletId: agent.walletId,
-                    blockchain: "ARC-TESTNET",
-                    tokenId: await resolveUsdcTokenId(agent.walletId),
-                    destinationAddress: agent.address,
-                    amounts: [task.maxBudget.toString()]
-                });
-                refundTxId = transferResp.data?.transaction?.id || transferResp.data?.id;
-                console.log(`>> [TASK BOARD] Escrow refund transfer queued: ${refundTxId}`);
-            } catch (transferErr) {
                 console.warn(">> [TASK BOARD] Escrow refund transfer failed (proceeding with cancel):", transferErr.message);
             }
         }
@@ -2192,6 +2175,79 @@ app.post('/api/tasks/accept', async (req, res) => {
 
         task.acceptedBid = bid;
         task.status = "ASSIGNED";
+
+        // Generate Gateway Escrow Intent
+        let escrowIntent = null;
+        try {
+            if (gateway && client && mongoClient) {
+                const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: bid.sellerName });
+                if (sellerDoc && sellerDoc.address) {
+                    const intentAmount = Math.round(bid.price * 1e6).toString();
+                    const intent = gateway.createBurnIntent(
+                        gateway.chainConfig,
+                        gateway.chainConfig,
+                        intentAmount,
+                        sellerDoc.address,
+                        "2010000" // maxFee
+                    );
+                    const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
+                    intent.spec.sourceSigner = padToBytes32(agent.address);
+                    intent.spec.sourceDepositor = padToBytes32(agent.address);
+
+                    const typedData = {
+                        domain: { name: "GatewayWallet", version: "1" },
+                        types: {
+                            EIP712Domain: [
+                                { name: "name", type: "string" },
+                                { name: "version", type: "string" }
+                            ],
+                            TransferSpec: [
+                                { name: "version", type: "uint32" },
+                                { name: "sourceDomain", type: "uint32" },
+                                { name: "destinationDomain", type: "uint32" },
+                                { name: "sourceContract", type: "bytes32" },
+                                { name: "destinationContract", type: "bytes32" },
+                                { name: "sourceToken", type: "bytes32" },
+                                { name: "destinationToken", type: "bytes32" },
+                                { name: "amount", type: "uint256" },
+                                { name: "sourceSigner", type: "bytes32" },
+                                { name: "sourceDepositor", type: "bytes32" },
+                                { name: "recipient", type: "bytes32" },
+                                { name: "nonce", type: "uint256" },
+                                { name: "salt", type: "bytes32" },
+                                { name: "hookData", type: "bytes" }
+                            ],
+                            BurnIntent: [
+                                { name: "maxBlockHeight", type: "uint256" },
+                                { name: "maxFee", type: "uint256" },
+                                { name: "spec", type: "TransferSpec" }
+                            ]
+                        },
+                        primaryType: "BurnIntent",
+                        message: intent
+                    };
+
+                    console.log(`>> [TASK BOARD] Generating Gateway Escrow signature for ${task.title}...`);
+                    const signResp = await client.signTypedData({
+                        walletId: agent.walletId,
+                        data: JSON.stringify(typedData, (_, v) => typeof v === 'bigint' ? v.toString() : v),
+                        memo: `Gateway Escrow for Task ${taskId}`
+                    });
+
+                    if (signResp.data && signResp.data.signature) {
+                        escrowIntent = {
+                            burnIntent: intent,
+                            signature: signResp.data.signature
+                        };
+                        console.log(`>> [TASK BOARD] Escrow check secured via Gateway Wallet.`);
+                    }
+                }
+            }
+        } catch (intentErr) {
+            console.error(">> [TASK BOARD] Failed to generate Gateway Escrow Intent:", intentErr.message);
+        }
+
+        task.escrowIntent = escrowIntent;
         await persistTask(task);
 
         // Log the escrow adjustment if bid < maxBudget
@@ -2270,29 +2326,36 @@ app.post('/api/tasks/approve', async (req, res) => {
         if (task.buyerName !== agent.agentName) return res.status(403).json({ error: "Only the task buyer can approve." });
         if (task.status !== "SUBMITTED") return res.status(400).json({ error: `Task is not in SUBMITTED state. Current status: ${task.status}` });
 
-        // Transfer escrow to seller via Circle
+        // Settle Gateway Escrow via Gateway Operator API
         let txId = null;
-        if (client && task.acceptedBid.sellerAddress) {
+        if (task.escrowIntent) {
             try {
-                const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: task.acceptedBid.sellerName });
-                if (sellerDoc && sellerDoc.walletId) {
-                    const transferAmount = Math.round(task.acceptedBid.price * 1e6).toString();
-                    const USDC_CA = "0x3600000000000000000000000000000000000000";
-                    const transferResp = await client.createTransaction({
-                        idempotencyKey: crypto.randomUUID(),
-                        walletId: agent.walletId,
-                        blockchain: "ARC-TESTNET",
-                        tokenId: await resolveUsdcTokenId(agent.walletId),
-                        destinationAddress: sellerDoc.address,
-                        amounts: [task.acceptedBid.price.toString()],
-                        fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-                    });
-                    txId = transferResp.data?.transaction?.id || transferResp.data?.id;
-                    console.log(`>> [TASK BOARD] Escrow transfer queued: ${txId}`);
+                console.log(`>> [TASK BOARD] Submitting Gateway Escrow to Gateway API...`);
+                const apiUrl = "https://gateway-api-testnet.circle.com/v1";
+                const response = await fetch(`${apiUrl}/attestations`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...gateway.gatewayApiHeaders()
+                    },
+                    body: JSON.stringify(
+                        [{ burnIntent: task.escrowIntent.burnIntent, signature: task.escrowIntent.signature }],
+                        (_, v) => typeof v === "bigint" ? v.toString() : v
+                    )
+                });
+                
+                const result = await response.json();
+                if (result.success === false || result.error || !result.attestation || !result.signature) {
+                    throw new Error(result.message || result.error || JSON.stringify(result));
                 }
+                
+                txId = result.id || "GATEWAY_SETTLEMENT_ID";
+                console.log(`>> [TASK BOARD] Gateway settlement complete! Settlement ID: ${txId}`);
             } catch (transferErr) {
                 console.error(">> [TASK BOARD] Escrow transfer failed:", transferErr.message);
             }
+        } else {
+             console.error(">> [TASK BOARD] Escrow transfer failed: Missing escrowIntent. Legacy tasks cannot be settled via Gateway.");
         }
 
         task.status = "COMPLETED";
