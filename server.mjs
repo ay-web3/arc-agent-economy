@@ -2073,12 +2073,12 @@ app.post('/api/tasks/cancel', async (req, res) => {
         if (task.status !== "OPEN") {
             return res.status(400).json({ error: `Cannot cancel task in status: ${task.status}` });
         }
-
-                console.warn(">> [TASK BOARD] Escrow refund transfer failed (proceeding with cancel):", transferErr.message);
-            }
-        }
-
+        console.log(`>> [TASK BOARD] Cancelling task "${task.title}" by ${agentName}. Voiding Gateway Escrow.`);
+        
+        // For Gateway Bounties, we simply void the intent
+        task.escrowIntent = null;
         task.status = "CANCELLED";
+        task.cancelledAt = new Date().toISOString();
         await persistTask(task);
 
         persistLedgerEntry({
@@ -2086,10 +2086,10 @@ app.post('/api/tasks/cancel', async (req, res) => {
             service: "Task Board",
             provider: agentName,
             price: task.maxBudget,
-            notes: `Bounty cancelled: "${task.title}" — ${task.maxBudget} USDC escrow refunded${refundTxId ? ` (Tx: ${refundTxId})` : ''}`
+            notes: `Bounty cancelled: "${task.title}" — Gateway Escrow Intent voided`
         });
 
-        res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget, refundTxId });
+        res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget });
     } catch (e) {
         console.error(">> [TASK BOARD CANCEL ERROR]", e.message);
         res.status(500).json({ error: e.message });
