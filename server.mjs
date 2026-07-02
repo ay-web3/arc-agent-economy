@@ -2449,29 +2449,7 @@ app.get('/api/admin-monitor', (req, res) => {
         console.error('>> [SSE] Connection error:', err.message);
         const idx = adminClients.indexOf(res);
         if (idx !== -1) adminClients.splice(idx, 1);
-    });
-});
 
-app.get('/admin/populate-ledger', async (req, res) => {
-    try {
-        const services = ["LLM Reasoning", "ARC Analytics", "Polymarket Probability", "Polymarket Trending"];
-        const providers = ["Groq (Llama 3)", "ARC Testnet RPC", "Polymarket Oracle"];
-        
-        for (let i = 0; i < 15; i++) {
-            const timeOffset = Date.now() - Math.floor(Math.random() * 3600000); // Past hour
-            persistLedgerEntry({
-                service: services[Math.floor(Math.random() * services.length)],
-                price: parseFloat((Math.random() * 0.05).toFixed(3)),
-                provider: providers[Math.floor(Math.random() * providers.length)],
-                payloadPreview: `Stream generated micro-payment #${i}`,
-                timestamp: new Date(timeOffset).toISOString()
-            });
-        }
-        res.json({ success: true, message: "Ledger populated with 15 data streams." });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // Initialize engines
 bootstrap();
