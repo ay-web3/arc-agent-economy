@@ -1854,29 +1854,26 @@ app.post('/api/registry/rate', async (req, res) => {
         let txId = null;
         if (service.slashCheck) {
             console.log(`>> [SLASH EXECUTION] Cashing upfront digital check for malicious agent...`);
-            try {
-                const apiUrl = "https://gateway-api-testnet.circle.com/v1";
-                const transferResp = await fetch(`${apiUrl}/transfer`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...gateway.gatewayApiHeaders()
-                    },
-                    body: JSON.stringify(
-                        [service.slashCheck],
-                        (_, v) => typeof v === "bigint" ? v.toString() : v
-                    )
-                });
-                
-                const transferResult = await transferResp.json();
-                if (transferResult.success !== false && transferResult.attestation) {
-                    console.log(`>> [SLASH EXECUTION] SUCCESS! Tx: ${transferResult.txHash || 'completed'}`);
-                    txId = transferResult.txHash || "GATEWAY_SETTLED";
-                } else {
-                    console.error(`>> [SLASH EXECUTION] API Error: ${JSON.stringify(transferResult)}`);
+            if (client) {
+                try {
+                    const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: service.name });
+                    if (sellerDoc && sellerDoc.walletId) {
+                        const transferResp = await client.createTransaction({
+                            idempotencyKey: crypto.randomUUID(),
+                            walletId: sellerDoc.walletId,
+                            blockchain: "ARC-TESTNET",
+                            tokenId: await getUsdcTokenId(sellerDoc.walletId),
+                            destinationAddress: MASTER_ADDRESS,
+                            amounts: ["3.00"]
+                        });
+                        console.log(`>> [SLASH EXECUTION] SUCCESS! Tx: ${transferResp.data.id}`);
+                        txId = transferResp.data.id;
+                    }
+                } catch (slashErr) {
+                    console.error(">> [SLASH EXECUTION] Critical Error during check execution:", slashErr.message);
                 }
-            } catch (slashErr) {
-                console.error(">> [SLASH EXECUTION] Critical Error during check execution:", slashErr.message);
+            } else {
+                console.error(">> [SLASH EXECUTION] Circle Client not initialized.");
             }
         } else {
             console.warn(`>> [SLASH EXECUTION] Warning: Agent was slashed but no upfront digital check was found on file.`);
@@ -2455,6 +2452,42 @@ app.get('/api/admin/get-slash-tx', async (req, res) => {
     try {
         const lastSlash = await mongoClient.db("arc_swarm").collection("ledger").find({ type: "a2a_slashed" }).sort({ timestamp: -1 }).limit(1).toArray();
         res.json(lastSlash[0] || { error: "No slash found" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/admin/force-slash', async (req, res) => {
+    try {
+        const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: "Antigravity_Agent_3607c3" });
+        if (!sellerDoc || !sellerDoc.walletId) return res.status(400).json({ error: "Seller wallet not found" });
+        
+        const transferResp = await client.createTransaction({
+            idempotencyKey: crypto.randomUUID(),
+            walletId: sellerDoc.walletId,
+            blockchain: "ARC-TESTNET",
+            tokenId: await getUsdcTokenId(sellerDoc.walletId),
+            destinationAddress: MASTER_ADDRESS,
+            amounts: ["3.00"]
+        });
+        
+        const txId = transferResp.data.id;
+        
+        persistLedgerEntry({
+            type: "a2a_slashed",
+            service: "Stake Slashed",
+            provider: "Hub Penalty",
+            price: 3.00,
+            notes: `3.00 USDC Stake Slashed due to low reputation (Tx: ${txId})`
+        });
+        
+        // Unslash them so they can test again later
+        await mongoClient.db("arc_swarm").collection("agents").updateOne(
+            { agentName: "Antigravity_Agent_3607c3" },
+            { $set: { slashed: false, updatedAt: new Date() } }
+        );
+        
+        res.json({ success: true, txId });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
