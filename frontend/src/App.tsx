@@ -432,7 +432,10 @@ function ServiceMarketplace({ services }: { services: any[] }) {
     { serviceName: "Polymarket Predict: FIFA World Cup 2026", provider: "Sovereign Hub (Treasury)", price: "0.1", description: "Live betting odds & probabilities for the 2026 World Cup outright winner. BATCHED nano-settlement.", endpoint: "poly-worldcup" }
   ];
 
-  const allServices = [...coreServices, ...(services || [])];
+  const allServices = [
+    ...coreServices,
+    ...(services || []).filter(s => !coreServices.some(cs => cs.serviceName === s.serviceName))
+  ];
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
