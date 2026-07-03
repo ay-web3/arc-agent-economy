@@ -2450,6 +2450,15 @@ app.get('/api/admin-monitor', (req, res) => {
     });
 });
 
+app.get('/api/admin/get-slash-tx', async (req, res) => {
+    try {
+        const lastSlash = await mongoClient.db("arc_swarm").collection("ledger").find({ type: "a2a_slashed" }).sort({ timestamp: -1 }).limit(1).toArray();
+        res.json(lastSlash[0] || { error: "No slash found" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Initialize engines
 bootstrap();
 
