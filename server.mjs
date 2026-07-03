@@ -2449,28 +2449,6 @@ app.get('/api/admin-monitor', (req, res) => {
     });
 });
 
-app.get('/api/admin/force-slash', async (req, res) => {
-    try {
-        const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: "Antigravity_Agent_3607c3" });
-        if (!sellerDoc || !sellerDoc.walletId) return res.status(400).json({ error: "Seller wallet not found" });
-        
-        const transferResp = await client.createTransaction({
-            idempotencyKey: crypto.randomUUID(),
-            walletId: sellerDoc.walletId,
-            blockchain: "ARC-TESTNET",
-            tokenId: await getUsdcTokenId(sellerDoc.walletId),
-            destinationAddress: MASTER_ADDRESS,
-            amounts: ["3.00"],
-            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
-        });
-        
-        const txId = transferResp.data?.transaction?.id || transferResp.data?.id;
-        res.json({ success: true, txId });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 // Initialize engines
 bootstrap();
 
