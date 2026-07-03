@@ -427,7 +427,6 @@ function ServiceMarketplace({ services }: { services: any[] }) {
     { serviceName: "Price Ticks Stream", provider: "Server-Sent Events", price: "0.02", description: "Simulated live tick data with micro-fluctuations.", endpoint: "stream" },
     { serviceName: "LLM Reasoning", provider: "Gemini 2.0 Flash", price: "0.015", description: "AI inference for agent trading signals.", endpoint: "llm-reasoning" },
     { serviceName: "On-Chain Analytics", provider: "ARC Testnet RPC", price: "0.1", description: "Raw block and transaction data fetcher.", endpoint: "dataset" },
-    { serviceName: "Polymarket Predict: US Presidential Election", provider: "Sovereign Hub (Treasury)", price: "0.1", description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.", endpoint: "poly-trump" },
     { serviceName: "Polymarket Trending Markets", provider: "Sovereign Hub (Treasury)", price: "0.05", description: "Live discovery of most volatile political markets. GAS-FREE settlement.", endpoint: "poly-trending" },
     { serviceName: "Polymarket Predict: FIFA World Cup 2026", provider: "Sovereign Hub (Treasury)", price: "0.1", description: "Live betting odds & probabilities for the 2026 World Cup outright winner. BATCHED nano-settlement.", endpoint: "poly-worldcup" }
   ];

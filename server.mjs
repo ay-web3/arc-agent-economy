@@ -339,17 +339,6 @@ app.get('/api/nano-history', async (req, res) => {
 // Global native services array moved outside the endpoint
 const nativeServices = [
     {
-        id: 'poly-trump',
-        serviceName: "Polymarket Predict: US Presidential Election",
-        description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.",
-        price: 0.1,
-        endpoint: "/api/polymarket/stream/0x7b88dbbdfcd893ffb2ea4c944111394a179c354e61eeff8a02a4bfdd535c59aa",
-        type: "prediction",
-        batchable: true,
-        provider: "Sovereign Hub (Treasury)",
-        reputation: 10
-    },
-    {
         id: 'poly-trending',
         serviceName: "Polymarket Trending Markets",
         description: "Live discovery of most volatile political markets. GAS-FREE settlement.",
