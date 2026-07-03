@@ -2449,7 +2449,8 @@ app.get('/api/admin-monitor', (req, res) => {
         console.error('>> [SSE] Connection error:', err.message);
         const idx = adminClients.indexOf(res);
         if (idx !== -1) adminClients.splice(idx, 1);
-
+    });
+});
 
 // Initialize engines
 bootstrap();
