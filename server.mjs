@@ -2393,7 +2393,7 @@ app.post('/api/tasks/dispute', async (req, res) => {
                                 idempotencyKey: crypto.randomUUID(),
                                 walletId: buyerDoc.walletId,
                                 blockchain: "ARC-TESTNET",
-                                tokenId: await resolveUsdcTokenId(buyerDoc.walletId),
+                                tokenId: await getUsdcTokenId(buyerDoc.walletId),
                                 destinationAddress: sellerDoc.address,
                                 amounts: [task.acceptedBid.price.toString()]
                             });
