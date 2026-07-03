@@ -340,7 +340,7 @@ app.get('/api/nano-history', async (req, res) => {
 const nativeServices = [
     {
         id: 'poly-trump',
-        serviceName: "Polymarket Predict: Trump v Biden",
+        serviceName: "Polymarket Predict: US Presidential Election",
         description: "Real-time odds & probability stream. BATCHED nano-settlement via Circle USDC.",
         price: 0.1,
         endpoint: "/api/polymarket/stream/0x7b88dbbdfcd893ffb2ea4c944111394a179c354e61eeff8a02a4bfdd535c59aa",
