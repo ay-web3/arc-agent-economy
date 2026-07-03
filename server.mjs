@@ -672,7 +672,7 @@ app.post('/agent/gateway-withdraw-instant', async (req, res) => {
                     gateway.chainConfig, // destConfig is same as source (ARC-TESTNET)
                     withdrawAmount,
                     recipientAddress, // recipient
-                    "2010000" // maxFee (2.01 USDC, standard default)
+                    "1000" // maxFee (0.001 USDC)
                 );
                 const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
                 intent.spec.sourceSigner = padToBytes32(recipientAddress);
@@ -1617,7 +1617,7 @@ app.post('/api/registry/register', async (req, res) => {
                             gateway.chainConfig,
                             slashAmount,
                             MASTER_ADDRESS, // Send penalty to Sovereign Hub Treasury
-                            "2010000" // maxFee
+                            "1000" // maxFee (0.001 USDC)
                         );
                         const padToBytes32 = (addr) => "0x" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
                         intent.spec.sourceSigner = padToBytes32(agentDoc.address);
