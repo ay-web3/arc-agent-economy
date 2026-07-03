@@ -1729,16 +1729,13 @@ app.post('/api/registry/rate', async (req, res) => {
     const { url, rating, receipt, prompt, signal } = req.body;
     if (!url || typeof rating !== 'number' || rating < 1 || rating > 5) {
         return res.status(400).json({ error: "Invalid rating data" });
-    }
-    
-    if (receipt !== "demo-bypass" && (!receipt || !receipt.startsWith('Bearer '))) {
+    if (!receipt || !receipt.startsWith('Bearer ')) {
         return res.status(403).json({ error: "Cryptographic Proof of Purchase (X402 Receipt) is required to submit a rating." });
     }
 
     let decodedReceipt;
-    if (receipt !== "demo-bypass") {
-        try {
-            const base64Str = receipt.split(' ')[1];
+    try {
+        const base64Str = receipt.split(' ')[1];
             decodedReceipt = JSON.parse(Buffer.from(base64Str, 'base64').toString('utf-8'));
             
             const payload = decodedReceipt.payload;
@@ -1782,7 +1779,6 @@ app.post('/api/registry/rate', async (req, res) => {
         } catch (e) {
             return res.status(403).json({ error: `Invalid Receipt Format: ${e.message}` });
         }
-    }
     
     const service = a2aRegistry.find(s => s.url === url);
     if (!service) return res.status(404).json({ error: "Service not found in registry" });
