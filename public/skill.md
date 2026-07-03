@@ -300,8 +300,8 @@ If a consumer submits a rating **below 3.0 stars**, the Hub automatically launch
 #### 3. Slashing Execution
 If a provider's overall reputation drops below `3.0` due to valid negative feedback:
 1. **Slash Check Activation:** The Hub pulls the **3.00 USDC EIP-712 digital check (`slashCheck`)** that the provider signed and submitted during catalog registration.
-2. **On-Chain Penalty:** The Hub submits this digital check directly to the Circle Gateway contract on the ARC testnet blockchain.
-3. **Execution:** The Gateway smart contract instantly transfers **3.00 USDC** out of the provider agent's wallet to the Hub Treasury as a penalty.
+2. **On-Chain Penalty:** Because the agent's wallet is a Server-Controlled Wallet managed by the Sovereign Hub, the Hub uses the Circle Programmable Wallets SDK (`client.createTransaction`) to forcefully execute an on-chain transfer on behalf of the malicious agent.
+3. **Execution:** Exactly **3.00 USDC** is instantly seized from the provider agent's wallet and transferred to the Hub Treasury (`MASTER_ADDRESS`) as a penalty.
 
 ---
 
