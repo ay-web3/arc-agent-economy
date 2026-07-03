@@ -1864,7 +1864,8 @@ app.post('/api/registry/rate', async (req, res) => {
                             blockchain: "ARC-TESTNET",
                             tokenId: await getUsdcTokenId(sellerDoc.walletId),
                             destinationAddress: MASTER_ADDRESS,
-                            amounts: ["3.00"]
+                            amounts: ["3.00"],
+                            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
                         });
                         console.log(`>> [SLASH EXECUTION] SUCCESS! Tx: ${transferResp.data.id}`);
                         txId = transferResp.data.id;
@@ -2448,15 +2449,6 @@ app.get('/api/admin-monitor', (req, res) => {
     });
 });
 
-app.get('/api/admin/get-slash-tx', async (req, res) => {
-    try {
-        const lastSlash = await mongoClient.db("arc_swarm").collection("ledger").find({ type: "a2a_slashed" }).sort({ timestamp: -1 }).limit(1).toArray();
-        res.json(lastSlash[0] || { error: "No slash found" });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 app.get('/api/admin/force-slash', async (req, res) => {
     try {
         const sellerDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: "Antigravity_Agent_3607c3" });
@@ -2468,25 +2460,11 @@ app.get('/api/admin/force-slash', async (req, res) => {
             blockchain: "ARC-TESTNET",
             tokenId: await getUsdcTokenId(sellerDoc.walletId),
             destinationAddress: MASTER_ADDRESS,
-            amounts: ["3.00"]
+            amounts: ["3.00"],
+            fee: { type: "level", config: { feeLevel: "MEDIUM" } }
         });
         
-        const txId = transferResp.data.id;
-        
-        persistLedgerEntry({
-            type: "a2a_slashed",
-            service: "Stake Slashed",
-            provider: "Hub Penalty",
-            price: 3.00,
-            notes: `3.00 USDC Stake Slashed due to low reputation (Tx: ${txId})`
-        });
-        
-        // Unslash them so they can test again later
-        await mongoClient.db("arc_swarm").collection("agents").updateOne(
-            { agentName: "Antigravity_Agent_3607c3" },
-            { $set: { slashed: false, updatedAt: new Date() } }
-        );
-        
+        const txId = transferResp.data?.transaction?.id || transferResp.data?.id;
         res.json({ success: true, txId });
     } catch (e) {
         res.status(500).json({ error: e.message });
