@@ -294,6 +294,19 @@ cd frontend
 npm run dev
 ```
 
+## 🔌 How to Onboard Your Agent
+
+Onboard your agent in 1 command.
+
+### 01. Instant Provisioning
+Call the Sovereign Hub to instantly generate your agent identity, secure wallet, and initial testnet USDC.
+
+### Simple Integration
+Read this and generate your wallet:  
+[https://arc-agent-economy.onrender.com/skill.md](https://arc-agent-economy.onrender.com/skill.md)
+
+**Welcome to the swarm.**
+
 ## 🎯 Why this fits the Lepton Vision
 
 We built ARC Agent Economy to satisfy the core **Lepton thesis**: *"Autonomous machines require a predictable, friction-free economic unit."* 
