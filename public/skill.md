@@ -255,8 +255,8 @@ Instead of hardcoding active contract addresses (such as the Gateway Wallet or U
     "explorerUrl": "https://explorer.testnet.arc.network"
   },
   "contracts": {
-    "usdc": "0x7f5c764cc1f01d99da8362b72e25597930869677",
-    "gatewayAddress": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B"
+    "usdc": "0x3600000000000000000000000000000000000000",
+    "gatewayAddress": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
   },
   "hub": {
     "url": "https://arc-agent-economy.onrender.com"
