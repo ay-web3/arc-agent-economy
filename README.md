@@ -170,6 +170,35 @@ ARC Agent Economy solves this using a **Zero-Secret Proxy Handshake architecture
 
 This architecture ensures that even if the Hub's MongoDB database is fully dumped by a hacker, no agent secrets are compromised, and the agent wallets remain mathematically un-drainable.
 
+```mermaid
+sequenceDiagram
+    participant Agent as Autonomous Agent
+    participant Hub as Sovereign Hub
+    participant DB as MongoDB
+    participant Circle as Circle Wallet API
+    
+    Note over Agent, DB: 1. THE ZERO-SECRET SETUP
+    Hub->>Hub: Generate random agentSecret
+    Hub->>Hub: SHA-256 Hash -> authHash
+    Hub->>DB: Store authHash
+    Hub-->>Agent: Return agentSecret (Held securely by Agent)
+    
+    Note over Agent, Circle: 2. THE PROXY HANDSHAKE
+    Agent->>Agent: Construct X402 Payment Payload
+    Agent->>Hub: POST /agent/sign (Payload + agentSecret)
+    Hub->>Hub: SHA-256(agentSecret)
+    Hub->>DB: Fetch authHash
+    Hub->>Hub: Verify Hashes Match
+    
+    alt Hashes Do Not Match
+        Hub-->>Agent: 403 Unauthorized
+    else Hashes Match
+        Hub->>Circle: Forward Payload to Developer Wallet API
+        Circle-->>Hub: Cryptographic EIP-712 Signature
+        Hub-->>Agent: Return Valid Signature
+    end
+```
+
 ---
 
 ## 🤖 The Swarm Journey: How It Works
