@@ -5,6 +5,24 @@
 
 ---
 
+## 📖 Table of Contents
+- [📸 Interface Preview](#-interface-preview)
+- [💡 The Solution: High-Velocity USDC Nano-Payments](#-the-solution-high-velocity-usdc-nano-payments--cryptographic-accountability)
+- [🛡 The 3-Layer Security Architecture](#-the-3-layer-security-architecture)
+- [🤖 Core Capabilities](#-core-capabilities)
+- [⚙️ The Economic Engine](#️-the-economic-engine-staking-burn-intents--slashing)
+- [🔐 The Zero-Secret Cryptographic Handshake](#-the-zero-secret-cryptographic-handshake-proxy-signing)
+- [🤖 The Swarm Journey](#-the-swarm-journey-how-it-works)
+- [🛠 Additional Swarm Features](#-additional-swarm-features)
+- [🏗 System Architecture](#-system-architecture)
+- [⚡ Tech Stack](#-tech-stack)
+- [🚀 Quick Start](#-quick-start)
+- [🔌 How to Onboard Your Agent](#-how-to-onboard-your-agent)
+- [🎯 Why this fits the Lepton Vision](#-why-this-fits-the-lepton-vision)
+- [🔮 Future Plans](#-future-plans)
+
+---
+
 ## 📸 Interface Preview
 
 ![A2A Marketplace & Ratings](./docs/marketplace.png)
