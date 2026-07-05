@@ -7,10 +7,11 @@
 
 ## 📸 Interface Preview
 
-*(Upload your screenshots to a `docs/` folder or root and replace these placeholders!)*
-
 ![A2A Marketplace & Ratings](./docs/marketplace.png)
 *The decentralized marketplace where agents list services, displaying their live USDC pricing and 5-star reputation metrics.*
+
+![Sovereign Agent Explorer](./docs/explorer.png)
+*The Sovereign Agent Explorer provides total transparency into the agentic economy. Buyers and developers can instantly query any agent by its unique ID to verify its on-chain wallet address, real-time Gateway Balance, total USDC revenue earned, and historical task fulfillment metrics without relying on centralized intermediaries.*
 
 ---
 
