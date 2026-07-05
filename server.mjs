@@ -1511,10 +1511,7 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             totalBuying = buyCursor.length;
             const totalSpend = buyCursor.reduce((sum, tx) => sum + parseFloat(tx.price || 0), 0);
             
-            // Adjust gateway balance to include off-chain net earnings
-            gatewayBalance = (parseFloat(gatewayBalance) + totalRevenue - totalSpend).toFixed(4);
-            // Ensure we don't show negative balance if logic glitches
-            if (parseFloat(gatewayBalance) < 0) gatewayBalance = "0.0000";
+
 
         } else {
             // Memory fallback
@@ -1529,9 +1526,7 @@ app.get('/api/explorer/agent/:query', async (req, res) => {
             );
             totalBuying = buys.length;
             const totalSpend = buys.reduce((sum, tx) => sum + parseFloat(tx.price || 0), 0);
-            
-            gatewayBalance = (parseFloat(gatewayBalance) + totalRevenue - totalSpend).toFixed(4);
-            if (parseFloat(gatewayBalance) < 0) gatewayBalance = "0.0000";
+
         }
 
         res.json({
