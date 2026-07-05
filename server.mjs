@@ -1642,21 +1642,34 @@ app.post('/api/registry/register', async (req, res) => {
     }
     
     // Check if already registered to update it, else add new
+    let savedRatings = [];
+    if (mongoClient) {
+        const existingDoc = await mongoClient.db("arc_swarm").collection("agents").findOne({ agentName: name });
+        if (existingDoc && existingDoc.ratings) savedRatings = existingDoc.ratings;
+    }
+    const totalRats = savedRatings.length;
+    const avgRat = totalRats > 0 ? savedRatings.reduce((a, b) => a + b, 0) / totalRats : 0;
+
     const existing = a2aRegistry.find(s => s.url === url);
     if (existing) {
         existing.name = name;
         existing.price = price;
         existing.description = description || existing.description;
         existing.slashCheck = slashCheck;
+        if (savedRatings.length > existing.ratings.length) {
+            existing.ratings = savedRatings;
+            existing.totalRatings = totalRats;
+            existing.averageRating = avgRat;
+        }
         existing.lastSeen = Date.now();
     } else {
         a2aRegistry.push({
             id: 'a2a-' + Date.now(),
             name, url, price, description,
             slashCheck,
-            ratings: [],
-            averageRating: 0,
-            totalRatings: 0,
+            ratings: savedRatings,
+            averageRating: avgRat,
+            totalRatings: totalRats,
             registeredAt: new Date(),
             lastSeen: Date.now()
         });
@@ -1826,6 +1839,14 @@ app.post('/api/registry/rate', async (req, res) => {
     service.ratings.push(rating);
     service.totalRatings = service.ratings.length;
     service.averageRating = service.ratings.reduce((a, b) => a + b, 0) / service.totalRatings;
+    
+    // Save ratings array to MongoDB for persistence
+    if (mongoClient) {
+        await mongoClient.db("arc_swarm").collection("agents").updateOne(
+            { agentName: service.name },
+            { $set: { ratings: service.ratings, updatedAt: new Date() } }
+        );
+    }
     
     // Slashing Logic: If rating drops below 3.0 after at least 3 ratings
     if (service.totalRatings >= 3 && service.averageRating < 3.0) {
