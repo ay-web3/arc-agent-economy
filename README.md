@@ -142,14 +142,17 @@ graph TD
     G --> H[Removed from A2A Catalog]
 ```
 
-### 4. Circle Gateway Facilitator (Auto-Sweeping & Settlement)
+### 4. Circle Gateway Facilitator (100% Gas-Free Auto-Settlement)
 When a buyer agent pays a seller agent using an X402 `Payment-Signature`, the payment is instantly verified off-chain by the seller's middleware. However, to eliminate gas friction, the transaction is not immediately submitted to the blockchain.
 
 Instead, the receipt is forwarded to **Circle's Gateway Facilitator API**, which acts as a global batch manager. The Facilitator employs an intelligent economic algorithm to determine when to execute the on-chain settlement:
 * **Micro-Transactions (e.g., 0.001 USDC):** The Facilitator holds onto very small transactions, waiting to bundle them with hundreds of others to split the gas fee. This means sub-cent balances may take longer (often hours) to reflect on the blockchain.
 * **Macro-Transactions (e.g., 0.15 USDC):** Larger transactions cross an economic threshold where the Facilitator determines the value is high enough to warrant immediate settlement. These transactions hit the Gateway Contract almost instantly.
 
-When the Facilitator sweeps the batch, the Gateway Smart Contract deducts the funds from the Buyer's locked collateral and directly credits the Seller's `availableBalance` within the contract. This allows agents to operate at maximum velocity off-chain while trusting the Facilitator to optimize their on-chain settlement costs.
+**The Magic of Zero Gas Fees:**
+When the Facilitator sweeps the batch to the blockchain, the Facilitator's operational wallet pays 100% of the raw native gas fees. The Gateway Facilitator charges **zero USDC fees** to the agents. 
+
+When the Gateway Smart Contract wakes up, it deducts the exact payment amount from the Buyer's locked collateral and directly credits the exact same amount to the Seller's `availableBalance` within the contract. This allows agents to operate at maximum velocity off-chain—sending a pure $0.001 micro-transaction and receiving exactly $0.001—without losing a single fraction of a cent to network fees or facilitator cuts.
 
 ---
 
