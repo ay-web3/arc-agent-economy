@@ -1968,9 +1968,10 @@ function processTaskExpiry() {
             persistLedgerEntry({
                 type: "task_escrow_refunded",
                 service: "Task Board",
-                provider: task.buyerName,
+                buyer: task.buyerName,
+                provider: "Sovereign Escrow",
                 price: task.maxBudget,
-                notes: `Expired task "${task.title}" — ${task.maxBudget} USDC refunded to buyer`
+                notes: `Expired task "${task.title}" - ${task.maxBudget} USDC refunded to buyer`
             });
             console.log(`>> [TASK BOARD] Task "${task.title}" expired. Escrow refunded to ${task.buyerName}.`);
         }
@@ -2049,9 +2050,10 @@ app.post('/api/tasks/create', async (req, res) => {
         persistLedgerEntry({
             type: "task_escrow_locked",
             service: "Task Board",
-            provider: agent.agentName,
+            buyer: agent.agentName,
+            provider: "Sovereign Escrow",
             price: task.maxBudget,
-            notes: `Bounty created: "${title}" — ${task.maxBudget} USDC locked in escrow`
+            notes: `Bounty created: "${title}" - ${task.maxBudget} USDC locked in escrow`
         });
 
         console.log(`>> [TASK BOARD] Task created: "${title}" by ${agent.agentName} (${task.minBudget}-${task.maxBudget} USDC)`);
@@ -2108,9 +2110,10 @@ app.post('/api/tasks/cancel', async (req, res) => {
         persistLedgerEntry({
             type: "task_escrow_refunded",
             service: "Task Board",
-            provider: agentName,
+            buyer: agentName,
+            provider: "Sovereign Escrow",
             price: task.maxBudget,
-            notes: `Bounty cancelled: "${task.title}" — ${task.maxBudget} USDC escrow refunded${refundTxId ? ` (Tx: ${refundTxId})` : ''}`
+            notes: `Bounty cancelled: "${task.title}" - ${task.maxBudget} USDC escrow refunded${refundTxId ? ` (Tx: ${refundTxId})` : ''}`
         });
 
         res.json({ success: true, taskId, status: task.status, refundedAmount: task.maxBudget, refundTxId });
@@ -2207,9 +2210,10 @@ app.post('/api/tasks/accept', async (req, res) => {
             persistLedgerEntry({
                 type: "task_escrow_adjusted",
                 service: "Task Board",
-                provider: agent.agentName,
+                buyer: agent.agentName,
+                provider: "Sovereign Escrow",
                 price: savings,
-                notes: `Bid accepted below max budget — ${savings.toFixed(4)} USDC returned to buyer escrow`
+                notes: `Bid accepted below max budget - ${savings.toFixed(4)} USDC returned to buyer escrow`
             });
         }
 
@@ -2376,10 +2380,11 @@ app.post('/api/tasks/dispute', async (req, res) => {
 
             persistLedgerEntry({
                 type: "task_escrow_refunded",
-                service: "Task Board — AI Court",
-                provider: task.buyerName,
+                service: "Task Board - AI Court",
+                buyer: task.buyerName,
+                provider: "Sovereign Escrow",
                 price: task.acceptedBid.price,
-                notes: `Dispute FAIR: "${task.title}" — ${task.acceptedBid.price} USDC refunded to buyer`
+                notes: `Dispute FAIR: "${task.title}" - ${task.acceptedBid.price} USDC refunded to buyer`
             });
 
             res.json({ success: true, taskId, verdict: "FAIR", resolution: "Buyer's dispute upheld. Escrow refunded to buyer." });
