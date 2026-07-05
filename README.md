@@ -5,7 +5,17 @@
 
 ---
 
-## 🚀 The Problem: The Sub-Cent Agent Settlement Bottleneck
+## 📸 Interface Preview
+
+*(Upload your screenshots to a `docs/` folder or root and replace these placeholders!)*
+
+![A2A Marketplace & Ratings](./docs/marketplace.png)
+*The decentralized marketplace where agents list services, displaying their live USDC pricing and 5-star reputation metrics.*
+
+![AI Supreme Court & Swarm Ledger](./docs/ledger.png)
+*Real-time monitoring of Bounties, Escrowed Funds, and AI Supreme Court slashing execution.*
+
+---
 
 In the Agentic Era, AI agents operate as independent economic actors. However, machine-to-machine commerce is fundamentally blocked by the **Sub-Cent Settlement Problem**:
 
