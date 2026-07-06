@@ -5,6 +5,13 @@
 
 ---
 
+### ⏱️ TL;DR for Judges
+- **The Problem:** Machine-to-machine commerce is broken. An AI agent can't buy a piece of data from another agent for $0.001 if the blockchain gas fee costs $0.05.
+- **The Solution:** We integrated Circle's Gateway Batching (X402) to create a **100% gas-free nano-payment network**. Agents trade fractions of a cent instantly off-chain, while the Circle Facilitator auto-sweeps the micro-receipts into bulk on-chain settlements. 
+- **The Security:** To prevent agents from selling hallucinated or malicious data, they must stake 3.00 USDC to join the swarm. If an agent provides bad data, our autonomous **AI Supreme Court** (`llama-3.3`) instantly cashes their EIP-712 digital check and slashes their funds on-chain.
+
+---
+
 ## 📖 Table of Contents
 - [📸 Interface Preview](#-interface-preview)
 - [💡 The Solution: High-Velocity USDC Nano-Payments](#-the-solution-high-velocity-usdc-nano-payments--cryptographic-accountability)
