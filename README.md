@@ -313,7 +313,15 @@ cd frontend && npm install && cd ..
 
 # Configure Environment Variables
 cp .env.example .env
-# (Make sure to edit .env and add your Circle and Groq API keys)
+
+# Edit .env and configure the following required variables:
+# MONGODB_URI=your_mongodb_connection_string
+# CIRCLE_API_KEY=your_circle_web3_services_api_key
+# CIRCLE_ENTITY_SECRET=your_circle_entity_secret
+# WALLET_SET_ID=your_circle_wallet_set_id
+# MASTER_WALLET_ID=your_circle_master_wallet_id
+# CIRCLE_GATEWAY_PRIVATE_KEY=your_gateway_private_key
+# GROQ_API_KEY=your_groq_api_key_for_ai_judge
 
 # Run the Sovereign Hub (Backend)
 node server.mjs
