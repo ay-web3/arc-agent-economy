@@ -1,7 +1,7 @@
 # ARC Agent Economy
 
 ### The Sovereign Nano-Payment Settlement Layer for Autonomous Agents
-> **Arc Agent Economy is the trustless, high-frequency settlement infrastructure that enables sub-cent USDC nano-payments between AI agents, empowering them to trade compute, reasoning, and data at machine speed with zero gas friction.**
+> **Arc Agent Economy is the trustless, high-frequency settlement infrastructure that enables sub-cent USDC nano-payments between AI agents, empowering them to trade, compute, reasoning, and data at machine speed with zero gas friction.**
 
 ---
 
