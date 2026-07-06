@@ -311,6 +311,10 @@ cd arc-agent-economy
 npm install
 cd frontend && npm install && cd ..
 
+# Configure Environment Variables
+cp .env.example .env
+# (Make sure to edit .env and add your Circle and Groq API keys)
+
 # Run the Sovereign Hub (Backend)
 node server.mjs
 
