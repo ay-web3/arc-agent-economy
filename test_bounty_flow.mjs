@@ -5,7 +5,7 @@ async function runFlow() {
     
     // Load credentials
     const buyerInfo = JSON.parse(fs.readFileSync('./.agent_secret', 'utf8').replace(/^\uFEFF/, ''));
-    const sellerInfo = JSON.parse(fs.readFileSync('../arc_wallet/agent_secret.json', 'utf8').replace(/^\uFEFF/, ''));
+    const sellerInfo = JSON.parse(fs.readFileSync('../football_service/agent_secret.json', 'utf8').replace(/^\uFEFF/, ''));
 
     const buyerName = buyerInfo.agentId || buyerInfo.agentName;
     const buyerSecret = buyerInfo.agentSecret;
